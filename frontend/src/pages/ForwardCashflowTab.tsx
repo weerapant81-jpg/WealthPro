@@ -457,7 +457,7 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
           ประมาณการงบประมาณล่วงหน้า <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>แก้ช่องปีแรก / %เติบโต / ปีครบกำหนดชำระ (ช่อง "ปี") ได้โดยตรง</span>
         </div>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ borderCollapse: 'collapse', minWidth: '100%' }}>
+          <table className="dense-table" style={{ borderCollapse: 'collapse', minWidth: '100%' }}>
             <thead>
               <tr>
                 <th style={{ ...th, background: 'var(--navy-950)', borderBottom: '2px solid var(--card-border)' }}>อายุ / ปี พ.ศ. <span style={{ fontSize: 9, fontWeight: 400, color: 'var(--text-muted)' }}>(ช่อง: %โต)</span></th>
@@ -509,7 +509,7 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--card-border)', fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>ประมาณการภาษีเงินได้ล่วงหน้า (ถึงปีก่อนเกษียณ)</div>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ borderCollapse: 'collapse', minWidth: '100%' }}>
+          <table className="dense-table" style={{ borderCollapse: 'collapse', minWidth: '100%' }}>
             <thead>
               <tr>
                 <th style={{ ...th, background: 'var(--navy-950)', borderBottom: '2px solid var(--card-border)' }}>อายุ / ปี พ.ศ.</th>
