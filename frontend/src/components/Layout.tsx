@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import { useClient } from '../context/ClientContext'
 import { logout } from '../lib/auth'
 import CopilotWidget from './CopilotWidget'
-import { LayoutDashboard, Target, Settings, LogOut, ClipboardList, ClipboardCheck, ShieldCheck, Calculator, Users, RefreshCw, Sun, Moon, UserCog, Menu, ChevronLeft, ChevronRight, ChevronDown, User, Shield, TrendingUp, Wallet, Activity, Briefcase, Scale, HeartPulse, GraduationCap, CalendarRange, ScrollText, Search, ArrowRight, FileText } from 'lucide-react'
+import { LayoutDashboard, Target, Settings, LogOut, ClipboardList, ClipboardCheck, ShieldCheck, Calculator, Users, RefreshCw, Sun, Moon, UserCog, Menu, ChevronLeft, ChevronRight, ChevronDown, User, Shield, TrendingUp, Wallet, Activity, Briefcase, Scale, HeartPulse, GraduationCap, CalendarRange, ScrollText, Search, ArrowRight, FileText, BookOpen } from 'lucide-react'
 
 // เมนูย่อยของ "ข้อมูลลูกค้า" (ขับแท็บด้วย ?tab=)
 const CLIENT_TABS = [
@@ -338,6 +338,9 @@ export default function Layout({ children }: { children: ReactNode }) {
                     </div>
                     {user?.role && <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>สิทธิ์: {user.role}</div>}
                     <div style={{ borderTop: '1px solid var(--card-border)', margin: '8px 0 4px' }} />
+                    <button onClick={() => { setProfileOpen(false); navigate('/guide') }} style={menuItem}>
+                      <BookOpen size={15} /> คู่มือการใช้งาน
+                    </button>
                     {isAdmin && (
                       <button onClick={() => { setProfileOpen(false); navigate('/audit-log') }} style={menuItem}>
                         <ScrollText size={15} /> บันทึกการเข้าถึงข้อมูล
