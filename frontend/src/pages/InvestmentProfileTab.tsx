@@ -526,7 +526,7 @@ export default function InvestmentProfileTab({ person = 'client' }: { person?: '
       <div style={card}>
         <SectionHeader icon={Home} title="สินทรัพย์ส่วนตัว" sub="มูลค่าปัจจุบัน" />
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <table className="dense-table" style={{ width: '100%', minWidth: 1040, borderCollapse: 'collapse', fontSize: 11 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--card-border)' }}>
                 {[
@@ -601,7 +601,7 @@ export default function InvestmentProfileTab({ person = 'client' }: { person?: '
       <div style={card}>
         <SectionHeader icon={TrendingUp} title="สินทรัพย์การลงทุน" sub="มูลค่าพอร์ตปัจจุบัน" />
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <table className="dense-table" style={{ width: '100%', minWidth: 1040, borderCollapse: 'collapse', fontSize: 11 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--card-border)' }}>
                 {[
