@@ -68,6 +68,9 @@ body {
 /* ── Touch / iPad ── */
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
+/* form control ต้องไม่ล้น container — แก้บั๊ก iOS Safari ที่ input[type=date]/select ไม่ยอมหดตาม width แล้วไปทับช่องข้างๆ */
+input, select, textarea { max-width: 100%; box-sizing: border-box; min-width: 0; }
+
 /* iOS/iPadOS ซูมหน้าจออัตโนมัติเมื่อโฟกัส input ที่ฟอนต์ < 16px — บังคับ ≥16px เฉพาะอุปกรณ์สัมผัส */
 @media (pointer: coarse) {
   input, select, textarea { font-size: 16px !important; }
