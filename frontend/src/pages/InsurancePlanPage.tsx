@@ -312,7 +312,7 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
       </div>
       </div>
 
-      <div className="ins-grid" style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : 'repeat(3, 1fr)', gap: 16, alignItems: 'start' }}>
+      <div className="ins-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(360px, 1fr))', gap: 16, alignItems: 'start', overflowX: 'auto', paddingBottom: 4 }}>
 
       {/* ══ Column 1: Human Life Value ══ */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
