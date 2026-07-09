@@ -1,8 +1,8 @@
 // เข้ารหัสเลขบัตรประชาชนเดิม (self + คู่สมรส) ที่ยังเป็น plaintext — รันครั้งเดียวหลังตั้ง ENCRYPTION_KEY
-// วิธีรัน:  cd backend && npx ts-node scripts/migrate-encrypt-nationalid.ts
+// วิธีรัน:  cd backend && npx ts-node src/scripts/migrate-encrypt-nationalid.ts
 import 'dotenv/config'
-import { prisma } from '../src/lib/prisma'
-import { encryptField, isEncrypted } from '../src/lib/crypto'
+import { prisma } from '../lib/prisma'
+import { encryptField, isEncrypted } from '../lib/crypto'
 
 async function main() {
   if (!process.env.ENCRYPTION_KEY) {
