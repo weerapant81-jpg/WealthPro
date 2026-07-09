@@ -32,7 +32,13 @@ export interface PersonPlan {
   years: number
   returnRate: number
   incomeGrowth: number
-  retirementNeedPct: number  // ความต้องการรายได้หลังเกษียณ (% ของรายได้สุดท้ายก่อนเกษียณ)
+  retirementNeedPct: number  // (เดิม) ไม่ใช้แล้วใน Needs-Based v2 — คงไว้กัน data เก่าพัง
+  // ── Needs-Based ส่วนที่ 1: ความต้องการค่าใช้จ่าย (กรอกเอง) ต่อปี ──
+  needFamilyExpense: number  // ค่าใช้จ่ายสำหรับครอบครัว
+  needParentCare: number     // ค่าดูแลบุพการีที่ต้องการ
+  needChildCare: number      // ค่าใช้จ่ายในการดูแลบุตร
+  needOther: number          // ค่าใช้จ่ายอื่นๆ
+  needOtherLabel: string     // ระบุรายการ "อื่นๆ"
   // ── กรณีทุพพลภาพ ──
   disCareAnnual: number   // ค่ารักษา/ดูแลระยะยาว ต่อปี
   disCareYears: number    // จำนวนปีที่ต้องดูแล
@@ -63,6 +69,11 @@ export const defaultPlan = (): PersonPlan => ({
   returnRate: 5.9,
   incomeGrowth: 5,
   retirementNeedPct: 70,
+  needFamilyExpense: 0,
+  needParentCare: 0,
+  needChildCare: 0,
+  needOther: 0,
+  needOtherLabel: '',
   disCareAnnual: 0,
   disCareYears: 20,
   disHomeMod: 0,
@@ -204,11 +215,9 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
   const hlvReal = (1 + plan.hlvReturn / 100) / (1 + plan.hlvGrowth / 100) - 1
   const hlv = pvAnnuity(hlvReal, workingYears, hlvNetIncome)
 
-  // ── Needs-Based ── ความต้องการรายได้: รายได้โตด้วย g จนถึงเกษียณ → × %ความต้องการหลังเกษียณ = ฐานรายได้/ปี
-  const lastIncomeBeforeRetire = income * Math.pow(1 + plan.incomeGrowth / 100, workingYears)   // #3 รายได้สุดท้ายก่อนเกษียณ
-  const postRetireNeed = (plan.retirementNeedPct / 100) * lastIncomeBeforeRetire                // #5 = #4 × #3 (ปีแรก)
-  const familyExpense = postRetireNeed                                                          // ฐานรายได้ที่ครอบครัวต้องการ
-  const realRate = (1 + plan.returnRate / 100) / (1 + plan.incomeGrowth / 100) - 1
+  // ── Needs-Based ส่วนที่ 1 ── รวมค่าใช้จ่ายที่ครอบครัวต้องการต่อปี (กรอกเอง) → คิดมูลค่าปัจจุบันด้วย real rate × จำนวนปีคุ้มครอง
+  const familyExpense = toNum(plan.needFamilyExpense) + toNum(plan.needParentCare) + toNum(plan.needChildCare) + toNum(plan.needOther)
+  const realRate = (1 + plan.returnRate / 100) / (1 + plan.incomeGrowth / 100) - 1   // อัตราผลตอบแทนปรับด้วยเงินเฟ้อ
   const familyIncomePV = pvAnnuity(realRate, coverageYears, familyExpense)
   const manualDebt = plan.debts.reduce((s, it) => s + toNum(it.amount), 0)
   const sumDebt = manualDebt + autoDebt
@@ -376,21 +385,28 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <MethodHeader no={2} title="Needs-Based Analysis" sub="วิเคราะห์ความต้องการจริง (DIME)" accent="#fbbf24" Icon={ShieldCheck} />
 
-        <Section no={1} title="ความต้องการรายได้">
+        <Section no={1} title="ความต้องการค่าใช้จ่าย">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>1. รายได้จากการทำงาน (ต่อปี)</span>
-              <MoneyInput value={plan.income || autoIncome} onChange={v => set('income', v)} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>ค่าใช้จ่ายสำหรับครอบครัว (ต่อปี)</span>
+              <MoneyInput value={plan.needFamilyExpense} onChange={v => set('needFamilyExpense', v)} />
             </div>
-            <AssumpRow label="2. อัตราการเพิ่มขึ้นของรายได้ (g)" value={plan.incomeGrowth} onChange={v => set('incomeGrowth', v)} unit="%" />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>3. รายได้สุดท้ายก่อนเกษียณ <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>(โต {workingYears} ปี)</span></span>
-              <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: '#fbbf24' }}>{fmt(lastIncomeBeforeRetire)} บาท</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>ค่าดูแลบุพการีที่ต้องการ (ต่อปี)</span>
+              <MoneyInput value={plan.needParentCare} onChange={v => set('needParentCare', v)} />
             </div>
-            <AssumpRow label="4. ความต้องการรายได้หลังเกษียณ" value={plan.retirementNeedPct} onChange={v => set('retirementNeedPct', v)} unit="%" step={1} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>ค่าใช้จ่ายในการดูแลบุตร (ต่อปี)</span>
+              <MoneyInput value={plan.needChildCare} onChange={v => set('needChildCare', v)} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <input value={plan.needOtherLabel} onChange={e => set('needOtherLabel', e.target.value)} placeholder="ค่าใช้จ่ายอื่นๆ (ระบุ)"
+                style={{ flex: 1, minWidth: 0, padding: '4px 8px', background: 'transparent', border: '1px solid var(--card-border)', borderRadius: 6, color: 'var(--text-secondary)', fontSize: 12, outline: 'none' }} />
+              <MoneyInput value={plan.needOther} onChange={v => set('needOther', v)} />
+            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 6, borderTop: '1px solid var(--card-border)' }}>
-              <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)' }}>5. ความต้องการรายได้/ปี <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>(ปีแรก = 4×3)</span></span>
-              <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 800, color: '#fbbf24' }}>{fmt(postRetireNeed)} บาท</span>
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)' }}>รวมค่าใช้จ่ายที่ต้องการ/ปี</span>
+              <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 800, color: '#fbbf24' }}>{fmt(familyExpense)} บาท</span>
             </div>
           </div>
         </Section>
@@ -442,7 +458,7 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
         </Section>
 
         <Section no={6} title="สรุปการคำนวณ">
-          <ResultRow label="ความต้องการรายได้/ปี (ปีแรก)" value={familyExpense} color="var(--cyan-light)" />
+          <ResultRow label="ค่าใช้จ่ายที่ต้องการ/ปี" value={familyExpense} color="var(--cyan-light)" />
           <ResultRow label={`รายได้ทดแทน (PV ${coverageYears} ปี)`} value={familyIncomePV} color="var(--cyan-light)" />
           <ResultRow label="(+) หนี้สินคงค้าง" value={sumDebt} color="#f87171" />
           <ResultRow label="(+) การศึกษา + ค่าใช้จ่ายสุดท้าย" value={toNum(plan.education) + toNum(plan.finalExpense)} color="#f59e0b" />
