@@ -776,7 +776,7 @@ export default function InsuranceTab() {
         <LifeInsuranceSection />
         <PropertyInsuranceSection />
       </div>
-      <div style={{ width: 440, flexShrink: 0, position: 'sticky', top: 72 }}>
+      <div style={{ width: 300, flexShrink: 0, position: 'sticky', top: 72 }}>
         <InsuranceRadarChart />
       </div>
     </div>

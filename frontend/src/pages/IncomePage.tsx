@@ -425,7 +425,7 @@ function CashFlowSidebar({ incomeSources, totals }: {
   ]
 
   return (
-    <div style={{ width: 440, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
       <MiniPieChart title="โครงสร้างรายได้" data={incomeData} />
       <MiniPieChart title="โครงสร้างรายจ่าย" data={expenseData} />
     </div>

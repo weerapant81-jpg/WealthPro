@@ -249,8 +249,8 @@ function InputRow({ label, value, onChange, unit, step = 1, pct = false, money =
   }
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
-      <span style={{ flex: 1, fontSize: 12.5, whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{label}</span>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, lineHeight: 1.3, color: 'var(--text-secondary)' }}>{label}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
         {money ? (
           <MoneyInput value={value} onChange={onChange} style={inputStyle} />
         ) : (
@@ -543,7 +543,7 @@ function PersonPanel({ data, onChange, color, isSelf }: {
   const compact = useIsCompact()
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : '320px 1fr', gap: 24, alignItems: 'start' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : 'minmax(0, 320px) minmax(0, 1fr)', gap: 24, alignItems: 'start' }}>
 
       {/* ── Left: all inputs ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0, borderRight: '1px solid var(--card-border)', paddingRight: 24 }}>
