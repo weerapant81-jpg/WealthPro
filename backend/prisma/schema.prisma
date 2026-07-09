@@ -31,6 +31,10 @@ model User {
   isApproved         Boolean   @default(false)
   advisorProfile     Json?
   createdById        String?   // FA (ADMIN/SUPER_ADMIN) ที่สร้างลูกค้ารายนี้
+  // ── 2FA (TOTP) — เฉพาะบัญชี FA ──
+  twoFactorSecret    String?   // base32 secret (ตั้งตอน setup, เปิดใช้จริงเมื่อ enabled=true)
+  twoFactorEnabled   Boolean   @default(false)
+  twoFactorBackupCodes Json?   // อาเรย์ hash ของรหัสสำรอง
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -423,6 +427,21 @@ model AuditLog {
   @@index([actorId, createdAt])
   @@index([clientId, createdAt])
   @@index([createdAt])
+}
+
+// ความยินยอม PDPA ของลูกค้า (เก็บประวัติ ให้/ถอน) — ไม่มี FK เพื่อให้ record คงอยู่แม้ลบลูกค้า (หลักฐาน)
+model Consent {
+  id            String    @id @default(cuid())
+  clientId      String    // ลูกค้าที่ให้ความยินยอม (User.id role USER)
+  version       String    // เวอร์ชันข้อความขอความยินยอม
+  scopes        Json      // ขอบเขตที่ยินยอม เช่น ["collect","analyze","ai"]
+  method        String    @default("advisor")  // advisor = ที่ปรึกษายืนยันแทน · client = ลูกค้าเซ็นเอง
+  grantedAt     DateTime  @default(now())
+  revokedAt     DateTime?
+  recordedById  String    // FA ที่บันทึก
+  note          String?
+
+  @@index([clientId, grantedAt])
 }
 
 

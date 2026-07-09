@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useClient, type ClientInfo } from '../context/ClientContext'
-import { Search, UserCircle, Phone, Mail, ArrowRight, UserPlus, X, Pencil, Trash2 } from 'lucide-react'
+import { Search, UserCircle, Phone, Mail, ArrowRight, UserPlus, X, Pencil, Trash2, Download, ShieldCheck, Check } from 'lucide-react'
 
 export default function ClientsPage() {
   const [q, setQ] = useState('')
@@ -67,6 +67,22 @@ export default function ClientsPage() {
     mutationFn: (id: string) => api.delete(`/clients/${id}`).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['clients'] }),
   })
+
+  // PDPA: ดาวน์โหลดข้อมูลลูกค้า (สิทธิ์เข้าถึง/พกพา)
+  const [exporting, setExporting] = useState<string | null>(null)
+  async function exportClient(c: ClientInfo) {
+    setExporting(c.id)
+    try {
+      const res = await api.get(`/clients/${c.id}/export`, { responseType: 'blob' })
+      const url = URL.createObjectURL(res.data as Blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = `client-data-${c.name.replace(/\s+/g, '-')}.json`; a.click()
+      URL.revokeObjectURL(url)
+    } catch { alert('ดาวน์โหลดข้อมูลไม่สำเร็จ') } finally { setExporting(null) }
+  }
+
+  // PDPA: จัดการความยินยอม
+  const [consentFor, setConsentFor] = useState<ClientInfo | null>(null)
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
@@ -135,6 +151,18 @@ export default function ClientsPage() {
               </div>
               {/* ปุ่มจัดการ */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                <button title="ความยินยอม (PDPA)" onClick={() => setConsentFor(c)}
+                  style={{ display: 'flex', padding: 8, borderRadius: 8, border: '1px solid var(--card-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = '#a78bfa'; e.currentTarget.style.borderColor = '#a78bfa' }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--card-border)' }}>
+                  <ShieldCheck size={15} />
+                </button>
+                <button title="ดาวน์โหลดข้อมูล (PDPA)" disabled={exporting === c.id} onClick={() => exportClient(c)}
+                  style={{ display: 'flex', padding: 8, borderRadius: 8, border: '1px solid var(--card-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = '#10b981'; e.currentTarget.style.borderColor = '#10b981' }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--card-border)' }}>
+                  <Download size={15} />
+                </button>
                 <button title="แก้ไข" onClick={() => openEdit(c)}
                   style={{ display: 'flex', padding: 8, borderRadius: 8, border: '1px solid var(--card-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
                   onMouseEnter={e => { e.currentTarget.style.color = 'var(--cyan)'; e.currentTarget.style.borderColor = 'var(--cyan)' }}
@@ -189,6 +217,76 @@ export default function ClientsPage() {
           </div>
         </div>
       )}
+
+      {consentFor && <ConsentModal client={consentFor} onClose={() => setConsentFor(null)} />}
+    </div>
+  )
+}
+
+/* ── PDPA: จัดการความยินยอมของลูกค้า ── */
+function ConsentModal({ client, onClose }: { client: ClientInfo; onClose: () => void }) {
+  const qc = useQueryClient()
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ['consent', client.id],
+    queryFn: () => api.get(`/clients/${client.id}/consent`).then(r => r.data),
+  })
+  const active = data?.active
+  const grant = useMutation({
+    mutationFn: () => api.post(`/clients/${client.id}/consent`, { method: 'advisor' }).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['consent', client.id] }),
+  })
+  const revoke = useMutation({
+    mutationFn: () => api.post(`/clients/${client.id}/consent/revoke`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['consent', client.id] }),
+  })
+  const fmtDate = (d: string) => new Date(d).toLocaleString('th-TH', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 120, padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ShieldCheck size={18} color="#a78bfa" />
+            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>ความยินยอม PDPA · {client.name}</span>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={18} /></button>
+        </div>
+
+        {isLoading ? <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: 12 }}>กำลังโหลด...</div> : (
+          <>
+            {/* สถานะ */}
+            <div style={{ padding: '12px 14px', borderRadius: 10, background: active ? 'rgba(16,185,129,0.1)' : 'rgba(148,163,184,0.1)', border: `1px solid ${active ? 'rgba(16,185,129,0.4)' : 'var(--card-border)'}` }}>
+              {active ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#10b981' }}><Check size={15} /> ได้รับความยินยอมแล้ว</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>เวอร์ชัน {active.version} · บันทึกเมื่อ {fmtDate(active.grantedAt)}</span>
+                </div>
+              ) : (
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>ยังไม่มีความยินยอมที่บันทึกไว้</span>
+              )}
+            </div>
+
+            {/* ข้อความขอความยินยอม */}
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6, maxHeight: 140, overflowY: 'auto', padding: '10px 12px', background: 'var(--navy-900)', borderRadius: 8 }}>
+              {data?.text}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => grant.mutate()} disabled={grant.isPending}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', background: 'var(--cyan)', border: 'none', borderRadius: 8, color: '#00201d', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                <Check size={15} /> {active ? 'บันทึกความยินยอมใหม่' : 'บันทึกความยินยอม'}
+              </button>
+              {active && (
+                <button onClick={() => { if (confirm('ถอนความยินยอมของลูกค้ารายนี้?')) revoke.mutate() }} disabled={revoke.isPending}
+                  style={{ padding: '10px 16px', background: 'none', border: '1px solid #fb7185', borderRadius: 8, color: '#fb7185', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                  ถอนความยินยอม
+                </button>
+              )}
+            </div>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>* ที่ปรึกษายืนยันแทนตามที่ได้รับความยินยอมจากลูกค้า · ระบบเก็บประวัติการให้/ถอนทุกครั้ง</p>
+          </>
+        )}
+      </div>
     </div>
   )
 }

@@ -29,6 +29,8 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [needVerify, setNeedVerify] = useState(false)
+  const [twoFa, setTwoFa] = useState(false)
+  const [twoFaCode, setTwoFaCode] = useState('')
   const [loading, setLoading] = useState(false)
   const { setUser } = useAuth()
   const navigate = useNavigate()
@@ -142,8 +144,9 @@ export default function LoginPage() {
     setError(''); setInfo(''); setNeedVerify(false); setLoading(true)
     try {
       if (mode === 'login') {
-        const user = await loginUser(email, password)
-        setUser(user); navigate('/')
+        const res = await loginUser(email, password, twoFa ? twoFaCode : undefined)
+        if (typeof res === 'object' && 'twoFactorRequired' in res) { setTwoFa(true); setLoading(false); return }
+        setUser(res); navigate('/')
       } else if (mode === 'forgot') {
         const msg = await forgotPassword(email)
         setInfo(msg)
@@ -259,6 +262,16 @@ export default function LoginPage() {
                 <input type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} style={field} />
               </Wrap>
             </div>
+            )}
+
+            {/* 2FA — แสดงเมื่อบัญชีเปิดใช้ยืนยัน 2 ชั้น */}
+            {!isForgot && !isReg && twoFa && (
+              <div>
+                <label style={capLabel}>รหัสยืนยันตัวตน (2FA)</label>
+                <input value={twoFaCode} onChange={e => setTwoFaCode(e.target.value.replace(/\s/g, ''))} placeholder="รหัส 6 หลักจากแอป หรือรหัสสำรอง" inputMode="numeric" autoFocus
+                  style={{ ...field, marginTop: 6, letterSpacing: '0.2em', textAlign: 'center', fontSize: 18 }} />
+                <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 6 }}>เปิดแอป Authenticator แล้วกรอกรหัส 6 หลัก</p>
+              </div>
             )}
 
             {error && <div style={{ padding: '10px 14px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8, fontSize: 13, color: '#fca5a5' }}>{error}</div>}

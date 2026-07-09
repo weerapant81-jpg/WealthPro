@@ -38,6 +38,9 @@ import { getMarketReturns, getAssetReturn } from '../controllers/marketreturns.c
 import { quoteSymbol, annualReturn } from '../controllers/settrade.controller'
 import { chatCopilot } from '../controllers/copilot.controller'
 import { listAuditLogs } from '../controllers/audit.controller'
+import { exportClient } from '../controllers/admin.controller'
+import { status2fa, setup2fa, enable2fa, disable2fa } from '../controllers/twofa.controller'
+import { getConsent, grantConsent, revokeConsent } from '../controllers/consent.controller'
 import { authenticate, requireAdmin, requireSuperAdmin } from '../middleware/auth'
 
 const r = Router()
@@ -52,6 +55,11 @@ r.post('/auth/refresh', refresh)
 // AI Copilot
 r.post('/copilot/chat', authenticate, chatCopilot)
 r.get('/auth/me', authenticate, me)
+// 2FA (TOTP) — บัญชี FA
+r.get('/auth/2fa/status', authenticate, status2fa)
+r.post('/auth/2fa/setup', authenticate, setup2fa)
+r.post('/auth/2fa/enable', authenticate, enable2fa)
+r.post('/auth/2fa/disable', authenticate, disable2fa)
 r.get('/advisor-profile', authenticate, getAdvisorProfile)
 r.put('/advisor-profile', authenticate, saveAdvisorProfile)
 r.get('/auth/verify-email', verifyEmail)
@@ -66,6 +74,11 @@ r.get('/clients', authenticate, requireAdmin, listClients)
 r.post('/clients', authenticate, requireAdmin, createClient)
 r.put('/clients/:id', authenticate, requireAdmin, updateClient)
 r.delete('/clients/:id', authenticate, requireAdmin, deleteClient)
+// PDPA: สิทธิ์เข้าถึง/พกพา (export) + ความยินยอม (consent)
+r.get('/clients/:id/export', authenticate, requireAdmin, exportClient)
+r.get('/clients/:id/consent', authenticate, requireAdmin, getConsent)
+r.post('/clients/:id/consent', authenticate, requireAdmin, grantConsent)
+r.post('/clients/:id/consent/revoke', authenticate, requireAdmin, revokeConsent)
 r.get('/advisor/summary', authenticate, requireAdmin, getAdvisorSummary)
 
 // PDPA audit log — FA เห็นของตัวเอง · SUPER_ADMIN เห็นทั้งหมด

@@ -2,8 +2,9 @@ import { api } from './api'
 
 export interface User { id: string; email: string; name: string; role: string }
 
-export async function loginUser(email: string, password: string): Promise<User> {
-  const { data } = await api.post('/auth/login', { email, password })
+export async function loginUser(email: string, password: string, token?: string): Promise<User | { twoFactorRequired: true }> {
+  const { data } = await api.post('/auth/login', { email, password, token })
+  if (data.twoFactorRequired) return { twoFactorRequired: true }
   localStorage.setItem('access_token', data.access)
   localStorage.setItem('refresh_token', data.refresh)
   return data.user

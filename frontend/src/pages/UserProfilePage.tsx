@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { UserCog, Camera, Check, Loader2, Trash2 } from 'lucide-react'
+import { UserCog, Camera, Check, Loader2, Trash2, ShieldCheck } from 'lucide-react'
 import { useIsCompact } from '../hooks/useViewport'
 import { PageHeader } from '../components/ui'
 
@@ -199,6 +199,85 @@ export default function UserProfilePage() {
           </div>
         </div>
       </div>
+
+      <TwoFactorSection />
+    </div>
+  )
+}
+
+/* ── ความปลอดภัย: ยืนยันตัวตน 2 ชั้น (TOTP) ── */
+function TwoFactorSection() {
+  const qc = useQueryClient()
+  const { data: st } = useQuery<{ enabled: boolean }>({ queryKey: ['2fa-status'], queryFn: () => api.get('/auth/2fa/status').then(r => r.data) })
+  const enabled = !!st?.enabled
+  const [setupQr, setSetupQr] = useState<string | null>(null)
+  const [code, setCode] = useState('')
+  const [backup, setBackup] = useState<string[] | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function startSetup() {
+    setBusy(true); setErr(''); setBackup(null)
+    try { const { data } = await api.post('/auth/2fa/setup'); setSetupQr(data.qr) }
+    catch { setErr('เริ่มตั้งค่าไม่สำเร็จ') } finally { setBusy(false) }
+  }
+  async function enable() {
+    setBusy(true); setErr('')
+    try { const { data } = await api.post('/auth/2fa/enable', { token: code.replace(/\s/g, '') }); setBackup(data.backupCodes); setSetupQr(null); setCode(''); qc.invalidateQueries({ queryKey: ['2fa-status'] }) }
+    catch (e: any) { setErr(e?.response?.data?.error || 'รหัสไม่ถูกต้อง') } finally { setBusy(false) }
+  }
+  async function disable() {
+    const token = prompt('ใส่รหัส 2FA ปัจจุบัน (6 หลัก) หรือรหัสสำรอง เพื่อปิดการใช้งาน')
+    if (!token) return
+    try { await api.post('/auth/2fa/disable', { token: token.replace(/\s/g, '') }); setBackup(null); qc.invalidateQueries({ queryKey: ['2fa-status'] }) }
+    catch (e: any) { alert(e?.response?.data?.error || 'ปิดไม่สำเร็จ') }
+  }
+
+  return (
+    <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <ShieldCheck size={20} color={enabled ? '#10b981' : 'var(--text-muted)'} />
+          <div>
+            <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text-primary)' }}>ยืนยันตัวตน 2 ชั้น (2FA)</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>เพิ่มความปลอดภัยบัญชี — ต้องใส่รหัสจากแอปตอนล็อกอิน</div>
+          </div>
+        </div>
+        <span style={{ fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 999, background: enabled ? 'rgba(16,185,129,0.14)' : 'rgba(148,163,184,0.14)', color: enabled ? '#10b981' : 'var(--text-muted)' }}>
+          {enabled ? 'เปิดใช้งานอยู่' : 'ปิดอยู่'}
+        </span>
+      </div>
+
+      {backup && (
+        <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.4)' }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: '#f59e0b', marginBottom: 6 }}>รหัสสำรอง (เก็บไว้ในที่ปลอดภัย — แสดงครั้งเดียว!)</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 6, fontFamily: 'monospace', fontSize: 13, color: 'var(--text-primary)' }}>
+            {backup.map(c => <span key={c} style={{ padding: '4px 8px', background: 'var(--navy-900)', borderRadius: 6, textAlign: 'center' }}>{c}</span>)}
+          </div>
+        </div>
+      )}
+
+      {enabled ? (
+        <button onClick={disable} style={{ alignSelf: 'flex-start', padding: '9px 18px', background: 'none', border: '1px solid #fb7185', borderRadius: 8, color: '#fb7185', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>ปิดการใช้งาน 2FA</button>
+      ) : setupQr ? (
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <img src={setupQr} alt="QR" style={{ width: 160, height: 160, borderRadius: 8, background: '#fff', padding: 6 }} />
+          <div style={{ flex: 1, minWidth: 220, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6 }}>1. เปิดแอป <b>Google Authenticator</b> / Authy → สแกน QR<br />2. กรอกรหัส 6 หลักที่ได้เพื่อยืนยัน</p>
+            <input value={code} onChange={e => setCode(e.target.value.replace(/\s/g, ''))} placeholder="รหัส 6 หลัก" inputMode="numeric"
+              style={{ ...inp, letterSpacing: '0.2em', textAlign: 'center', fontSize: 17, maxWidth: 200 }} />
+            {err && <span style={{ fontSize: 12, color: '#f87171' }}>{err}</span>}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={enable} disabled={busy || code.length < 6} style={{ padding: '9px 18px', background: 'var(--cyan)', border: 'none', borderRadius: 8, color: '#00201d', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: busy || code.length < 6 ? 0.5 : 1 }}>ยืนยันเปิดใช้งาน</button>
+              <button onClick={() => { setSetupQr(null); setCode(''); setErr('') }} style={{ padding: '9px 14px', background: 'none', border: '1px solid var(--card-border)', borderRadius: 8, color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <button onClick={startSetup} disabled={busy} style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', background: 'var(--cyan)', border: 'none', borderRadius: 8, color: '#00201d', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          <ShieldCheck size={15} /> {busy ? 'กำลังเตรียม...' : 'เปิดใช้งาน 2FA'}
+        </button>
+      )}
     </div>
   )
 }

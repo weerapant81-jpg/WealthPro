@@ -91,8 +91,60 @@ export async function deleteClient(req: AuthRequest, res: Response): Promise<voi
     res.status(404).json({ error: 'ไม่พบลูกค้ารายนี้' })
     return
   }
+  // PDPA right to erasure — บันทึกหลักฐานการลบก่อน (AuditLog ไม่มี FK จึงคงอยู่หลังลบ)
+  await prisma.auditLog.create({
+    data: { actorId: req.userId!, clientId: id, action: 'DELETE', resource: 'client-erasure',
+      method: 'DELETE', path: `/clients/${id}`, status: 200, ip: req.ip ?? null },
+  }).catch(() => {})
+  // ลบ User → cascade ลบข้อมูลทุกตารางที่เกี่ยวข้อง (onDelete: Cascade ครบทุก relation)
   await prisma.user.delete({ where: { id } })
-  res.json({ message: 'ลบลูกค้าเรียบร้อย' })
+  res.json({ message: 'ลบลูกค้าและข้อมูลทั้งหมดเรียบร้อย (สิทธิ์ในการลบข้อมูลตาม PDPA)' })
+}
+
+// PDPA right to access/portability — ดาวน์โหลดข้อมูลลูกค้าทั้งหมดเป็น JSON
+export async function exportClient(req: AuthRequest, res: Response): Promise<void> {
+  const id = req.params.id as string
+  const target = await prisma.user.findUnique({ where: { id } })
+  if (!target || target.role !== 'USER' || target.createdById !== req.userId) {
+    res.status(404).json({ error: 'ไม่พบลูกค้ารายนี้' })
+    return
+  }
+  const [profile, clientProfile, investmentProfile, incomes, expenses, assets, liabilities, goals, policies, propertyInsurances, actionItems, consents] = await Promise.all([
+    prisma.profile.findUnique({ where: { userId: id } }),
+    prisma.clientProfile.findUnique({ where: { userId: id } }),
+    prisma.investmentProfile.findUnique({ where: { userId: id } }),
+    prisma.income.findMany({ where: { userId: id } }),
+    prisma.expense.findMany({ where: { userId: id } }),
+    prisma.asset.findMany({ where: { userId: id } }),
+    prisma.liability.findMany({ where: { userId: id } }),
+    prisma.goal.findMany({ where: { userId: id } }),
+    prisma.lifeInsurancePolicy.findMany({ where: { userId: id } }),
+    prisma.propertyInsurance.findMany({ where: { userId: id } }),
+    prisma.actionItem.findMany({ where: { userId: id } }),
+    prisma.consent.findMany({ where: { clientId: id }, orderBy: { grantedAt: 'desc' } }),
+  ])
+  const policyIds = policies.map(p => p.id)
+  const [riders, beneficiaries] = await Promise.all([
+    policyIds.length ? prisma.lifeInsuranceRider.findMany({ where: { policyId: { in: policyIds } } }) : Promise.resolve([]),
+    policyIds.length ? prisma.lifeInsuranceBeneficiary.findMany({ where: { policyId: { in: policyIds } } }) : Promise.resolve([]),
+  ])
+  // audit การ export
+  await prisma.auditLog.create({
+    data: { actorId: req.userId!, clientId: id, action: 'VIEW', resource: 'client-export',
+      method: 'GET', path: `/clients/${id}/export`, status: 200, ip: req.ip ?? null },
+  }).catch(() => {})
+
+  const data = {
+    exportedAt: new Date().toISOString(),
+    note: 'ข้อมูลส่วนบุคคลตามสิทธิ์เข้าถึง/พกพา (PDPA)',
+    account: { id: target.id, email: target.email, name: target.name, phone: target.phone, createdAt: target.createdAt },
+    profile, clientProfile, investmentProfile, incomes, expenses, assets, liabilities, goals,
+    lifeInsurances: policies, riders, beneficiaries, propertyInsurances, actionItems, consents,
+  }
+  const fname = `client-data-${(clientProfile?.firstName || 'export')}-${id.slice(0, 6)}.json`
+  res.setHeader('Content-Type', 'application/json; charset=utf-8')
+  res.setHeader('Content-Disposition', `attachment; filename="${fname}"`)
+  res.send(JSON.stringify(data, null, 2))
 }
 
 export async function listUsers(req: AuthRequest, res: Response): Promise<void> {

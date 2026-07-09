@@ -6,6 +6,7 @@ import { OAuth2Client } from 'google-auth-library'
 import { createRemoteJWKSet, jwtVerify } from 'jose'
 import { prisma } from '../lib/prisma'
 import { sendVerifyEmail, sendResetPasswordEmail } from '../lib/mailer'
+import { verifyTwoFactor } from '../lib/twofa'
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173'
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID
@@ -155,6 +156,13 @@ export async function login(req: Request, res: Response): Promise<void> {
   if (!user.isApproved) {
     res.status(403).json({ error: 'บัญชีของคุณอยู่ระหว่างรอการอนุมัติจากผู้ให้บริการ' })
     return
+  }
+  // ── 2FA — ถ้าเปิดใช้ ต้องใส่รหัส 6 หลัก (หรือรหัสสำรอง) ──
+  if (user.twoFactorEnabled && user.twoFactorSecret) {
+    const code = String(req.body.token ?? '').replace(/\s/g, '')
+    if (!code) { res.json({ twoFactorRequired: true }); return }
+    const ok = await verifyTwoFactor(user, code)
+    if (!ok) { res.status(401).json({ error: 'รหัสยืนยันตัวตน (2FA) ไม่ถูกต้อง', twoFactorRequired: true }); return }
   }
   const tokens = generateTokens(user.id)
   res.json({ user: { id: user.id, email: user.email, name: user.name, role: user.role }, ...tokens })
