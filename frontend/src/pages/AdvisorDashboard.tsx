@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useClient, type ClientInfo } from '../context/ClientContext'
-import { Landmark, Wallet, Users, CheckCircle2, ChevronRight, Search } from 'lucide-react'
+import { Landmark, Wallet, Users, CheckCircle2, ChevronRight, Search, Circle, X, Rocket, ArrowRight } from 'lucide-react'
 import { useIsCompact } from '../hooks/useViewport'
 import { AppointmentsWidget, TasksWidget, NewsWidget } from '../components/AdvisorWidgets'
 
@@ -89,6 +89,8 @@ export default function AdvisorDashboard() {
         </div>
       </div>
 
+      <WelcomeChecklist />
+
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
         <KPI icon={Landmark} t="สินทรัพย์รวม (AUM)" v={fmt(s.totalAUM)} unit="บาท" color="var(--cyan-light)" onClick={() => navigate('/clients')} />
@@ -105,6 +107,52 @@ export default function AdvisorDashboard() {
 
       {/* ข่าวสารจากผู้ให้บริการ */}
       <NewsWidget />
+    </div>
+  )
+}
+
+/* ── Welcome checklist — แสดงจนกว่าจะทำครบหรือกดปิด ── */
+function WelcomeChecklist() {
+  const navigate = useNavigate()
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem('wp_onboard_dismissed') === '1')
+  const { data: adv } = useQuery<any>({ queryKey: ['advisor-profile'], queryFn: () => api.get('/advisor-profile').then(r => r.data), retry: false })
+  const { data: clients } = useQuery<any[]>({ queryKey: ['clients', ''], queryFn: () => api.get('/clients').then(r => r.data), retry: false })
+  const { data: tfa } = useQuery<any>({ queryKey: ['2fa-status'], queryFn: () => api.get('/auth/2fa/status').then(r => r.data), retry: false })
+
+  const steps = [
+    { done: !!adv?.fullName?.trim(), label: 'ตั้งค่าโปรไฟล์ผู้ใช้', sub: 'ชื่อ รูป และใบอนุญาต สำหรับแสดงในรายงาน', to: '/user-profile' },
+    { done: (clients?.length ?? 0) > 0, label: 'สร้างลูกค้าคนแรก', sub: 'เริ่มบันทึกข้อมูลและวางแผนให้ลูกค้า', to: '/clients' },
+    { done: !!tfa?.enabled, label: 'เปิดยืนยันตัวตน 2 ชั้น (2FA)', sub: 'เพิ่มความปลอดภัยให้บัญชี', to: '/user-profile' },
+  ]
+  const doneCount = steps.filter(s => s.done).length
+  if (dismissed || doneCount === steps.length) return null
+
+  return (
+    <div style={{ ...card, background: 'linear-gradient(150deg, var(--cyan-dim), var(--card-bg) 55%)', border: '1px solid var(--cyan)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+        <Rocket size={18} color="var(--cyan)" />
+        <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>เริ่มต้นใช้งาน WealthPro</span>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>({doneCount}/{steps.length})</span>
+        <button onClick={() => { localStorage.setItem('wp_onboard_dismissed', '1'); setDismissed(true) }} title="ปิด"
+          style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={16} /></button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+        {steps.map((s, i) => (
+          <button key={i} onClick={() => navigate(s.to)}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--card-border)', background: s.done ? 'transparent' : 'var(--navy-900)', cursor: 'pointer', textAlign: 'left', opacity: s.done ? 0.7 : 1 }}>
+            {s.done ? <CheckCircle2 size={20} color="#10b981" style={{ flexShrink: 0 }} /> : <Circle size={20} color="var(--text-muted)" style={{ flexShrink: 0 }} />}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)', textDecoration: s.done ? 'line-through' : 'none' }}>{s.label}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{s.sub}</div>
+            </div>
+            {!s.done && <ArrowRight size={16} color="var(--cyan)" style={{ flexShrink: 0 }} />}
+          </button>
+        ))}
+      </div>
+      <button onClick={() => navigate('/guide')}
+        style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: 'var(--cyan)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>
+        อ่านคู่มือการใช้งานฉบับเต็ม <ArrowRight size={13} />
+      </button>
     </div>
   )
 }
