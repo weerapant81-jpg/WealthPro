@@ -1501,7 +1501,8 @@ export default function ClientProfilePage() {
             </div>
           </div>
 
-          {/* Parents — spouse */}
+          {/* Parents — spouse (แสดงเฉพาะเมื่อสมรส) */}
+          {hasSpouse && (
           <div style={card}>
             <SectionTitle icon={HeartHandshake} accent="#a78bfa" title="ข้อมูลบิดา-มารดา (คู่สมรส)" sub="ภาระดูแลบุพการีของคู่สมรส" />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -1558,6 +1559,7 @@ export default function ClientProfilePage() {
               </div>
             </div>
           </div>
+          )}
         </div>
       )}
 
