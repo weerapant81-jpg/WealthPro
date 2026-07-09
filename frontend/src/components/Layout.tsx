@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import { useClient } from '../context/ClientContext'
 import { logout } from '../lib/auth'
 import CopilotWidget from './CopilotWidget'
-import { LayoutDashboard, Target, Settings, LogOut, ClipboardList, ClipboardCheck, ShieldCheck, Calculator, Users, RefreshCw, Sun, Moon, UserCog, Menu, ChevronLeft, ChevronRight, ChevronDown, User, Shield, TrendingUp, Wallet, Activity, Briefcase, Scale, HeartPulse, GraduationCap, CalendarRange, ScrollText, Search, ArrowRight } from 'lucide-react'
+import { LayoutDashboard, Target, Settings, LogOut, ClipboardList, ClipboardCheck, ShieldCheck, Calculator, Users, RefreshCw, Sun, Moon, UserCog, Menu, ChevronLeft, ChevronRight, ChevronDown, User, Shield, TrendingUp, Wallet, Activity, Briefcase, Scale, HeartPulse, GraduationCap, CalendarRange, ScrollText, Search, ArrowRight, FileText } from 'lucide-react'
 
 // เมนูย่อยของ "ข้อมูลลูกค้า" (ขับแท็บด้วย ?tab=)
 const CLIENT_TABS = [
@@ -212,10 +212,14 @@ export default function Layout({ children }: { children: ReactNode }) {
         </button>
       )}
 
-      {/* นโยบายความเป็นส่วนตัว (เหนือ copyright) */}
+      {/* เอกสารกฎหมาย (เหนือ copyright) */}
       <button onClick={() => { navigate('/privacy'); setDrawerOpen(false) }} title="นโยบายความเป็นส่วนตัว"
         style={{ display: 'flex', alignItems: 'center', justifyContent: asRail ? 'center' : 'flex-start', gap: 7, padding: asRail ? '6px 4px 2px' : '6px 16px 2px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 11.5, width: '100%', flexShrink: 0 }}>
         <ScrollText size={13} />{!asRail && 'นโยบายความเป็นส่วนตัว'}
+      </button>
+      <button onClick={() => { navigate('/terms'); setDrawerOpen(false) }} title="ข้อกำหนดการใช้บริการ"
+        style={{ display: 'flex', alignItems: 'center', justifyContent: asRail ? 'center' : 'flex-start', gap: 7, padding: asRail ? '2px 4px' : '2px 16px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 11.5, width: '100%', flexShrink: 0 }}>
+        <FileText size={13} />{!asRail && 'ข้อกำหนดการใช้บริการ'}
       </button>
 
       {/* Copyright — ล่างสุด เห็นทุกหน้า */}
