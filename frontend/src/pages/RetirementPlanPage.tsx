@@ -435,10 +435,18 @@ function PersonPanel({ data, onChange, color, isSelf }: {
   const filledAge = useRef(false)
   const filledSettings = useRef(false)
   useEffect(() => {
-    if (filledAge.current || !clientProfile?.birthDate) return
-    const age = new Date().getFullYear() - new Date(clientProfile.birthDate).getFullYear()
-    if (age > 0) {
-      onChange({ ...data, currentAge: age })
+    if (filledAge.current || !clientProfile) return
+    const patch: Partial<Person> = {}
+    // อายุปัจจุบันจากวันเกิด
+    if (clientProfile.birthDate) {
+      const age = new Date().getFullYear() - new Date(clientProfile.birthDate).getFullYear()
+      if (age > 0) patch.currentAge = age
+    }
+    // ชื่อลูกค้า/คู่สมรส (เติมเฉพาะถ้ายังเป็นค่าเริ่มต้น ไม่ทับที่ที่ปรึกษาแก้เอง)
+    const fn = isSelf ? clientProfile.firstName : clientProfile.spouseProfile?.firstName
+    if (fn && (data.name === 'คุณ' || data.name === 'คู่สมรส' || !data.name.trim())) patch.name = `คุณ${fn}`
+    if (Object.keys(patch).length) {
+      onChange({ ...data, ...patch })
       filledAge.current = true
     }
   }, [clientProfile])
