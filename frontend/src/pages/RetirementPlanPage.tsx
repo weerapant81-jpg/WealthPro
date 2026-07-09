@@ -271,7 +271,7 @@ function SummaryRow({ label, value, color = 'var(--cyan)', bold = false, unit = 
 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' }}>
-      <span style={{ flex: 1, fontSize: 12.5, fontWeight: bold ? 600 : 400, whiteSpace: 'nowrap', color: bold ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{label}</span>
+      <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, lineHeight: 1.3, fontWeight: bold ? 600 : 400, color: bold ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{label}</span>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <span style={{ width: 95, textAlign: 'right', fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color }}>{fmt(value, 0)}</span>
         <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 48, whiteSpace: 'nowrap' }}>{unit}</span>
@@ -546,7 +546,7 @@ function PersonPanel({ data, onChange, color, isSelf }: {
     <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : 'minmax(0, 320px) minmax(0, 1fr)', gap: 24, alignItems: 'start' }}>
 
       {/* ── Left: all inputs ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 0, borderRight: '1px solid var(--card-border)', paddingRight: 24 }}>
+      <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0, borderRight: '1px solid var(--card-border)', paddingRight: 24 }}>
 
         {/* Name */}
         <input
@@ -560,7 +560,7 @@ function PersonPanel({ data, onChange, color, isSelf }: {
         <InputRow label="อายุปัจจุบัน" value={data.currentAge} onChange={v => set('currentAge', v)} unit="ปี" />
         <InputRow label="อายุเกษียณ" value={data.retirementAge} onChange={v => set('retirementAge', v)} unit="ปี" />
         <InputRow label="อายุขัย" value={data.lifeExpectancy} onChange={v => set('lifeExpectancy', v)} unit="ปี" />
-        <div style={{ display: 'flex', gap: 10, marginTop: 6, padding: '5px 8px', background: 'var(--navy-900)', borderRadius: 6 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 6, padding: '5px 8px', background: 'var(--navy-900)', borderRadius: 6 }}>
           <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>ออมได้ <strong style={{ color }}>{result.saveYears} ปี</strong> (ถึงอายุ {data.retirementAge - 1})</span>
           <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>หลังเกษียณ <strong style={{ color }}>{result.yearsAfter} ปี</strong></span>
         </div>
@@ -697,7 +697,7 @@ function PersonPanel({ data, onChange, color, isSelf }: {
       </div>
 
       {/* ── Right: chart + table ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* Chart */}
         <div style={{ background: 'var(--navy-900)', borderRadius: 12, padding: '16px 16px 10px' }}>
