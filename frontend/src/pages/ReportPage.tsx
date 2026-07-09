@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { FileText, Printer, Check, Loader2, FileStack, Presentation, Pencil } from 'lucide-react'
+import { FileText, Printer, Check, Loader2, FileStack, Presentation, Pencil, Download } from 'lucide-react'
 import { useIsCompact } from '../hooks/useViewport'
 import { PageHeader } from '../components/ui'
 import PresentationDeck, { type SlideEl, type CustomSlide } from './report/PresentationDeck'
@@ -376,6 +376,36 @@ export default function ReportPage() {
 
   const included = SECTIONS.filter(s => secs[s.k]?.include)
 
+  // ── Export PDF เอง (jsPDF + html2canvas) — ชัวร์ทุกอุปกรณ์ โดยเฉพาะ iPad ที่ print เบราว์เซอร์เพี้ยน ──
+  const [exporting, setExporting] = useState(false)
+  async function exportPdf() {
+    const paper = document.getElementById('report-paper')
+    if (!paper) return
+    // pres → จับ .pd-slide (16:9) · full → จับ .rp-page (A4 portrait)
+    const isPres = mode === 'pres'
+    const els = Array.from(paper.querySelectorAll(isPres ? '.pd-slide' : '.rp-page')) as HTMLElement[]
+    if (!els.length) return
+    setExporting(true)
+    try {
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([import('jspdf'), import('html2canvas')])
+      const fmtPage: [number, number] = isPres ? [297, 167] : [210, 297]   // mm
+      const pdf = new jsPDF({ orientation: isPres ? 'landscape' : 'portrait', unit: 'mm', format: fmtPage })
+      for (let i = 0; i < els.length; i++) {
+        const canvas = await html2canvas(els[i], { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false,
+          ignoreElements: el => el.classList?.contains('no-print') })
+        const img = canvas.toDataURL('image/jpeg', 0.92)
+        if (i > 0) pdf.addPage(fmtPage, isPres ? 'landscape' : 'portrait')
+        pdf.addImage(img, 'JPEG', 0, 0, fmtPage[0], fmtPage[1])
+      }
+      pdf.save(`${(title || 'WealthPro').replace(/[\\/:*?"<>|]/g, '')}.pdf`)
+    } catch (e) {
+      alert('สร้าง PDF ไม่สำเร็จ กรุณาลองใหม่')
+      console.error(e)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <style>{`
@@ -432,9 +462,13 @@ export default function ReportPage() {
               )}
               {status === 'saving' && <span style={{ fontSize: 12.5, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}><Loader2 size={14} className="rp-spin" /> กำลังบันทึก...</span>}
               {status === 'saved' && <span style={{ fontSize: 12.5, color: '#4ade80', display: 'flex', alignItems: 'center', gap: 6 }}><Check size={14} /> บันทึกแล้ว</span>}
-              <button onClick={() => window.print()}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 22px', background: 'var(--cyan)', border: 'none', borderRadius: 10, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                <Printer size={16} /> พิมพ์ / บันทึก PDF
+              <button onClick={() => window.print()} title="ใช้ระบบพิมพ์ของเบราว์เซอร์ (เหมาะกับเดสก์ท็อป)"
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: 'transparent', border: '1px solid var(--card-border)', borderRadius: 10, color: 'var(--text-secondary)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                <Printer size={16} /> พิมพ์
+              </button>
+              <button onClick={exportPdf} disabled={exporting} title="ดาวน์โหลดเป็นไฟล์ PDF (แนะนำ · ชัวร์ทุกอุปกรณ์ รวมถึง iPad)"
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 22px', background: 'var(--cyan)', border: 'none', borderRadius: 10, color: '#fff', fontSize: 14, fontWeight: 700, cursor: exporting ? 'wait' : 'pointer', opacity: exporting ? 0.7 : 1 }}>
+                {exporting ? <Loader2 size={16} className="rp-spin" /> : <Download size={16} />} {exporting ? 'กำลังสร้าง PDF...' : 'ดาวน์โหลด PDF'}
               </button>
             </div>
           } />
