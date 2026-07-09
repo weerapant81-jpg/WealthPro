@@ -37,8 +37,7 @@ export interface PersonPlan {
   needFamilyExpense: number  // ค่าใช้จ่ายสำหรับครอบครัว
   needParentCare: number     // ค่าดูแลบุพการีที่ต้องการ
   needChildCare: number      // ค่าใช้จ่ายในการดูแลบุตร
-  needOther: number          // ค่าใช้จ่ายอื่นๆ
-  needOtherLabel: string     // ระบุรายการ "อื่นๆ"
+  needOthers: Item[]         // ค่าใช้จ่ายอื่นๆ (เพิ่มรายการได้)
   // ── กรณีทุพพลภาพ ──
   disCareAnnual: number   // ค่ารักษา/ดูแลระยะยาว ต่อปี
   disCareYears: number    // จำนวนปีที่ต้องดูแล
@@ -72,8 +71,7 @@ export const defaultPlan = (): PersonPlan => ({
   needFamilyExpense: 0,
   needParentCare: 0,
   needChildCare: 0,
-  needOther: 0,
-  needOtherLabel: '',
+  needOthers: [{ label: '', amount: 0 }],
   disCareAnnual: 0,
   disCareYears: 20,
   disHomeMod: 0,
@@ -216,7 +214,8 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
   const hlv = pvAnnuity(hlvReal, workingYears, hlvNetIncome)
 
   // ── Needs-Based ส่วนที่ 1 ── รวมค่าใช้จ่ายที่ครอบครัวต้องการต่อปี (กรอกเอง) → คิดมูลค่าปัจจุบันด้วย real rate × จำนวนปีคุ้มครอง
-  const familyExpense = toNum(plan.needFamilyExpense) + toNum(plan.needParentCare) + toNum(plan.needChildCare) + toNum(plan.needOther)
+  const needOthersSum = (plan.needOthers ?? []).reduce((s, it) => s + toNum(it.amount), 0)
+  const familyExpense = toNum(plan.needFamilyExpense) + toNum(plan.needParentCare) + toNum(plan.needChildCare) + needOthersSum
   const realRate = (1 + plan.returnRate / 100) / (1 + plan.incomeGrowth / 100) - 1   // อัตราผลตอบแทนปรับด้วยเงินเฟ้อ
   const familyIncomePV = pvAnnuity(realRate, coverageYears, familyExpense)
   const manualDebt = plan.debts.reduce((s, it) => s + toNum(it.amount), 0)
@@ -399,11 +398,19 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
               <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>ค่าใช้จ่ายในการดูแลบุตร (ต่อปี)</span>
               <MoneyInput value={plan.needChildCare} onChange={v => set('needChildCare', v)} />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-              <input value={plan.needOtherLabel} onChange={e => set('needOtherLabel', e.target.value)} placeholder="ค่าใช้จ่ายอื่นๆ (ระบุ)"
-                style={{ flex: 1, minWidth: 0, padding: '4px 8px', background: 'transparent', border: '1px solid var(--card-border)', borderRadius: 6, color: 'var(--text-secondary)', fontSize: 12, outline: 'none' }} />
-              <MoneyInput value={plan.needOther} onChange={v => set('needOther', v)} />
-            </div>
+            {(plan.needOthers ?? []).map((it, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                <input value={it.label} onChange={e => set('needOthers', plan.needOthers.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} placeholder="ค่าใช้จ่ายอื่นๆ (ระบุ)"
+                  style={{ flex: 1, minWidth: 0, padding: '4px 8px', background: 'transparent', border: '1px solid var(--card-border)', borderRadius: 6, color: 'var(--text-secondary)', fontSize: 12, outline: 'none' }} />
+                <MoneyInput value={it.amount} onChange={v => set('needOthers', plan.needOthers.map((x, idx) => idx === i ? { ...x, amount: v } : x))} />
+                <button onClick={() => set('needOthers', plan.needOthers.filter((_, idx) => idx !== i))} title="ลบรายการ"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 2 }}><Trash2 size={14} /></button>
+              </div>
+            ))}
+            <button onClick={() => set('needOthers', [...(plan.needOthers ?? []), { label: '', amount: 0 }])}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', background: 'none', border: '1px dashed var(--card-border)', borderRadius: 6, color: 'var(--text-muted)', fontSize: 11.5, cursor: 'pointer', width: 'fit-content' }}>
+              <Plus size={12} /> เพิ่มรายการ
+            </button>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 6, borderTop: '1px solid var(--card-border)' }}>
               <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)' }}>รวมค่าใช้จ่ายที่ต้องการ/ปี</span>
               <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 800, color: '#fbbf24' }}>{fmt(familyExpense)} บาท</span>
