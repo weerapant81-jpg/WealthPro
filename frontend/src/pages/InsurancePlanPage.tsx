@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { Plus, Trash2, Check, Loader2, TrendingUp, ShieldCheck, HeartPulse } from 'lucide-react'
 import { calc as calcTaxPlan, defaultState as defaultTaxState } from '../lib/tax'
-import { useEducationReadiness } from '../hooks/useEducationReadiness'
 import { useIsCompact } from '../hooks/useViewport'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, LabelList } from 'recharts'
 
@@ -196,7 +195,7 @@ function ResultCard({ label, value, accent, note }: { label: string; value: numb
 }
 
 /* ── per-person panel: HLV | Needs-Based ── */
-function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoAssets, autoTPD, autoDeduct, autoYears, youngestAge, autoEducation }: { plan: PersonPlan; onChange: (p: PersonPlan) => void; color: string; autoIncome: number; workingYears: number; autoDebt: number; autoAssets: { investment: number; deposit: number; insurance: number; severance: number }; autoTPD: number; autoDeduct: { ss: number; pvd: number; savings: number; insurance: number; tax: number }; autoYears: number; youngestAge: number | null; autoEducation: number }) {
+function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoAssets, autoTPD, autoDeduct, autoYears, youngestAge }: { plan: PersonPlan; onChange: (p: PersonPlan) => void; color: string; autoIncome: number; workingYears: number; autoDebt: number; autoAssets: { investment: number; deposit: number; insurance: number; severance: number }; autoTPD: number; autoDeduct: { ss: number; pvd: number; savings: number; insurance: number; tax: number }; autoYears: number; youngestAge: number | null }) {
   const set = <K extends keyof PersonPlan>(k: K, v: PersonPlan[K]) => onChange({ ...plan, [k]: v })
   const income = plan.income || autoIncome
   const coverageYears = plan.years || autoYears   // 0 = ใช้ค่าจากอายุบุตรคนเล็ก
@@ -220,8 +219,7 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
   const familyIncomePV = pvAnnuity(realRate, coverageYears, familyExpense)
   const manualDebt = plan.debts.reduce((s, it) => s + toNum(it.amount), 0)
   const sumDebt = manualDebt + autoDebt
-  const educationVal = plan.education || autoEducation   // auto = ค่าเล่าเรียนรวมจากหน้าทุนการศึกษา · พิมพ์ทับได้
-  const coverageNeed = familyIncomePV + sumDebt + educationVal + toNum(plan.finalExpense)
+  const coverageNeed = familyIncomePV + sumDebt   // การศึกษา/ค่าใช้จ่ายสุดท้าย กรอกเป็น "ค่าใช้จ่ายอื่นๆ" ในส่วนที่ 1 ได้
   const manualAssets = plan.assets.reduce((s, it) => s + toNum(it.amount), 0)
   // เงินชดเชยฯ = มูลค่า ณ วันเกษียณ (FV) → คิดลดกลับเป็นมูลค่าปัจจุบันด้วยอัตราผลตอบแทน i (ลงทุน/ประกันเป็นมูลค่าปัจจุบันอยู่แล้ว)
   const severancePV = workingYears > 0 ? autoAssets.severance / Math.pow(1 + plan.returnRate / 100, workingYears) : autoAssets.severance
@@ -441,20 +439,7 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
           <EditableList items={plan.debts} onChange={v => set('debts', v)} color="#f87171" total={sumDebt} />
         </Section>
 
-        <Section no={4} title="เป้าหมายเฉพาะ + ค่าใช้จ่ายสุดท้าย">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>ทุนการศึกษาบุตร (E) <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>auto</span></span>
-              <MoneyInput value={plan.education || autoEducation} onChange={v => set('education', v)} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>ค่าใช้จ่ายสุดท้าย (งานศพ/ค่ารักษา)</span>
-              <MoneyInput value={plan.finalExpense} onChange={v => set('finalExpense', v)} />
-            </div>
-          </div>
-        </Section>
-
-        <Section no={5} title="สินทรัพย์ที่มี + เงินชดเชย (หักออก)">
+        <Section no={4} title="สินทรัพย์ที่มี + เงินชดเชย (หักออก)">
           <AutoRow label="สินทรัพย์ลงทุน" value={autoAssets.investment} color="#4ade80" />
           <AutoRow label="เงินฝาก" value={autoAssets.deposit} color="#4ade80" />
           <AutoRow label="ทุนประกันชีวิตเดิม" value={autoAssets.insurance} color="#4ade80" />
@@ -464,11 +449,10 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
           <EditableList items={plan.assets} onChange={v => set('assets', v)} color="#4ade80" total={sumAssets} />
         </Section>
 
-        <Section no={6} title="สรุปการคำนวณ">
+        <Section no={5} title="สรุปการคำนวณ">
           <ResultRow label="ค่าใช้จ่ายที่ต้องการ/ปี" value={familyExpense} color="var(--cyan-light)" />
           <ResultRow label={`รายได้ทดแทน (PV ${coverageYears} ปี)`} value={familyIncomePV} color="var(--cyan-light)" />
           <ResultRow label="(+) หนี้สินคงค้าง" value={sumDebt} color="#f87171" />
-          <ResultRow label="(+) การศึกษา + ค่าใช้จ่ายสุดท้าย" value={toNum(plan.education) + toNum(plan.finalExpense)} color="#f59e0b" />
           <ResultRow label="ความต้องการรวม" value={coverageNeed} color="#f59e0b" />
           <ResultRow label="(−) สินทรัพย์ที่มี + เงินชดเชย" value={sumAssets} color="#4ade80" />
         </Section>
@@ -652,8 +636,6 @@ export default function InsurancePlanPage({ person = 'self' }: { person?: 'self'
   const autoYears = youngestAge != null ? Math.max(1, 22 - youngestAge) : (workingYears || 20)
 
   // ทุนการศึกษาบุตร (E) — ดึงค่าเล่าเรียนรวม (totalNominal) จากหน้าทุนการศึกษา (hook เดียวกัน กัน drift)
-  const edu = useEducationReadiness()
-  const autoEducation = edu?.totalNominal ?? 0
 
   const color = person === 'self' ? '#06b6d4' : '#c084fc'
 
@@ -680,8 +662,8 @@ export default function InsurancePlanPage({ person = 'self' }: { person?: 'self'
       </div>
 
       {person === 'self'
-        ? <PersonPanel plan={self} onChange={setSelf} color={color} autoIncome={autoIncomeSelf} workingYears={workingYears} autoDebt={autoDebt} autoAssets={autoAssets} autoTPD={autoTPD} autoDeduct={autoDeduct} autoYears={autoYears} youngestAge={youngestAge} autoEducation={autoEducation} />
-        : <PersonPanel plan={spouse} onChange={setSpouse} color={color} autoIncome={autoIncomeSpouse} workingYears={workingYears} autoDebt={autoDebt} autoAssets={autoAssets} autoTPD={autoTPD} autoDeduct={autoDeduct} autoYears={autoYears} youngestAge={youngestAge} autoEducation={autoEducation} />}
+        ? <PersonPanel plan={self} onChange={setSelf} color={color} autoIncome={autoIncomeSelf} workingYears={workingYears} autoDebt={autoDebt} autoAssets={autoAssets} autoTPD={autoTPD} autoDeduct={autoDeduct} autoYears={autoYears} youngestAge={youngestAge} />
+        : <PersonPanel plan={spouse} onChange={setSpouse} color={color} autoIncome={autoIncomeSpouse} workingYears={workingYears} autoDebt={autoDebt} autoAssets={autoAssets} autoTPD={autoTPD} autoDeduct={autoDeduct} autoYears={autoYears} youngestAge={youngestAge} />}
     </div>
   )
 }
