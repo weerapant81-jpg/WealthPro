@@ -211,6 +211,13 @@ export default function Layout({ children }: { children: ReactNode }) {
           {collapsed ? <ChevronRight size={16} /> : <><ChevronLeft size={16} /> พับเมนู</>}
         </button>
       )}
+
+      {/* Copyright — ล่างสุด เห็นทุกหน้า */}
+      <div style={{ padding: asRail ? '8px 4px 12px' : '8px 16px 12px', fontSize: 10, lineHeight: 1.5, color: 'var(--text-muted)', textAlign: asRail ? 'center' : 'left', flexShrink: 0 }}>
+        {asRail
+          ? `© ${new Date().getFullYear()}`
+          : <>© {new Date().getFullYear()} Ultimate Life<br />Advisor Co., Ltd.</>}
+      </div>
     </>
   )
 
