@@ -391,11 +391,22 @@ export default function ReportPage() {
       const fmtPage: [number, number] = isPres ? [297, 167] : [210, 297]   // mm
       const pdf = new jsPDF({ orientation: isPres ? 'landscape' : 'portrait', unit: 'mm', format: fmtPage })
       for (let i = 0; i < els.length; i++) {
-        const canvas = await html2canvas(els[i], { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false,
-          ignoreElements: el => el.classList?.contains('no-print') })
+        const el = els[i]
+        // เปิด overflow ชั่วคราว + จับความสูงเต็ม (scrollHeight) กันเนื้อหาแน่นโดนตัดขอบล่าง
+        const prevOverflow = el.style.overflow
+        el.style.overflow = 'visible'
+        const fullH = el.scrollHeight
+        const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false,
+          height: fullH, windowHeight: fullH,
+          ignoreElements: e => e.classList?.contains('no-print') })
+        el.style.overflow = prevOverflow
         const img = canvas.toDataURL('image/jpeg', 0.92)
         if (i > 0) pdf.addPage(fmtPage, isPres ? 'landscape' : 'portrait')
-        pdf.addImage(img, 'JPEG', 0, 0, fmtPage[0], fmtPage[1])
+        // contain-fit: ย่อภาพให้พอดีหน้าโดยคงสัดส่วน + จัดกึ่งกลาง (ไม่ตัด ไม่ยืด)
+        const [pw, ph] = fmtPage
+        const sc = Math.min(pw / canvas.width, ph / canvas.height)
+        const w = canvas.width * sc, h = canvas.height * sc
+        pdf.addImage(img, 'JPEG', (pw - w) / 2, (ph - h) / 2, w, h)
       }
       pdf.save(`${(title || 'WealthPro').replace(/[\\/:*?"<>|]/g, '')}.pdf`)
     } catch (e) {
