@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import { useClient } from '../context/ClientContext'
 import { logout } from '../lib/auth'
 import CopilotWidget from './CopilotWidget'
-import { LayoutDashboard, Target, Settings, LogOut, ChartPie, ClipboardList, ClipboardCheck, ShieldCheck, Calculator, Users, RefreshCw, Sun, Moon, UserCog, Menu, ChevronLeft, ChevronRight, ChevronDown, User, Shield, TrendingUp, Wallet, Activity, Briefcase, Scale, HeartPulse, GraduationCap, CalendarRange, ScrollText, Search, ArrowRight } from 'lucide-react'
+import { LayoutDashboard, Target, Settings, LogOut, ClipboardList, ClipboardCheck, ShieldCheck, Calculator, Users, RefreshCw, Sun, Moon, UserCog, Menu, ChevronLeft, ChevronRight, ChevronDown, User, Shield, TrendingUp, Wallet, Activity, Briefcase, Scale, HeartPulse, GraduationCap, CalendarRange, ScrollText, Search, ArrowRight } from 'lucide-react'
 
 // เมนูย่อยของ "ข้อมูลลูกค้า" (ขับแท็บด้วย ?tab=)
 const CLIENT_TABS = [
@@ -176,9 +176,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       {/* Logo */}
       <button onClick={goOverview} title="ภาพรวมนักวางแผน"
         style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: asRail ? 'center' : 'flex-start', height: 56, padding: asRail ? 0 : '0 16px', background: 'none', border: 'none', borderBottom: '1px solid var(--card-border)', cursor: 'pointer', flexShrink: 0 }}>
-        <div style={{ width: 30, height: 30, background: 'var(--cyan-dim)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <ChartPie size={17} color="var(--cyan)" />
-        </div>
+        <img src="/icon-192.png" alt="WealthPro" style={{ width: 30, height: 30, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
         {!asRail && <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>Wealth<span style={{ color: 'var(--cyan)' }}>Pro</span></span>}
       </button>
 
@@ -250,7 +248,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           )}
           {isMobile && (
             <button onClick={goOverview} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-              <ChartPie size={18} color="var(--cyan)" />
+              <img src="/icon-192.png" alt="WealthPro" style={{ width: 26, height: 26, borderRadius: 7, objectFit: 'cover' }} />
               <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Wealth<span style={{ color: 'var(--cyan)' }}>Pro</span></span>
             </button>
           )}
