@@ -197,7 +197,7 @@ export default function LoginPage() {
               <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: 16 }}>
                 <ShieldCheck size={20} color="var(--cyan)" />
                 <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginTop: 10, letterSpacing: '-0.01em' }}>Wealth<span style={{ color: 'var(--cyan)' }}>Pro</span></div>
-                <div style={{ ...capLabel, marginTop: 4, lineHeight: 1.5 }}>© {new Date().getFullYear() + 543} ลิขสิทธิ์ของ<br />Ultimate Life Advisor Co., Ltd</div>
+                <div style={{ ...capLabel, marginTop: 4, lineHeight: 1.5 }}>© {new Date().getFullYear()} Ultimate Life Advisor Co., Ltd.<br />All rights reserved.</div>
               </div>
             </div>
           </div>
