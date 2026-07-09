@@ -388,16 +388,19 @@ export default function ReportPage() {
           /* คงสีพื้นหลัง/การ์ด/กราฟตอนพิมพ์ (เบราว์เซอร์ตัด background โดยดีฟอลต์) */
           #report-paper, #report-paper * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           ${mode === 'pres' ? `
-            /* หน้ากระดาษ = สไลด์ 16:9 พอดี · สไลด์เต็มหน้าเสมอ (footer ชิดขอบล่างจริง) */
-            @page { size: 297mm 167mm; margin: 0; }
+            /* A4 แนวนอน (ขนาดมาตรฐาน — iPad Safari ไม่รองรับ @page custom size จึงเพี้ยน) · สไลด์ 16:9 ขนาด mm จริง */
+            @page { size: A4 landscape; margin: 0; }
             html, body { height: auto !important; }
             #report-paper { gap: 0 !important; }
             .pd-slide {
-              width: 100vw !important; height: 100vh !important; max-width: none !important; aspect-ratio: auto !important;
-              box-shadow: none !important; border-radius: 0 !important; margin: 0 !important;
+              width: 297mm !important; height: 167mm !important; max-width: none !important; aspect-ratio: auto !important;
+              box-shadow: none !important; border-radius: 0 !important; margin: 0 auto !important;
               page-break-after: always; break-after: page; break-inside: avoid; overflow: hidden !important;
             }
             .pd-slide:last-of-type { page-break-after: auto; break-after: auto; }
+            /* กันกฎ touch (pointer:coarse) ที่ iPad ยังใช้ตอนพิมพ์ ไปขยาย input/ปุ่มจนเลย์เอาต์เพี้ยน */
+            input, select, textarea { font-size: inherit !important; }
+            button, a[role="button"], [role="tab"] { min-height: 0 !important; }
           ` : `
             @page { size: A4 portrait; margin: 16mm; }
             .rp-page { page-break-after: always; box-shadow: none !important; margin: 0 !important; }
