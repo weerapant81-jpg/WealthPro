@@ -1439,8 +1439,8 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                       <div key={a.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: PAPER, border: `1px solid ${LINE}`, borderRadius: 10, padding: '9px 12px' }}>
                         <div style={{ width: 20, height: 20, borderRadius: 6, background: done ? GR : '#fff', border: `2px solid ${done ? GR : '#cbd5e1'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{done && <Check size={12} color="#fff" />}</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, color: INK, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</div>
-                          <div style={{ fontSize: 11, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{[a.owner, a.priority ? `ลำดับ ${a.priority}` : null, a.dueDate ? new Date(a.dueDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : null].filter(Boolean).join(' · ')}</div>
+                          <div style={{ fontSize: 13, color: INK, fontWeight: 600, lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</div>
+                          <div style={{ fontSize: 11, color: MUTED, lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{[a.owner, a.priority ? `ลำดับ ${a.priority}` : null, a.dueDate ? new Date(a.dueDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : null].filter(Boolean).join(' · ')}</div>
                         </div>
                       </div>
                     )
