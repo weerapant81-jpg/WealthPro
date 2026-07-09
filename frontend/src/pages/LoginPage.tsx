@@ -189,13 +189,16 @@ export default function LoginPage() {
               เครื่องมือวิเคราะห์พอร์ต ประเมินความเสี่ยงระดับสถาบัน และผู้ช่วยวางแผน สำหรับนักวางแผนการเงินยุคใหม่
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, marginTop: 40 }}>
-              {[[Activity, 'ความมั่นคงของระบบ', '99.9%'], [ShieldCheck, 'ความปลอดภัยระดับธนาคาร', 'AES-256']].map(([Icon, cap, val]: any, i) => (
-                <div key={i} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: 16 }}>
-                  <Icon size={20} color="var(--cyan)" />
-                  <div style={{ fontFamily: 'monospace', fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', marginTop: 10 }}>{val}</div>
-                  <div style={{ ...capLabel, marginTop: 2 }}>{cap}</div>
-                </div>
-              ))}
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: 16 }}>
+                <Activity size={20} color="var(--cyan)" />
+                <div style={{ fontFamily: 'monospace', fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', marginTop: 10 }}>99.9%</div>
+                <div style={{ ...capLabel, marginTop: 2 }}>ความมั่นคงของระบบ</div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: 16 }}>
+                <ShieldCheck size={20} color="var(--cyan)" />
+                <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginTop: 10, letterSpacing: '-0.01em' }}>Wealth<span style={{ color: 'var(--cyan)' }}>Pro</span></div>
+                <div style={{ ...capLabel, marginTop: 4, lineHeight: 1.5 }}>© {new Date().getFullYear() + 543} ลิขสิทธิ์ของ<br />Ultimate Life Advisor Co., Ltd</div>
+              </div>
             </div>
           </div>
           <div />
