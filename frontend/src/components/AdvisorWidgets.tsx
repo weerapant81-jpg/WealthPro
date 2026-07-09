@@ -56,7 +56,7 @@ export function AppointmentsWidget() {
             <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{TH_MONTH[m]} {y + 543}</span>
             <button onClick={() => setCursor(new Date(y, m + 1, 1))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><ChevronRight size={18} /></button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, textAlign: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 2, textAlign: 'center' }}>
             {TH_DOW.map(d => <div key={d} style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 700, padding: '2px 0' }}>{d}</div>)}
             {cells.map((day, i) => {
               if (day == null) return <div key={i} />
@@ -66,7 +66,7 @@ export function AppointmentsWidget() {
               const isSel = key === sel
               return (
                 <button key={i} onClick={() => setSel(key)}
-                  style={{ position: 'relative', aspectRatio: '1', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 16,
+                  style={{ position: 'relative', aspectRatio: '1', minWidth: 0, border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 16,
                     background: isSel ? 'var(--cyan)' : isToday ? 'var(--cyan-dim)' : 'transparent',
                     color: isSel ? '#00201d' : isToday ? 'var(--cyan)' : 'var(--text-secondary)', fontWeight: isToday || isSel ? 700 : 400 }}>
                   {day}
