@@ -1523,9 +1523,9 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                   {timelineItems.map((t, i) => (
                     <div key={i} style={{ background: PAPER, border: `1px solid ${LINE}`, borderTop: `3px solid ${t.accent}`, borderRadius: 10, padding: '10px 11px', minWidth: 0 }}>
                       <div style={{ fontSize: 11, fontWeight: 800, color: t.accent, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{catLabel[t.category] ?? t.category}</div>
-                      <div style={{ fontSize: 12.5, fontWeight: 700, color: INK, lineHeight: 1.3, margin: '3px 0', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{t.title}</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 700, color: INK, lineHeight: 1.3, margin: '3px 0', maxHeight: '3.9em', overflow: 'hidden' }}>{t.title}</div>
                       {t.amount > 0 && <div style={{ fontSize: 13, fontWeight: 800, fontFamily: 'monospace', color: t.accent }}>{fmt(t.amount)} บาท</div>}
-                      {t.desc && <div style={{ fontSize: 11, color: SUB, lineHeight: 1.35, marginTop: 3, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{t.desc}</div>}
+                      {t.desc && <div style={{ fontSize: 11, color: SUB, lineHeight: 1.35, marginTop: 3, maxHeight: '4.05em', overflow: 'hidden' }}>{t.desc}</div>}
                     </div>
                   ))}
                 </div>
