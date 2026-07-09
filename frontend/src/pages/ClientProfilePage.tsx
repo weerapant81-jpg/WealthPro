@@ -258,7 +258,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
 
 function Grid({ cols = 2, children }: { cols?: number; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 14 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: 14 }}>
       {children}
     </div>
   )
