@@ -76,6 +76,8 @@ input, select, textarea { max-width: 100%; box-sizing: border-box; min-width: 0;
   input, select, textarea { font-size: 16px !important; }
   /* ขยาย tap target ปุ่ม/ลิงก์ให้แตะง่ายขึ้น (≥ มาตรฐาน Apple) โดยไม่ดันเลย์เอาต์ */
   button, a[role="button"], [role="tab"] { min-height: 40px; }
+  /* iOS native date control ยึดขนาดพิกเซลตายตัว → บังคับให้หดตาม width ของช่อง (ยังแตะเปิด picker ได้ปกติ) */
+  input[type="date"], input[type="time"], input[type="datetime-local"] { -webkit-appearance: none; appearance: none; }
 }
 
 /* momentum scroll ในตาราง/พื้นที่เลื่อนแนวนอน */
