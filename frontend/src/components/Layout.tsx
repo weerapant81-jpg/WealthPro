@@ -70,6 +70,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   const [profileOpen, setProfileOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [railMenu, setRailMenu] = useState<{ to: string; top: number } | null>(null)  // flyout เมนูย่อยตอนหดเมนู
   const [q, setQ] = useState('')  // ค้นหาลูกค้าบน topbar (โหมดภาพรวม)
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sb_collapsed') === '1')
   const [vw, setVw] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 1280)
@@ -137,9 +138,11 @@ export default function Layout({ children }: { children: ReactNode }) {
     return (
       <div key={to}>
         <button
-          onClick={() => {
-            if (asRail) { navigate(`${to}?tab=${cfg.first}`); setDrawerOpen(false) }  // rail: ไปหน้านั้น
-            else setMenuOpen(to, o => !o)                                              // เต็ม: คลิกที่ไหนก็ได้ = คลี่/หด
+          onClick={(e) => {
+            if (asRail) {
+              const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+              setRailMenu(m => m?.to === to ? null : { to, top: r.top })   // rail: เด้ง flyout เมนูย่อย
+            } else setMenuOpen(to, o => !o)                                 // เต็ม: คลิกที่ไหนก็ได้ = คลี่/หด
           }}
           title={asRail ? label : undefined}
           style={{ ...linkStyle(onPage, asRail), width: '100%', border: 'none', cursor: 'pointer' }}>
@@ -241,6 +244,28 @@ export default function Layout({ children }: { children: ReactNode }) {
         <aside style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: sidebarW, background: 'var(--navy-950)', borderRight: '1px solid var(--card-border)', display: 'flex', flexDirection: 'column', zIndex: 50, transition: 'width 0.2s' }}>
           {Sidebar({ asRail: rail })}
         </aside>
+      )}
+
+      {/* ── Flyout เมนูย่อย (เฉพาะตอนหดเมนู/rail) ── */}
+      {rail && railMenu && EXPANDABLE[railMenu.to] && (
+        <>
+          <div onClick={() => setRailMenu(null)} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
+          <div style={{ position: 'fixed', left: sidebarW + 6, top: Math.max(8, Math.min(railMenu.top, window.innerHeight - 380)), zIndex: 61, background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 12, boxShadow: 'var(--shadow)', padding: 6, minWidth: 210, maxHeight: '72vh', overflowY: 'auto' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.02em', color: 'var(--text-muted)', padding: '6px 10px 8px' }}>
+              {nav.find(n => n.to === railMenu.to)?.label}
+            </div>
+            {EXPANDABLE[railMenu.to].tabs.map(({ tab, icon: TIcon, label: tl }) => {
+              const activeSub = currentPath === railMenu.to && (currentTab || EXPANDABLE[railMenu.to].first) === tab
+              return (
+                <button key={tab} onClick={() => { navigate(`${railMenu.to}?tab=${tab}`); setRailMenu(null); setDrawerOpen(false) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '9px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, textAlign: 'left', whiteSpace: 'nowrap',
+                    color: activeSub ? 'var(--cyan-light)' : 'var(--text-secondary)', background: activeSub ? 'var(--cyan-dim)' : 'transparent' }}>
+                  <TIcon size={15} />{tl}
+                </button>
+              )
+            })}
+          </div>
+        </>
       )}
 
       {/* ── Mobile drawer ── */}
