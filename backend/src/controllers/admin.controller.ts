@@ -2,6 +2,7 @@
 import bcrypt from 'bcryptjs'
 import { prisma } from '../lib/prisma'
 import { AuthRequest } from '../middleware/auth'
+import { decryptField } from '../lib/crypto'
 
 // FA/Admin: สร้าง "ลูกค้า" (User role USER) — เป็น data record ที่ FA ดูแล ไม่ต้อง login เอง
 export async function createClient(req: AuthRequest, res: Response): Promise<void> {
@@ -133,6 +134,11 @@ export async function exportClient(req: AuthRequest, res: Response): Promise<voi
     data: { actorId: req.userId!, clientId: id, action: 'VIEW', resource: 'client-export',
       method: 'GET', path: `/clients/${id}/export`, status: 200, ip: req.ip ?? null },
   }).catch(() => {})
+
+  // ถอดรหัสเลขบัตร ปชช. (self + คู่สมรส) ให้ export เป็นค่าจริง
+  if (clientProfile?.nationalId) clientProfile.nationalId = decryptField(clientProfile.nationalId)
+  const sp = clientProfile?.spouseProfile as any
+  if (sp && typeof sp === 'object' && sp.nationalId) sp.nationalId = decryptField(sp.nationalId)
 
   const data = {
     exportedAt: new Date().toISOString(),
