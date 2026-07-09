@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { loginUser, registerUser, googleLogin, appleLogin, forgotPassword, resendVerify } from '../lib/auth'
 import { useAuth } from '../context/AuthContext'
-import { Mail, Eye, EyeOff, ArrowRight, Activity, ShieldCheck, User, Phone } from 'lucide-react'
+import { Mail, Eye, EyeOff, ArrowRight, ShieldCheck, User, Phone } from 'lucide-react'
 
 const field: React.CSSProperties = {
   width: '100%', height: 48, padding: '0 42px 0 14px', borderRadius: 10,
@@ -193,9 +193,9 @@ export default function LoginPage() {
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, marginTop: 40 }}>
               <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: 16 }}>
-                <Activity size={20} color="var(--cyan)" />
-                <div style={{ fontFamily: 'monospace', fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', marginTop: 10 }}>99.9%</div>
-                <div style={{ ...capLabel, marginTop: 2 }}>ความมั่นคงของระบบ</div>
+                <ShieldCheck size={20} color="var(--cyan)" />
+                <div style={{ fontFamily: 'monospace', fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', marginTop: 10 }}>AES-256</div>
+                <div style={{ ...capLabel, marginTop: 2 }}>ความปลอดภัยระดับธนาคาร</div>
               </div>
               <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: 16 }}>
                 <ShieldCheck size={20} color="var(--cyan)" />
