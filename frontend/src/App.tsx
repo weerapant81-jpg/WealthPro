@@ -28,6 +28,7 @@ const ClientsPage = lazy(() => import('./pages/ClientsPage'))
 const ActionPlanPage = lazy(() => import('./pages/ActionPlanPage'))
 const ForwardCashflowPage = lazy(() => import('./pages/ForwardCashflowPage'))
 const AuditLogPage = lazy(() => import('./pages/AuditLogPage'))
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
 
 const qc = new QueryClient()
 
@@ -104,6 +105,7 @@ export default function App() {
               <Route path="/investment" element={<PrivateRoute><InvestmentAssumptionPage /></PrivateRoute>} />
               <Route path="/clients" element={<AdminRoute><ClientsPage /></AdminRoute>} />
               <Route path="/audit-log" element={<AdminRoute><AuditLogPage /></AdminRoute>} />
+              <Route path="/privacy" element={<PrivateRoute><PrivacyPolicyPage /></PrivateRoute>} />
             </Routes>
             </Suspense>
           </BrowserRouter>

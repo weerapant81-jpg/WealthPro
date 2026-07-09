@@ -212,8 +212,14 @@ export default function Layout({ children }: { children: ReactNode }) {
         </button>
       )}
 
+      {/* นโยบายความเป็นส่วนตัว (เหนือ copyright) */}
+      <button onClick={() => { navigate('/privacy'); setDrawerOpen(false) }} title="นโยบายความเป็นส่วนตัว"
+        style={{ display: 'flex', alignItems: 'center', justifyContent: asRail ? 'center' : 'flex-start', gap: 7, padding: asRail ? '6px 4px 2px' : '6px 16px 2px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 11.5, width: '100%', flexShrink: 0 }}>
+        <ScrollText size={13} />{!asRail && 'นโยบายความเป็นส่วนตัว'}
+      </button>
+
       {/* Copyright — ล่างสุด เห็นทุกหน้า */}
-      <div style={{ padding: asRail ? '8px 4px 12px' : '8px 16px 12px', fontSize: 10, lineHeight: 1.5, color: 'var(--text-muted)', textAlign: asRail ? 'center' : 'left', flexShrink: 0 }}>
+      <div style={{ padding: asRail ? '4px 4px 12px' : '2px 16px 12px', fontSize: 10, lineHeight: 1.5, color: 'var(--text-muted)', textAlign: asRail ? 'center' : 'left', flexShrink: 0 }}>
         {asRail
           ? `© ${new Date().getFullYear()}`
           : <>© {new Date().getFullYear()} Ultimate Life<br />Advisor Co., Ltd.</>}
