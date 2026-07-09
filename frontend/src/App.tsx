@@ -1,4 +1,4 @@
-﻿import { lazy, Suspense } from 'react'
+﻿import { lazy, Suspense, Component, useEffect, type ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -76,12 +76,41 @@ function SuperAdminRoute({ children }: { children: React.ReactNode }) {
   return <Layout>{children}</Layout>
 }
 
+// จับ error ตอนโหลด chunk (เกิดหลัง deploy ใหม่ ระหว่างแอปเก่ายังเปิดอยู่) → โหลดหน้าใหม่ให้เนียน กันจอมืด
+class RouteErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+  static getDerivedStateFromError() { return { failed: true } }
+  componentDidCatch(err: unknown) {
+    const msg = String((err as any)?.message || err)
+    const isChunk = /dynamically imported module|Loading chunk|module script failed|Failed to fetch/i.test(msg)
+    if (isChunk && !sessionStorage.getItem('wp_reloaded')) {
+      sessionStorage.setItem('wp_reloaded', '1')
+      window.location.reload()
+    }
+  }
+  render() {
+    if (this.state.failed) {
+      return (
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'center', justifyContent: 'center', background: 'var(--navy-900)', color: 'var(--text-muted)', padding: 24, textAlign: 'center' }}>
+          <div style={{ fontSize: 15 }}>มีการอัปเดตเวอร์ชันใหม่ — กรุณาโหลดหน้าใหม่</div>
+          <button onClick={() => { sessionStorage.removeItem('wp_reloaded'); window.location.reload() }}
+            style={{ padding: '11px 24px', background: 'var(--cyan)', border: 'none', borderRadius: 10, color: '#00201d', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>โหลดใหม่</button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 export default function App() {
+  // แอปรันได้เกิน 5 วิ = โหลด chunk สำเร็จ → เคลียร์ธงกันลูป (ให้ deploy รอบถัดไป auto-reload ได้อีก)
+  useEffect(() => { const t = setTimeout(() => sessionStorage.removeItem('wp_reloaded'), 5000); return () => clearTimeout(t) }, [])
   return (
     <QueryClientProvider client={qc}>
       <AuthProvider>
         <ClientProvider>
           <BrowserRouter>
+            <RouteErrorBoundary>
             <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
@@ -112,6 +141,7 @@ export default function App() {
               <Route path="/guide" element={<PrivateRoute><UserGuidePage /></PrivateRoute>} />
             </Routes>
             </Suspense>
+            </RouteErrorBoundary>
           </BrowserRouter>
         </ClientProvider>
       </AuthProvider>
