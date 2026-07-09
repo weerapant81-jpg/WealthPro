@@ -30,9 +30,15 @@ const SYSTEM_PROMPT = `คุณคือ "WealthPro Copilot" ผู้ช่ว
 - ใส่เฉพาะตัวเลข/ประเด็นที่ตอบคำถามโดยตรง ตัดบริบทที่ไม่จำเป็นและคำฟุ่มเฟือยทิ้ง
 - ถ้าตอบได้ด้วยประโยคเดียว ให้ตอบประโยคเดียว · รายละเอียดเพิ่มรอผู้ใช้ถามต่อ
 
-หลักการ:
-- **ใช้ตัวเลขจาก "ข้อมูลลูกค้า" และ "ตัวเลขที่คำนวณไว้แล้ว" มาตอบโดยตรง — ห้ามคำนวณเอง ห้ามแสดงขั้นตอน/สูตรการคำนวณ** เพราะระบบคำนวณให้แล้วและตรงกับหน้าจอ
-- ถ้าตัวเลขที่ต้องใช้ไม่มีในข้อมูล ให้บอกสั้นๆ ว่ายังไม่มี + ดูได้ที่หน้าไหน (อย่าเดา/อย่าประมาณเอง)
+หลักการความแม่นยำ (ต้องทำตามเคร่งครัด — สำคัญที่สุด):
+- **ตอบจาก "ข้อมูลลูกค้า" และ "ตัวเลขที่คำนวณไว้แล้ว" ที่ให้ไว้เท่านั้น** — ห้ามคำนวณเอง ห้ามแสดงสูตร/ขั้นตอน เพราะระบบคำนวณให้แล้วตรงกับหน้าจอ
+- **ห้ามเดา ห้ามสมมติตัวเลข ห้ามใช้ค่าเฉลี่ยตลาด/ความรู้ทั่วไปมาแทนข้อมูลจริงของลูกค้ารายนี้** เด็ดขาด
+- **ถ้าข้อมูลที่ต้องใช้ไม่มีในบริบท** ให้ตอบตรงๆ ว่า "ยังไม่มีข้อมูล ___ ในระบบ" แล้วบอกว่ากรอก/ดูได้ที่หน้าไหน — ห้ามแต่งคำตอบขึ้นมา
+- **ก่อนตอบ ตรวจว่าตัวเลข/ข้อสรุปสอดคล้องกับบริบทที่ให้จริง** ถ้าไม่แน่ใจว่าคำถามหมายถึงอะไร ให้ถามกลับสั้นๆ 1 ข้อ ดีกว่าตอบผิด
+- **แยก "ลูกค้า (self)" กับ "คู่สมรส (spouse)" ให้ชัดเจน** อย่าสลับหรือรวมตัวเลขข้ามคน เว้นแต่ผู้ใช้ขอภาพรวมครัวเรือน
+- ระบุ "หน่วย" (บาท/เดือน หรือ บาท/ปี) ให้ตรงกับบริบทเสมอ อย่าสลับรายเดือน↔รายปี
+
+หลักการทั่วไป:
 - ตอบเป็นภาษาไทย เป็นมืออาชีพแต่เข้าใจง่าย · อย่าให้คำมั่นเรื่องผลตอบแทน
 - คุณคุยกับ "นักวางแผน" ไม่ใช่ลูกค้าโดยตรง — โทนเพื่อนร่วมงานมืออาชีพ
 - คุณช่วยแนะนำเท่านั้น การตัดสินใจเป็นของนักวางแผน`
@@ -42,11 +48,12 @@ const fmt = (n: number) => new Intl.NumberFormat('th-TH', { maximumFractionDigit
 
 /** สร้าง context ข้อมูลลูกค้าปัจจุบัน (effectiveUserId) แบบกระชับ ป้อนให้โมเดล */
 export async function buildClientContext(userId: string): Promise<string> {
-  const [cp, profile, lifeIns, invProfile, fin] = await Promise.all([
+  const [cp, profile, lifeIns, invProfile, liabilities, fin] = await Promise.all([
     prisma.clientProfile.findUnique({ where: { userId }, include: { children: true } }),
     prisma.profile.findUnique({ where: { userId } }),
     prisma.lifeInsurancePolicy.findMany({ where: { userId } }),
     prisma.investmentProfile.findUnique({ where: { userId } }),
+    prisma.liability.findMany({ where: { userId } }),
     // ใช้ตัวคำนวณเดียวกับหน้ารายงาน/แดชบอร์ด (financial-ratios) เพื่อให้ตัวเลขตรงกับหน้าจอเป๊ะ
     computeFinancialSummary(userId, false).catch(() => null),
   ])
@@ -57,9 +64,12 @@ export async function buildClientContext(userId: string): Promise<string> {
   const age = cp?.birthDate ? new Date().getFullYear() - new Date(cp.birthDate).getFullYear() : (profile?.age ?? null)
   const name = [cp?.firstName, cp?.lastName].filter(Boolean).join(' ') || 'ลูกค้า'
 
+  lines.push(`(ข้อมูล ณ วันที่ ${new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })})`)
   lines.push('== ข้อมูลส่วนบุคคล ==')
   lines.push(`ชื่อ: ${name}${cp?.nickname ? ` (${cp.nickname})` : ''}`)
   if (age != null) lines.push(`อายุ: ${age} ปี`)
+  const retAge = toNum((profile?.retirementPlan as any)?.self?.retirementAge) || toNum(profile?.retirementAgeSelf)
+  if (age != null && retAge > age) lines.push(`เหลือเวลาก่อนเกษียณ: ${retAge - age} ปี (เกษียณอายุ ${retAge})`)
   if (cp?.maritalStatus) lines.push(`สถานภาพ: ${cp.maritalStatus}`)
   if (cp?.occupation || cp?.jobTitle) lines.push(`อาชีพ: ${[cp?.occupation, cp?.jobTitle].filter(Boolean).join(' · ')}`)
   if (cp?.salary) lines.push(`เงินเดือน: ${fmt(toNum(cp.salary))} บาท/เดือน`)
@@ -80,10 +90,20 @@ export async function buildClientContext(userId: string): Promise<string> {
     lines.push(`หนี้สินรวม: ${fmt(sm.totalDebtBalance)} บาท`)
     lines.push(`ความมั่งคั่งสุทธิ: ${fmt(sm.netWorth)} บาท`)
   }
+  if (liabilities.length) {
+    lines.push('รายการหนี้สิน: ' + liabilities.map(l => `${l.name || l.category} ${fmt(l.balance)} บาท (ดอกเบี้ย ${l.interestRate}%/ปี · ผ่อน ${fmt(l.monthlyPayment)}/เดือน)`).join(' · '))
+  }
   if (sm && (sm.totalAnnualIncome > 0 || sm.totalMonthlyExp > 0)) {
     lines.push('\n== กระแสเงินสด (ต่อเดือน) ==')
     lines.push(`รายได้รวม: ${fmt(sm.monthlyIncome)} บาท · รายจ่ายรวม: ${fmt(sm.totalMonthlyExp)} บาท · กระแสเงินสดสุทธิ: ${fmt(sm.netAnnualCashFlow / 12)} บาท/เดือน`)
     lines.push(`รายได้รวมทั้งปี: ${fmt(sm.totalAnnualIncome)} บาท · เงินออม/ลงทุนต่อปี: ${fmt(sm.annualSavings)} บาท`)
+  }
+  // แหล่งรายได้แยกรายการ (จาก incomeSources ที่กรอกในหน้างบการเงิน)
+  const incSrc: any = cp?.incomeSources
+  const incList = Array.isArray(incSrc) ? incSrc : (Array.isArray(incSrc?.self) ? incSrc.self : [])
+  if (incList.length) {
+    const src = incList.map((s: any) => toNum(s.amount) > 0 ? `${s.label || s.source || s.name || 'รายได้'} ${fmt(toNum(s.amount))}${(s.frequency === 'YEARLY' || s.isBonus || /โบนัส/.test(s.label || s.source || '')) ? '/ปี' : '/เดือน'}` : '').filter(Boolean)
+    if (src.length) lines.push('แหล่งรายได้: ' + src.join(' · '))
   }
   if (sm && fin?.healthScore != null) lines.push(`\nคะแนนสุขภาพการเงิน: ${fin.healthScore}/100 (${fin.healthLabel})`)
 
@@ -243,8 +263,8 @@ export async function chatCopilot(req: AuthRequest, res: Response): Promise<void
   try {
     const stream = anthropic.messages.stream({
       model: MODEL,
-      max_tokens: 500, // จำกัดความยาว — เน้นตอบสั้นได้ใจความ (ถ้าผู้ใช้อยากละเอียดค่อยถามต่อ)
-      thinking: { type: 'disabled' }, // แชทตอบไว ไม่ต้องคิดยาว (ลด token/latency)
+      max_tokens: 1600, // = thinking budget + คำตอบ (คำตอบยังสั้นตาม prompt · thinking ไม่ถูกสตรีมออกไป)
+      thinking: { type: 'enabled', budget_tokens: 1024 }, // คิดก่อนตอบ → แม่นขึ้นสำหรับคำถามวิเคราะห์หลายขั้น
       system,
       messages: cleaned,
     })
