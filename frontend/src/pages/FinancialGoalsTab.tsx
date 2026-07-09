@@ -1,0 +1,239 @@
+import { useState, useEffect, useRef } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { api } from '../lib/api'
+import { Plus, Trash2, CheckCircle, Loader2 } from 'lucide-react'
+
+const inp: React.CSSProperties = {
+  padding: '7px 10px', borderRadius: 6, border: '1px solid var(--card-border)',
+  background: 'var(--divider)', color: 'var(--text-primary)',
+  fontSize: 12, outline: 'none', width: '100%', boxSizing: 'border-box' as const,
+}
+
+const optStyle: React.CSSProperties = { background: 'var(--navy-900)', color: 'var(--text-primary)' }
+
+const OWNER_OPTIONS = ['ตนเอง', 'คู่สมรส', 'ร่วมกัน', 'บุตร', 'อื่นๆ']
+const PRIORITY_OPTIONS = ['1', '2', '3', '4', '5']
+
+type GoalRow = {
+  name: string
+  owner: string
+  priority: string
+  targetDate: string
+  targetAmount: string
+}
+
+type FinancialGoals = {
+  short: GoalRow[]
+  medium: GoalRow[]
+  long: GoalRow[]
+}
+
+const emptyRow = (): GoalRow => ({ name: '', owner: 'ตนเอง', priority: '1', targetDate: '', targetAmount: '' })
+
+const defaultGoals = (): FinancialGoals => ({
+  short:  Array.from({ length: 3 }, emptyRow),
+  medium: Array.from({ length: 3 }, emptyRow),
+  long:   Array.from({ length: 3 }, emptyRow),
+})
+
+const SECTIONS: { key: keyof FinancialGoals; label: string; sub: string; color: string }[] = [
+  { key: 'short',  label: 'เป้าหมายระยะสั้น',  sub: 'ระยะเวลาไม่เกิน 3 ปี',    color: '#10b981' },
+  { key: 'medium', label: 'เป้าหมายระยะกลาง', sub: 'ระยะเวลา 3 – 7 ปี',        color: '#0ea5e9' },
+  { key: 'long',   label: 'เป้าหมายระยะยาว',  sub: 'ระยะเวลามากกว่า 7 ปี',    color: '#8b5cf6' },
+]
+
+const COLS = [
+  { label: 'เป้าหมาย',                     w: '28%' },
+  { label: 'ผู้กำหนดเป้าหมาย',             w: '14%' },
+  { label: 'ลำดับความสำคัญ',               w: '12%' },
+  { label: 'ระยะเวลาที่ต้องการบรรลุ',      w: '18%' },
+  { label: 'จำนวนเงินที่ต้องการ (บาท)',   w: '18%' },
+  { label: '',                              w: '5%'  },
+]
+
+type PersonGoals = { self: FinancialGoals; spouse: FinancialGoals }
+
+const normGoals = (g: any): FinancialGoals => ({
+  short:  g?.short?.length  ? g.short  : Array.from({ length: 3 }, emptyRow),
+  medium: g?.medium?.length ? g.medium : Array.from({ length: 3 }, emptyRow),
+  long:   g?.long?.length   ? g.long   : Array.from({ length: 3 }, emptyRow),
+})
+
+export default function FinancialGoalsTab({ person = 'client' }: { person?: 'client' | 'spouse' }) {
+  const qc = useQueryClient()
+  const { data: profile } = useQuery({
+    queryKey: ['client-profile'],
+    queryFn: () => api.get('/client-profile').then(r => r.data),
+  })
+  const [allGoals, setAllGoals] = useState<PersonGoals>({ self: defaultGoals(), spouse: defaultGoals() })
+  const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const key: keyof PersonGoals = person === 'spouse' ? 'spouse' : 'self'
+  const goals = allGoals[key]
+
+  // ── โหลดครั้งเดียว (กัน server refetch มาทับระหว่างพิมพ์) ──
+  const loadedRef = useRef(false)
+  const hydratingRef = useRef(false)
+  useEffect(() => {
+    if (loadedRef.current || profile === undefined) return
+    const fg = profile?.financialGoals
+    if (fg && (fg.self || fg.spouse)) { hydratingRef.current = true; setAllGoals({ self: normGoals(fg.self), spouse: normGoals(fg.spouse) }) }
+    else if (fg) { hydratingRef.current = true; setAllGoals({ self: normGoals(fg), spouse: defaultGoals() }) }
+    loadedRef.current = true
+  }, [profile])
+
+  // ── autosave (debounce 800ms + setQueryData ให้รายงานเห็นทันที + flush ตอน unmount) ──
+  const valuesRef = useRef(allGoals); valuesRef.current = allGoals
+  const dirtyRef = useRef(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // ส่งเฉพาะ financialGoals — controller เป็น partial update (Prisma แก้เฉพาะฟิลด์ที่ส่ง)
+  const persist = (g: PersonGoals) => {
+    qc.setQueryData(['client-profile'], (old: any) => old ? { ...old, financialGoals: g } : old)
+    return api.put('/client-profile', { financialGoals: g })
+  }
+  const save = useMutation({
+    mutationFn: (g: PersonGoals) => persist(g),
+    onSuccess: () => { setStatus('saved'); setTimeout(() => setStatus(s => s === 'saved' ? 'idle' : s), 2000) },
+    onError: () => setStatus('idle'),
+  })
+
+  useEffect(() => {
+    if (!loadedRef.current) return
+    if (hydratingRef.current) { hydratingRef.current = false; return }   // ข้ามการเซฟที่เกิดจากการโหลดค่าเริ่มต้น
+    dirtyRef.current = true
+    setStatus('saving')
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => { save.mutate(valuesRef.current); dirtyRef.current = false }, 800)
+    return () => { if (timer.current) clearTimeout(timer.current) }
+  }, [allGoals])
+
+  useEffect(() => () => {
+    if (dirtyRef.current) api.put('/client-profile', { financialGoals: valuesRef.current })
+  }, [])
+
+  const setRow = (section: keyof FinancialGoals, i: number, field: keyof GoalRow, val: string) =>
+    setAllGoals(a => ({ ...a, [key]: { ...a[key], [section]: a[key][section].map((r, idx) => idx === i ? { ...r, [field]: val } : r) } }))
+
+  const addRow = (section: keyof FinancialGoals) =>
+    setAllGoals(a => ({ ...a, [key]: { ...a[key], [section]: [...a[key][section], emptyRow()] } }))
+
+  const delRow = (section: keyof FinancialGoals, i: number) =>
+    setAllGoals(a => ({ ...a, [key]: { ...a[key], [section]: a[key][section].filter((_, idx) => idx !== i) } }))
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>เป้าหมายทางการเงิน</h2>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>บันทึกเป้าหมายแยกตามระยะเวลา</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+          {status === 'saving' && <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}><Loader2 size={14} className="fg-spin" />กำลังบันทึก...</span>}
+          {status === 'saved' && <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10b981' }}><CheckCircle size={14} />บันทึกอัตโนมัติแล้ว</span>}
+          <style>{`@keyframes fg-spin{to{transform:rotate(360deg)}}.fg-spin{animation:fg-spin .9s linear infinite}`}</style>
+        </div>
+      </div>
+
+      {SECTIONS.map(sec => (
+        <div key={sec.key} style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 16, overflow: 'hidden' }}>
+          {/* Section header */}
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 4, height: 32, borderRadius: 2, background: sec.color, flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>{sec.label}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{sec.sub}</div>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: 'var(--hover)' }}>
+                  <th style={{ width: '5%', padding: '10px 12px', color: 'var(--text-muted)', fontWeight: 500, borderBottom: '1px solid var(--card-border)', textAlign: 'center' }}>ที่</th>
+                  {COLS.map((c, i) => (
+                    <th key={i} style={{ width: c.w, padding: '10px 12px', color: 'var(--text-muted)', fontWeight: 500, borderBottom: '1px solid var(--card-border)', textAlign: i < 4 ? 'left' : 'center' }}>
+                      {c.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {goals[sec.key].map((row, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid var(--divider)' }}>
+                    {/* เลขที่ */}
+                    <td style={{ padding: '6px 12px', textAlign: 'center', color: 'var(--text-muted)', fontWeight: 600 }}>{i + 1}</td>
+
+                    {/* เป้าหมาย */}
+                    <td style={{ padding: '6px 8px' }}>
+                      <input value={row.name} onChange={e => setRow(sec.key, i, 'name', e.target.value)}
+                        placeholder="ระบุเป้าหมาย..." style={inp} />
+                    </td>
+
+                    {/* ผู้กำหนด */}
+                    <td style={{ padding: '6px 8px' }}>
+                      <select value={row.owner} onChange={e => setRow(sec.key, i, 'owner', e.target.value)}
+                        style={{ ...inp, cursor: 'pointer' }}>
+                        {OWNER_OPTIONS.map(o => <option key={o} value={o} style={optStyle}>{o}</option>)}
+                      </select>
+                    </td>
+
+                    {/* ลำดับความสำคัญ */}
+                    <td style={{ padding: '6px 8px' }}>
+                      <select value={row.priority} onChange={e => setRow(sec.key, i, 'priority', e.target.value)}
+                        style={{ ...inp, cursor: 'pointer' }}>
+                        {PRIORITY_OPTIONS.map(p => <option key={p} value={p} style={optStyle}>{p}</option>)}
+                      </select>
+                    </td>
+
+                    {/* ระยะเวลา */}
+                    <td style={{ padding: '6px 8px' }}>
+                      <input value={row.targetDate} onChange={e => setRow(sec.key, i, 'targetDate', e.target.value)}
+                        placeholder="เช่น ปี 2570 / 3 ปี" style={inp} />
+                    </td>
+
+                    {/* จำนวนเงิน */}
+                    <td style={{ padding: '6px 8px' }}>
+                      <input
+                        value={row.targetAmount}
+                        onChange={e => setRow(sec.key, i, 'targetAmount', e.target.value.replace(/,/g, ''))}
+                        onBlur={e => { const v = e.target.value.replace(/,/g,''); const n = Number(v); if (!isNaN(n) && v !== '') setRow(sec.key, i, 'targetAmount', n.toLocaleString('th-TH')); }}
+                        placeholder="0"
+                        style={{ ...inp, textAlign: 'right' }}
+                      />
+                    </td>
+
+                    {/* ลบ */}
+                    <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+                      {goals[sec.key].length > 1 && (
+                        <button onClick={() => delRow(sec.key, i)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: 4, borderRadius: 4, display: 'inline-flex', alignItems: 'center' }}
+                          onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
+                          onMouseLeave={e => (e.currentTarget.style.color = '#6b7280')}>
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Add row */}
+          <div style={{ padding: '10px 20px' }}>
+            <button onClick={() => addRow(sec.key)}
+              style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: `1px dashed ${sec.color}40`, borderRadius: 6, padding: '6px 14px', color: sec.color, fontSize: 12, cursor: 'pointer', opacity: 0.8 }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+              onMouseLeave={e => (e.currentTarget.style.opacity = '0.8')}>
+              <Plus size={13} />เพิ่มแถว
+            </button>
+          </div>
+        </div>
+      ))}
+
+    </div>
+  )
+}

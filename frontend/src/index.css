@@ -1,0 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sarabun:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Dark theme (default) — Pro Wealth Dark / Luminous Monolith ── */
+:root {
+  --navy-950: #0e0e0f;   /* surface container lowest */
+  --navy-900: #131315;   /* surface (พื้นหลังหลัก) */
+  --navy-800: #1b1b1d;   /* surface container */
+  --navy-700: #26262a;
+  --navy-600: #39393a;   /* surface bright */
+  --navy-500: #4e5d6c;   /* tertiary slate */
+  --card-bg: #1b1b1d;    /* surface container */
+  --card-border: rgba(255,255,255,0.09);
+  --cyan: #00cfc1;       /* primary teal */
+  --cyan-light: #4de0d5;
+  --cyan-dim: rgba(0,207,193,0.16);
+  --text-primary: #e1e2e5;    /* on surface */
+  --text-secondary: #c1c7ce;  /* on surface variant */
+  --text-muted: #8b9198;      /* outline */
+  --gold: #ffb800;            /* secondary / highlight */
+  /* semantic */
+  --page-bg: #131315;
+  --grid: rgba(255,255,255,0.06);
+  --divider: rgba(255,255,255,0.05);
+  --hover: rgba(255,255,255,0.03);
+  --shadow: 0 10px 30px -16px rgba(0,0,0,0.7);
+}
+
+/* ── Light theme (soft, low-glare) ── */
+:root[data-theme="light"] {
+  --navy-950: #dbe0e7;   /* topbar/sidebar/input — เข้มกว่าการ์ดเล็กน้อย */
+  --navy-900: #e3e8ee;
+  --navy-800: #d6dce4;
+  --navy-700: #c7cfda;
+  --navy-600: #b3bdca;   /* scrollbar thumb */
+  --navy-500: #9aa7b6;
+  --card-bg: #f1f4f8;    /* การ์ดออฟไวท์ (ไม่ขาวจ้า) */
+  --card-border: rgba(15,23,42,0.12);
+  --cyan: #00a99d;       /* teal เข้มพอสำหรับพื้นสว่าง */
+  --cyan-light: #00c2b4;
+  --cyan-dim: rgba(0,169,157,0.14);
+  --text-primary: #1a2430;
+  --text-secondary: #47566a;
+  --text-muted: #78899a;
+  --gold: #c78a00;
+  /* semantic */
+  --page-bg: #e6eaf0;    /* พื้นหลังเทาอ่อนนวล */
+  --grid: rgba(15,23,42,0.09);
+  --divider: rgba(15,23,42,0.07);
+  --hover: rgba(15,23,42,0.035);
+  --shadow: 0 8px 24px -14px rgba(15,23,42,0.20);
+}
+
+body {
+  font-family: 'Inter', 'Sarabun', system-ui, -apple-system, sans-serif;
+  background: var(--page-bg);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--page-bg); }
+::-webkit-scrollbar-thumb { background: var(--navy-600); border-radius: 3px; }
+
+/* ── Touch / iPad ── */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+/* iOS/iPadOS ซูมหน้าจออัตโนมัติเมื่อโฟกัส input ที่ฟอนต์ < 16px — บังคับ ≥16px เฉพาะอุปกรณ์สัมผัส */
+@media (pointer: coarse) {
+  input, select, textarea { font-size: 16px !important; }
+  /* ขยาย tap target ปุ่ม/ลิงก์ให้แตะง่ายขึ้น (≥ มาตรฐาน Apple) โดยไม่ดันเลย์เอาต์ */
+  button, a[role="button"], [role="tab"] { min-height: 40px; }
+}
+
+/* momentum scroll ในตาราง/พื้นที่เลื่อนแนวนอน */
+main, [style*="overflow"] { -webkit-overflow-scrolling: touch; }
+
+/* safe-area สำหรับ iPad Pro ขอบจอโค้ง / โหมดเต็มจอ */
+@supports (padding: max(0px)) {
+  body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+}

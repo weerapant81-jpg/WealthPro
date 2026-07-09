@@ -1,0 +1,1609 @@
+import { useMemo, useState, useRef, createContext, useContext } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '../../lib/api'
+import { useRetirementReadiness } from '../../hooks/useRetirementReadiness'
+import { useInsuranceReadiness } from '../../hooks/useInsuranceReadiness'
+import { useEducationReadiness } from '../../hooks/useEducationReadiness'
+import { useInsuranceCoverage } from '../../components/InsuranceCoverageSummary'
+import { buildEduChart, type ChildSetting } from '../EducationPlanPage'
+import { calc, defaultState, type TaxState } from '../../lib/tax'
+import {
+  ShieldCheck, TrendingUp, PiggyBank, GraduationCap, Landmark, ClipboardCheck,
+  Activity, Pencil, X, Check, AlertTriangle, User, Users, GripVertical, EyeOff, Plus,
+  Wallet, Scale, Receipt, ListChecks, Baby, Target, HeartPulse, Banknote, CalendarClock,
+  Type as TypeIcon, ImagePlus, Trash2, ArrowUp, ArrowDown, Bold, AlignLeft, AlignCenter, AlignRight, FilePlus2,
+  RotateCcw, RotateCw, BringToFront, SendToBack, Grid3x3,
+} from 'lucide-react'
+import {
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
+  RadarChart, PolarGrid, PolarAngleAxis, Radar, ComposedChart, Area, Line, CartesianGrid, ReferenceLine,
+} from 'recharts'
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PresentationDeck — เด็คนำเสนอ CFP ฉบับครอบครัว (ลูกค้า + คู่สมรส คู่กัน)
+   สไลด์ 16:9 ธีมสว่าง · ดึงตัวเลข/กราฟจาก hook/endpoint เดิม (กัน drift)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const toNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
+const fmt = (n: number) => (isFinite(n) ? Math.round(n) : 0).toLocaleString('th-TH')
+const fmtM = (n: number) => n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(0)}K` : `${Math.round(n)}`
+const toMonthly = (a: number, f: string) => f === 'QUARTERLY' ? a / 3 : f === 'ANNUALLY' ? a / 12 : a
+const pct = (part: number, whole: number) => whole > 0 ? Math.round((part / whole) * 100) : 0
+
+// light palette — refined financial editorial (private-bank)
+const INK = '#0c2035', SUB = '#4b5a6b', MUTED = '#93a1b0', LINE = '#e9eef4'
+const PAPER = '#f7fafd'            // พื้นการ์ดโทนเย็นบางๆ
+const HAIR = '#eef2f7'             // เส้นคั่นบางมาก
+const CY = '#0284c7', GR = '#10b981', AM = '#f59e0b', RD = '#f43f5e', VI = '#8b5cf6'
+// categorical — ลำดับคงที่ (validated CVD-safe, light mode) ห้ามสลับ/วนสี
+const PIE_COLORS = ['#0284c7', '#10b981', '#f59e0b', '#8b5cf6', '#f43f5e', '#0ea5e9', '#14b8a6', '#f97316']
+
+/* คอลัมน์ของ sub-plan (แผนดำเนินการ) ต่อด้าน — ตรงกับ SUBPLAN_CONFIG ใน ActionPlanPage */
+const SUBPLAN_COLS: Record<string, { key: string; label: string; type: 'text' | 'money' | 'date' }[]> = {
+  liquidity: [{ key: 'method', label: 'วิธีการ', type: 'text' }, { key: 'tool', label: 'เครื่องมือ', type: 'text' }, { key: 'amount', label: 'จำนวนเงิน/เดือน', type: 'money' }, { key: 'schedule', label: 'กำหนดการ', type: 'date' }],
+  insurance: [{ key: 'desc', label: 'แผนปฏิบัติการ', type: 'text' }, { key: 'sumInsured', label: 'ทุนประกัน', type: 'money' }, { key: 'premium', label: 'เบี้ยประกัน', type: 'money' }, { key: 'schedule', label: 'กำหนดการ', type: 'date' }],
+  retirement: [{ key: 'desc', label: 'แผนปฏิบัติการ', type: 'text' }, { key: 'assetType', label: 'ประเภทสินทรัพย์', type: 'text' }, { key: 'amount', label: 'จำนวนเงิน', type: 'money' }, { key: 'schedule', label: 'กำหนดการ', type: 'date' }],
+  education: [{ key: 'desc', label: 'แผนปฏิบัติการ', type: 'text' }, { key: 'assetType', label: 'ประเภทสินทรัพย์', type: 'text' }, { key: 'amount', label: 'จำนวนเงิน', type: 'money' }, { key: 'schedule', label: 'กำหนดการ', type: 'date' }],
+  estate: [{ key: 'who', label: 'ใคร', type: 'text' }, { key: 'desc', label: 'ทำอะไร', type: 'text' }, { key: 'schedule', label: 'เมื่อไหร่', type: 'date' }],
+}
+const SUBPLAN_ACCENT: Record<string, string> = { liquidity: '#06b6d4', insurance: '#3b82f6', retirement: '#00cfc1', education: '#f59e0b', estate: '#8b5cf6' }
+const fmtSchedule = (v: any) => { if (!v) return '—'; const d = new Date(v); return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) }
+
+type Person = 'self' | 'spouse'
+
+/* ══════════════════════════ Slide editor: types + context ══════════════════════════ */
+export type SlideEl =
+  | { id: string; type: 'text'; x: number; y: number; w: number; text: string; size: number; color: string; weight: number; align: 'left' | 'center' | 'right' }
+  | { id: string; type: 'image'; x: number; y: number; w: number; h: number; src: string; rot?: number }
+export type CustomSlide = { id: string; bg?: string }
+
+type EditorCtx = {
+  editMode: boolean
+  snap: boolean
+  overlays: Record<string, SlideEl[]>
+  setEls: (slideId: string, els: SlideEl[]) => void
+  advisorName?: string
+  advisorPhone?: string
+}
+const SlideEditor = createContext<EditorCtx>({ editMode: false, snap: false, overlays: {}, setEls: () => {} })
+const SNAP = 2   // % grid
+
+const uid = () => `el${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+
+/* อ่านไฟล์รูป → ย่อด้วย canvas → base64 (แพทเทิร์นเดียวกับ UserProfilePage.onPhoto) */
+function downscaleImage(file: File, max = 1400): Promise<{ src: string; w: number; h: number }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const img = new Image()
+      img.onload = () => {
+        let { width, height } = img
+        if (width > height && width > max) { height = height * max / width; width = max }
+        else if (height > max) { width = width * max / height; height = max }
+        const cv = document.createElement('canvas')
+        cv.width = width; cv.height = height
+        cv.getContext('2d')!.drawImage(img, 0, 0, width, height)
+        const png = /png/i.test(file.type)
+        resolve({ src: cv.toDataURL(png ? 'image/png' : 'image/jpeg', png ? undefined : 0.85), w: width, h: height })
+      }
+      img.onerror = reject
+      img.src = reader.result as string
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+/* ─── Monte Carlo (สูตรเดียวกับ InvestmentMonteCarloChart) ─── */
+function mulberry32(seed: number) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+function percentile(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0
+  const idx = (sorted.length - 1) * p, lo = Math.floor(idx), hi = Math.ceil(idx)
+  return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo)
+}
+function annualizedReturn(cost: number, value: number, investDate: string): number | null {
+  if (cost <= 0 || value <= 0 || !investDate) return null
+  const start = new Date(investDate); if (isNaN(start.getTime())) return null
+  const years = (Date.now() - start.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
+  if (years < 1 / 365.25) return null
+  return (Math.pow(value / cost, 1 / years) - 1) * 100
+}
+
+/* ══════════════════════════ ส่วนประกอบพื้นฐาน ══════════════════════════ */
+
+function Slide({ children, footer, pad = 40, slideId, noFooter }: { children?: React.ReactNode; footer?: React.ReactNode; pad?: number; slideId?: string; noFooter?: boolean }) {
+  const { advisorName, advisorPhone } = useContext(SlideEditor)
+  return (
+    <div className="pd-slide" style={{
+      width: '100%', maxWidth: 1120, aspectRatio: '16 / 9', background: '#fff', color: INK,
+      boxShadow: '0 1px 2px rgba(12,32,53,0.04), 0 18px 50px -12px rgba(12,32,53,0.22)', borderRadius: 14,
+      padding: `${pad}px 56px ${pad - 12}px`,
+      display: 'flex', flexDirection: 'column', fontFamily: "'Sarabun', sans-serif", position: 'relative', overflow: 'hidden',
+    }}>
+      {children}
+      {footer}
+      {/* footer แบรนด์ + ที่ปรึกษา (ทุกสไลด์ ยกเว้นหน้าปก) */}
+      {!noFooter && (
+        <div style={{ position: 'absolute', left: 56, right: 56, bottom: 9, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: `1px solid ${HAIR}`, paddingTop: 5, fontSize: 9.5, color: MUTED, letterSpacing: '0.01em' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 800, letterSpacing: '0.22em', color: INK }}>
+            <span style={{ width: 5, height: 5, borderRadius: 999, background: CY }} />WEALTHPRO
+          </span>
+          <span style={{ fontWeight: 500 }}>{[advisorName, advisorPhone].filter(Boolean).join('  ·  ')}</span>
+        </div>
+      )}
+      {slideId && <OverlayLayer slideId={slideId} />}
+    </div>
+  )
+}
+
+/* ══════════════════════════ OverlayLayer + ElementBox ══════════════════════════ */
+function OverlayLayer({ slideId }: { slideId: string }) {
+  const { editMode, snap, overlays, setEls } = useContext(SlideEditor)
+  const [sel, setSel] = useState<string | null>(null)
+  const [editing, setEditing] = useState<string | null>(null)
+  const boxRef = useRef<HTMLDivElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const els = overlays[slideId] ?? []
+  // NOTE: hooks ทั้งหมดต้องอยู่เหนือ early-return นี้ (กัน "rendered more hooks")
+  if (els.length === 0 && !editMode) return null
+
+  const rect = () => boxRef.current?.getBoundingClientRect()
+  const snapv = (v: number) => snap ? Math.round(v / SNAP) * SNAP : v
+  const update = (id: string, patch: any) => setEls(slideId, els.map(e => e.id === id ? { ...e, ...patch } as SlideEl : e))
+  const remove = (id: string) => { setEls(slideId, els.filter(e => e.id !== id)); setSel(null); setEditing(null) }
+  // z-order: สลับลำดับใน array (ลำดับ = ลำดับการวาด)
+  const reorder = (id: string, dir: -1 | 1) => {
+    const i = els.findIndex(e => e.id === id); if (i < 0) return
+    const j = i + dir; if (j < 0 || j >= els.length) return
+    const a = [...els];[a[i], a[j]] = [a[j], a[i]]; setEls(slideId, a)
+  }
+
+  const addText = () => {
+    const id = uid()
+    setEls(slideId, [...els, { id, type: 'text', x: 32, y: 44, w: 36, text: 'ข้อความใหม่', size: 24, color: '#0f2a43', weight: 700, align: 'left' }])
+    setSel(id)
+  }
+  const addImage = async (file?: File) => {
+    if (!file) return
+    try {
+      const { src, w, h } = await downscaleImage(file)
+      const r = rect(); const boxW = r?.width || 1120, boxH = r?.height || 630
+      const wPct = Math.min(40, (w / boxW) * 100)
+      const hPct = wPct * (h / w) * (boxW / boxH)   // รักษาอัตราส่วนภาพในพิกัด %
+      const id = uid()
+      setEls(slideId, [...els, { id, type: 'image', x: 30, y: 28, w: wPct, h: hPct, src }])
+      setSel(id)
+    } catch { /* ignore */ }
+  }
+
+  // ลาก
+  const startDrag = (e: React.MouseEvent, el: SlideEl) => {
+    if (!editMode) return
+    e.stopPropagation(); setSel(el.id)
+    const r = rect(); if (!r) return
+    const sx = e.clientX, sy = e.clientY, ox = el.x, oy = el.y
+    const move = (ev: MouseEvent) => {
+      update(el.id, { x: snapv(Math.max(0, Math.min(98, ox + ((ev.clientX - sx) / r.width) * 100))), y: snapv(Math.max(0, Math.min(98, oy + ((ev.clientY - sy) / r.height) * 100))) })
+    }
+    const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }
+    window.addEventListener('mousemove', move); window.addEventListener('mouseup', up)
+  }
+  // ปรับขนาด (มุมขวาล่าง)
+  const startResize = (e: React.MouseEvent, el: SlideEl) => {
+    e.stopPropagation(); setSel(el.id)
+    const r = rect(); if (!r) return
+    const sx = e.clientX, sy = e.clientY, ow = el.w, oh = (el as any).h ?? 0
+    const move = (ev: MouseEvent) => {
+      const nw = snapv(Math.max(6, Math.min(100, ow + ((ev.clientX - sx) / r.width) * 100)))
+      const patch: any = { w: nw }
+      if (el.type === 'image') patch.h = Math.max(4, oh + ((ev.clientY - sy) / r.height) * 100)
+      update(el.id, patch)
+    }
+    const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }
+    window.addEventListener('mousemove', move); window.addEventListener('mouseup', up)
+  }
+
+  const addBtn: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 7, border: 'none', background: 'rgba(15,42,67,0.86)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }
+
+  return (
+    <div ref={boxRef} className={editMode ? '' : 'pd-overlay-static'} onMouseDown={() => { setSel(null); setEditing(null) }}
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 20 }}>
+      {editMode && snap && (
+        <div className="no-print" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', backgroundImage: `linear-gradient(rgba(2,132,199,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(2,132,199,0.07) 1px, transparent 1px)`, backgroundSize: `${SNAP}% ${SNAP}%` }} />
+      )}
+      {editMode && (
+        <div className="no-print" onMouseDown={e => e.stopPropagation()} style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6, pointerEvents: 'auto', zIndex: 40 }}>
+          <button style={addBtn} onClick={addText}><TypeIcon size={13} /> ข้อความ</button>
+          <button style={addBtn} onClick={() => fileRef.current?.click()}><ImagePlus size={13} /> รูปภาพ</button>
+          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { addImage(e.target.files?.[0]); e.target.value = '' }} />
+        </div>
+      )}
+      {els.map(el => {
+        const selected = editMode && sel === el.id
+        const common: React.CSSProperties = {
+          position: 'absolute', left: `${el.x}%`, top: `${el.y}%`, width: `${el.w}%`,
+          pointerEvents: editMode ? 'auto' : 'none', cursor: editMode ? 'move' : 'default',
+          outline: selected ? `2px solid ${CY}` : editMode ? '1px dashed rgba(2,132,199,0.4)' : 'none', outlineOffset: 2,
+        }
+        const isEditing = editMode && editing === el.id
+        return (
+          <div key={el.id} style={common} onMouseDown={e => { if (!isEditing) startDrag(e, el) }}
+            onDoubleClick={e => { if (el.type === 'text') { e.stopPropagation(); setSel(el.id); setEditing(el.id) } }}>
+            {el.type === 'text' ? (
+              isEditing ? (
+                <textarea value={el.text} onChange={e => update(el.id, { text: e.target.value })} onMouseDown={e => e.stopPropagation()} onBlur={() => setEditing(null)} onDragStart={e => e.preventDefault()} autoFocus
+                  rows={Math.max(1, el.text.split('\n').length)} style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(2,132,199,0.06)', border: 'none', resize: 'none', outline: 'none', overflow: 'hidden',
+                    fontFamily: 'inherit', fontSize: el.size, fontWeight: el.weight, color: el.color, textAlign: el.align, lineHeight: 1.3, cursor: 'text' }} />
+              ) : (
+                <div style={{ fontSize: el.size, fontWeight: el.weight, color: el.color, textAlign: el.align, lineHeight: 1.3, whiteSpace: 'pre-wrap' }}>{el.text || ' '}</div>
+              )
+            ) : (
+              <img src={el.src} alt="" draggable={false} style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 4, userSelect: 'none', transform: el.rot ? `rotate(${el.rot}deg)` : undefined }} />
+            )}
+            {selected && (
+              <>
+                {/* handle ย้าย */}
+                <div onMouseDown={e => { e.stopPropagation(); setEditing(null); startDrag(e, el) }} title="ลากเพื่อย้าย"
+                  style={{ position: 'absolute', left: -9, top: -9, width: 18, height: 18, borderRadius: 999, background: CY, border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'move' }}>
+                  <GripVertical size={11} color="#fff" />
+                </div>
+                {/* handle ปรับขนาด */}
+                <div onMouseDown={e => { e.stopPropagation(); startResize(e, el) }}
+                  style={{ position: 'absolute', right: -7, bottom: -7, width: 14, height: 14, borderRadius: 3, background: CY, border: '2px solid #fff', cursor: 'nwse-resize' }} />
+                <ElementToolbar el={el} onChange={p => update(el.id, p)} onRemove={() => remove(el.id)} onReorder={dir => reorder(el.id, dir)} />
+              </>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function ElementToolbar({ el, onChange, onRemove, onReorder }: { el: SlideEl; onChange: (p: any) => void; onRemove: () => void; onReorder: (dir: -1 | 1) => void }) {
+  const btn: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--card-bg)', color: 'var(--text-secondary)', cursor: 'pointer' }
+  const sep = <span style={{ width: 1, background: 'var(--card-border)', margin: '2px 2px' }} />
+  return (
+    <div className="no-print" onMouseDown={e => e.stopPropagation()}
+      style={{ position: 'absolute', left: 0, top: -40, display: 'flex', gap: 4, background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 9, padding: 4, boxShadow: 'var(--shadow)', zIndex: 30, whiteSpace: 'nowrap' }}>
+      {el.type === 'text' && (
+        <>
+          <button style={btn} title="เล็กลง" onClick={() => onChange({ size: Math.max(9, el.size - 2) })}>−</button>
+          <span style={{ display: 'flex', alignItems: 'center', minWidth: 26, justifyContent: 'center', fontSize: 12, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{el.size}</span>
+          <button style={btn} title="ใหญ่ขึ้น" onClick={() => onChange({ size: Math.min(96, el.size + 2) })}>+</button>
+          <button style={{ ...btn, color: el.weight >= 700 ? 'var(--cyan)' : 'var(--text-secondary)' }} title="ตัวหนา" onClick={() => onChange({ weight: el.weight >= 700 ? 400 : 800 })}><Bold size={14} /></button>
+          {([['left', AlignLeft], ['center', AlignCenter], ['right', AlignRight]] as const).map(([a, Ic]) => (
+            <button key={a} style={{ ...btn, color: el.align === a ? 'var(--cyan)' : 'var(--text-secondary)' }} onClick={() => onChange({ align: a })}><Ic size={14} /></button>
+          ))}
+          <input type="color" value={el.color} onChange={e => onChange({ color: e.target.value })} title="สี" style={{ width: 26, height: 26, padding: 0, border: '1px solid var(--card-border)', borderRadius: 6, background: 'none', cursor: 'pointer' }} />
+        </>
+      )}
+      {el.type === 'image' && (
+        <>
+          <button style={btn} title="หมุนซ้าย" onClick={() => onChange({ rot: ((el.rot ?? 0) - 90) })}><RotateCcw size={14} /></button>
+          <button style={btn} title="หมุนขวา" onClick={() => onChange({ rot: ((el.rot ?? 0) + 90) })}><RotateCw size={14} /></button>
+        </>
+      )}
+      {sep}
+      <button style={btn} title="ขึ้นหน้า (นำมาไว้ข้างหน้า)" onClick={() => onReorder(1)}><BringToFront size={14} /></button>
+      <button style={btn} title="ลงหลัง (ส่งไว้ข้างหลัง)" onClick={() => onReorder(-1)}><SendToBack size={14} /></button>
+      {sep}
+      <button style={{ ...btn, color: '#f43f5e' }} title="ลบ" onClick={onRemove}><Trash2 size={14} /></button>
+    </div>
+  )
+}
+
+function SlideHead({ icon: Icon, kicker, title, accent = CY }: { icon: any; kicker: string; title: string; accent?: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'stretch', gap: 15, marginBottom: 18, flexShrink: 0 }}>
+      {/* แถบ accent แนวตั้ง (editorial) */}
+      <div style={{ width: 3, borderRadius: 3, background: accent, flexShrink: 0 }} />
+      <div style={{ paddingTop: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <Icon size={15} style={{ color: accent }} />
+          <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.22em', color: accent, textTransform: 'uppercase' }}>{kicker}</span>
+        </div>
+        <h2 style={{ fontSize: 27, fontWeight: 800, color: INK, margin: '3px 0 0', lineHeight: 1.1, letterSpacing: '-0.015em' }}>{title}</h2>
+      </div>
+    </div>
+  )
+}
+
+function Stat({ label, value, sub, color = INK }: { label: string; value: string; sub?: string; color?: string }) {
+  return (
+    <div style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '13px 16px', flex: 1, minWidth: 0, position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', left: 0, top: 12, bottom: 12, width: 2.5, borderRadius: 2, background: color, opacity: 0.9 }} />
+      <div style={{ fontSize: 12, color: SUB, marginBottom: 5, fontWeight: 500, letterSpacing: '0.01em', paddingLeft: 8 }}>{label}</div>
+      <div style={{ fontSize: 23, fontWeight: 800, color, fontFamily: 'monospace', lineHeight: 1.05, letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums', paddingLeft: 8 }}>{value}</div>
+      {sub && <div style={{ fontSize: 11.5, color: MUTED, marginTop: 3, paddingLeft: 8 }}>{sub}</div>}
+    </div>
+  )
+}
+
+/* หัวคอลัมน์รายคน */
+function PersonHead({ name, tint = CY }: { name: string; tint?: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12, paddingBottom: 9, borderBottom: `1px solid ${HAIR}` }}>
+      <span style={{ width: 28, height: 28, borderRadius: 999, background: `${tint}16`, color: tint, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0, boxShadow: `inset 0 0 0 1px ${tint}33` }}>{name.replace(/^คุณ/, '').charAt(0)}</span>
+      <span style={{ fontSize: 16, fontWeight: 800, color: INK, letterSpacing: '-0.01em' }}>{name}</span>
+    </div>
+  )
+}
+
+function FamilyRow({ label, value, color = INK }: { label: string; value: string; color?: string }) {
+  return (
+    <div style={{ display: 'flex', gap: 8, lineHeight: 1.45 }}>
+      <span style={{ color: SUB, flexShrink: 0, minWidth: 62 }}>{label}:</span>
+      <span style={{ color, fontWeight: 600 }}>{value}</span>
+    </div>
+  )
+}
+
+function GoalTable({ title, rows, totalColor }: { title: string; rows: { name: string; when: string; amount: number; cat: string }[]; totalColor: string }) {
+  const total = rows.reduce((s, g) => s + g.amount, 0)
+  const catColor: Record<string, string> = { retire: CY, edu: AM, ins: VI, manual: GR }
+  return (
+    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+      <thead>
+        <tr style={{ borderBottom: `2px solid ${LINE}` }}>
+          <th style={{ textAlign: 'left', padding: '7px 6px', color: INK, fontWeight: 800, fontSize: 15 }}>{title}</th>
+          <th style={{ textAlign: 'left', padding: '7px 6px', color: SUB, fontWeight: 700, width: 220 }}>ระยะเวลาที่ต้องการ</th>
+          <th style={{ textAlign: 'right', padding: '7px 6px', color: SUB, fontWeight: 700, width: 180 }}>จำนวนเงิน (บาท)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((g, i) => (
+          <tr key={i} style={{ borderBottom: `1px solid ${LINE}` }}>
+            <td style={{ padding: '8px 6px', color: INK }}><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 999, background: catColor[g.cat] ?? GR, marginRight: 8 }} />{g.name}</td>
+            <td style={{ padding: '8px 6px', color: SUB }}>{g.when}</td>
+            <td style={{ padding: '8px 6px', textAlign: 'right', fontFamily: 'monospace', color: INK, fontWeight: 700 }}>{fmt(g.amount)}</td>
+          </tr>
+        ))}
+      </tbody>
+      <tfoot>
+        <tr style={{ borderTop: `2px solid ${LINE}` }}>
+          <td colSpan={2} style={{ padding: '9px 6px', fontWeight: 800, color: INK }}>รวม</td>
+          <td style={{ padding: '9px 6px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: totalColor }}>{fmt(total)}</td>
+        </tr>
+      </tfoot>
+    </table>
+  )
+}
+
+function TwoCol({ children, grow = false }: { children: React.ReactNode; grow?: boolean }) {
+  return <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 22, alignItems: 'start', ...(grow ? { flex: 1, minHeight: 0 } : {}) }}>{children}</div>
+}
+
+/* กล่องคำแนะนำของที่ปรึกษา + ปุ่มแก้ไข/ซ่อน */
+function AdvisorComment({ slideKey, label, comment, hidden, onEdit, onToggleHide }: {
+  slideKey: string; label: string; comment?: string; hidden?: boolean
+  onEdit: (k: string) => void; onToggleHide: (k: string) => void
+}) {
+  if (hidden) return (
+    <div className="no-print" style={{ marginTop: 16, paddingTop: 10, flexShrink: 0 }}>
+      <button onClick={() => onToggleHide(slideKey)}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', background: 'none', border: `1px dashed ${MUTED}`, borderRadius: 999, color: MUTED, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+        <Plus size={12} /> แสดงคำแนะนำที่ปรึกษา
+      </button>
+    </div>
+  )
+  return (
+    <div style={{ marginTop: 16, paddingTop: 12, flexShrink: 0, borderTop: `1px solid ${HAIR}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, fontWeight: 800, letterSpacing: '0.16em', color: SUB, textTransform: 'uppercase' }}><span style={{ width: 12, height: 2, borderRadius: 2, background: CY }} />คำแนะนำของที่ปรึกษา</div>
+        <div className="no-print" style={{ display: 'flex', gap: 6 }}>
+          <button onClick={() => onEdit(slideKey)}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', background: '#eff6ff', border: `1px solid ${CY}`, borderRadius: 999, color: CY, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+            <Pencil size={12} /> {comment ? 'แก้ไข' : 'เขียน'}
+          </button>
+          <button onClick={() => onToggleHide(slideKey)} title="ซ่อนคำแนะนำหน้านี้"
+            style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', background: 'none', border: `1px solid ${LINE}`, borderRadius: 999, color: MUTED, cursor: 'pointer' }}>
+            <EyeOff size={13} />
+          </button>
+        </div>
+      </div>
+      <div style={{ fontSize: 13.5, color: comment ? INK : MUTED, lineHeight: 1.55, whiteSpace: 'pre-wrap', minHeight: 62, background: PAPER, border: `1px solid ${LINE}`, borderLeft: `3px solid ${comment ? CY : LINE}`, borderRadius: 10, padding: '9px 14px', transition: 'border-color .15s' }}>
+        {comment || `บันทึกคำแนะนำสำหรับ${label}...`}
+      </div>
+    </div>
+  )
+}
+
+function CommentDialog({ title, value, onSave, onClose }: { title: string; value: string; onSave: (v: string) => void; onClose: () => void }) {
+  const [text, setText] = useState(value)
+  const [pos, setPos] = useState({ x: 0, y: 0 })
+  const drag = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null)
+  const onDragStart = (e: React.MouseEvent) => {
+    drag.current = { sx: e.clientX, sy: e.clientY, ox: pos.x, oy: pos.y }
+    const move = (ev: MouseEvent) => { if (!drag.current) return; setPos({ x: drag.current.ox + (ev.clientX - drag.current.sx), y: drag.current.oy + (ev.clientY - drag.current.sy) }) }
+    const up = () => { drag.current = null; window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }
+    window.addEventListener('mousemove', move); window.addEventListener('mouseup', up)
+  }
+  return (
+    <div className="no-print" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', gap: 12, transform: `translate(${pos.x}px, ${pos.y}px)`, boxShadow: 'var(--shadow)' }}>
+        <div onMouseDown={onDragStart} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'move', userSelect: 'none' }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><GripVertical size={16} style={{ color: 'var(--text-muted)' }} />คำแนะนำ · {title}</h3>
+          <button onClick={onClose} onMouseDown={e => e.stopPropagation()} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
+        </div>
+        <textarea value={text} onChange={e => setText(e.target.value)} autoFocus rows={7}
+          placeholder="เขียนคำแนะนำ/ข้อสังเกตของแผนด้านนี้..."
+          style={{ width: '100%', boxSizing: 'border-box', padding: '11px 13px', background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 9, color: 'var(--text-primary)', fontSize: 14, lineHeight: 1.6, outline: 'none', resize: 'vertical', fontFamily: 'inherit' }} />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button onClick={onClose} style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--card-border)', borderRadius: 9, color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>ยกเลิก</button>
+          <button onClick={() => { onSave(text); onClose() }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 20px', background: 'var(--cyan)', border: 'none', borderRadius: 9, color: '#00201d', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            <Check size={15} /> บันทึก
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* เกจครึ่งวงกลม (Health Score) */
+function HealthGauge({ score, label, size = 200 }: { score: number; label: string; size?: number }) {
+  const p = Math.max(0, Math.min(100, score)) / 100
+  const r = 90, cx = 110, cy = 110
+  const a0 = Math.PI, a1 = Math.PI * (1 - p)
+  const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0)
+  const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1)
+  const large = p > 0.5 ? 1 : 0
+  const col = score >= 75 ? GR : score >= 50 ? CY : score >= 30 ? AM : RD
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <svg width={size} height={size * 0.62} viewBox="0 0 220 130">
+        <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`} fill="none" stroke="#eef2f6" strokeWidth={18} strokeLinecap="round" />
+        <path d={`M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}`} fill="none" stroke={col} strokeWidth={18} strokeLinecap="round" />
+        <text x={cx} y={cy - 8} textAnchor="middle" fontSize={40} fontWeight={800} fill={col} fontFamily="monospace">{Math.round(score)}</text>
+        <text x={cx} y={cy + 14} textAnchor="middle" fontSize={13} fill={SUB}>/ 100</text>
+      </svg>
+      <div style={{ fontSize: 15, fontWeight: 800, color: col, marginTop: -4 }}>{label}</div>
+    </div>
+  )
+}
+
+function GoalBar({ rows, height = 210 }: { rows: { name: string; needed: number; have: number }[]; height?: number }) {
+  if (rows.length === 0) return <Empty text="ยังไม่มีข้อมูลเพียงพอ" />
+  return (
+    <div style={{ height }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={rows.map(r => ({ name: r.name, 'ต้องการ': Math.round(r.needed), 'มีอยู่': Math.round(r.have) }))} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={HAIR} vertical={false} />
+          <XAxis dataKey="name" tick={{ fontSize: 12, fill: SUB }} axisLine={{ stroke: LINE }} tickLine={false} />
+          <YAxis tickFormatter={v => fmtM(v)} tick={{ fontSize: 11, fill: MUTED }} width={44} axisLine={false} tickLine={false} />
+          <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Bar dataKey="ต้องการ" fill="#f59e0b" radius={[5, 5, 0, 0]} maxBarSize={90} />
+          <Bar dataKey="มีอยู่" fill="#10b981" radius={[5, 5, 0, 0]} maxBarSize={90} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
+function ReadyPill({ pct: p }: { pct: number }) {
+  const col = p >= 100 ? GR : p >= 60 ? CY : p >= 30 ? AM : RD
+  return <span style={{ fontSize: 13, fontWeight: 800, color: col, background: `${col}14`, border: `1px solid ${col}55`, borderRadius: 999, padding: '3px 12px' }}>ความพร้อม {p}%</span>
+}
+
+function Empty({ text }: { text: string }) {
+  return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 14, textAlign: 'center', padding: 20 }}>{text}</div>
+}
+
+/* พาย + legend (light) */
+function MiniPie({ data, height = 190 }: { data: { name: string; value: number }[]; height?: number }) {
+  const total = data.reduce((s, d) => s + d.value, 0)
+  if (total <= 0) return <Empty text="ไม่มีข้อมูล" />
+  return (
+    <div>
+      <div style={{ height }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={44} outerRadius={74} paddingAngle={1.5} stroke="#fff" strokeWidth={2} label={(e: any) => `${(e.percent * 100).toFixed(0)}%`} labelLine={false}>
+              {data.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+            </Pie>
+            <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', justifyContent: 'center', marginTop: 4 }}>
+        {data.map((d, i) => (
+          <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: SUB }}>
+            <span style={{ width: 9, height: 9, borderRadius: 2, background: PIE_COLORS[i % PIE_COLORS.length] }} />{d.name} <b style={{ color: INK }}>{pct(d.value, total)}%</b>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ══════════════════════════ Deck ══════════════════════════ */
+
+export default function PresentationDeck({ title, pres, onComment, onToggleHide,
+  editMode, overlays, onOverlayChange, customSlides, thankYouPhoto, onThankYouPhoto, onAddSlide, onDelSlide, onMoveSlide }: {
+  title: string
+  pres: Record<string, { comment?: string; hidden?: boolean }>
+  onComment: (key: string, text: string) => void
+  onToggleHide: (key: string) => void
+  editMode: boolean
+  overlays: Record<string, SlideEl[]>
+  onOverlayChange: (slideId: string, els: SlideEl[]) => void
+  customSlides: CustomSlide[]
+  thankYouPhoto?: string
+  onThankYouPhoto?: (src: string) => void
+  onAddSlide: () => void
+  onDelSlide: (id: string) => void
+  onMoveSlide: (id: string, dir: -1 | 1) => void
+}) {
+  const thankPhotoRef = useRef<HTMLInputElement>(null)
+  const [invPerson, setInvPerson] = useState<Person>('self')
+  const [dialog, setDialog] = useState<{ key: string; title: string } | null>(null)
+  const [snap, setSnap] = useState(true)
+
+  const { data: client } = useQuery({ queryKey: ['client-profile'], queryFn: () => api.get('/client-profile').then(r => r.data), retry: false })
+  const { data: advisor } = useQuery({ queryKey: ['advisor-profile'], queryFn: () => api.get('/advisor-profile').then(r => r.data), retry: false })
+  const { data: rSelf } = useQuery({ queryKey: ['financial-ratios', 'client'], queryFn: () => api.get('/financial-ratios', { params: { person: 'client' } }).then(r => r.data), retry: false })
+  const { data: rSpouse } = useQuery({ queryKey: ['financial-ratios', 'spouse'], queryFn: () => api.get('/financial-ratios', { params: { person: 'spouse' } }).then(r => r.data), retry: false })
+  const { data: invProfile } = useQuery({ queryKey: ['investment-profile'], queryFn: () => api.get('/investment-profile').then(r => r.data), retry: false })
+  const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: () => api.get('/profile').then(r => r.data), retry: false })
+  const { data: estatePlan } = useQuery({ queryKey: ['estate-plan'], queryFn: () => api.get('/estate-plan').then(r => r.data), retry: false })
+  const { data: actionItems = [] } = useQuery<any[]>({ queryKey: ['action-items'], queryFn: () => api.get('/action-items').then(r => Array.isArray(r.data) ? r.data : (r.data?.items ?? [])), retry: false })
+  const { data: expenses = [] } = useQuery<any[]>({ queryKey: ['expenses'], queryFn: () => api.get('/expenses').then(r => r.data), retry: false })
+  const { data: taxPlan } = useQuery({ queryKey: ['tax-plan'], queryFn: () => api.get('/tax-plan').then(r => r.data), retry: false })
+  const { data: retPlan } = useQuery({ queryKey: ['retirement-plan'], queryFn: () => api.get('/retirement-plan').then(r => r.data), retry: false })
+  const { data: eduPlan } = useQuery<any[]>({ queryKey: ['education-plan'], queryFn: () => api.get('/education-plan').then(r => r.data), retry: false })
+
+  const retSelf = useRetirementReadiness('client')
+  const retSpouse = useRetirementReadiness('spouse')
+  const insSelf = useInsuranceReadiness('client')
+  const insSpouse = useInsuranceReadiness('spouse')
+  const covSelf = useInsuranceCoverage('self')
+  const covSpouse = useInsuranceCoverage('spouse')
+  const edu = useEducationReadiness()
+
+  // ── แผนปฏิบัติการ: แบ่งหน้าอัตโนมัติ (เว้นที่ให้คอมเมนต์) ──
+  const PER_PAGE_ACTION = 10
+  const actionPages = useMemo(() => {
+    const its = Array.isArray(actionItems) ? actionItems : []   // กันกรณี query คืนค่าที่ไม่ใช่ array
+    if (its.length === 0) return [[]] as any[][]
+    const out: any[][] = []
+    for (let i = 0; i < its.length; i += PER_PAGE_ACTION) out.push(its.slice(i, i + PER_PAGE_ACTION))
+    return out
+  }, [actionItems])
+  const actionIds = actionPages.map((_, k) => (k === 0 ? 'action' : `action-${k + 1}`))
+
+  // ── แผนดำเนินการ (sub-plan) ต่อด้าน → สไลด์ละรายการที่มี sub-plan ──
+  const subPlanSlides = useMemo(() => {
+    const its = Array.isArray(actionItems) ? actionItems : []
+    return its.map((a: any) => {
+      const cols = SUBPLAN_COLS[a.category]
+      if (!cols) return null
+      const rows = (Array.isArray(a.subPlan) ? a.subPlan : []).filter((r: any) => cols.some(c => { const v = r?.[c.key]; return v != null && String(v).trim() !== '' }))
+      if (rows.length === 0) return null
+      return { id: `subplan-${a.id}`, title: a.title as string, category: a.category as string, cols, rows }
+    }).filter(Boolean) as { id: string; title: string; category: string; cols: typeof SUBPLAN_COLS[string]; rows: any[] }[]
+  }, [actionItems])
+
+  // ── ไทม์ไลน์แผนดำเนินการ: รวมทุก sub-plan ที่มี "กำหนดการ" เรียงตามวันที่ ──
+  const timelineItems = useMemo(() => {
+    const its = Array.isArray(actionItems) ? actionItems : []
+    const out: { date: Date; title: string; desc: string; amount: number; category: string; accent: string }[] = []
+    its.forEach((a: any) => {
+      if (!SUBPLAN_COLS[a.category]) return
+      const rows = Array.isArray(a.subPlan) ? a.subPlan : []
+      rows.forEach((r: any) => {
+        if (!r?.schedule) return
+        const d = new Date(r.schedule); if (isNaN(d.getTime())) return
+        out.push({
+          date: d, title: a.title,
+          desc: r.desc || r.method || r.who || '',
+          amount: toNum(r.amount ?? r.premium ?? r.sumInsured ?? 0),
+          category: a.category, accent: SUBPLAN_ACCENT[a.category] ?? GR,
+        })
+      })
+    })
+    out.sort((x, y) => x.date.getTime() - y.date.getTime())
+    return out
+  }, [actionItems])
+
+  const clientFull = [client?.firstName, client?.lastName].filter(Boolean).join(' ') || 'ลูกค้า'
+  const spouseFull = [client?.spouseProfile?.firstName, client?.spouseProfile?.lastName].filter(Boolean).join(' ')
+  const selfName = `คุณ${client?.firstName || clientFull}`
+  const spouseName = client?.spouseProfile?.firstName ? `คุณ${client.spouseProfile.firstName}` : 'คู่สมรส'
+  const hasSpouse = !!client?.spouseProfile?.firstName || !!spouseFull
+  const today = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+  const selfAge = client?.birthDate ? new Date().getFullYear() - new Date(client.birthDate).getFullYear() : null
+
+  // สรุปสุขภาพจาก healthInfo (smoke/alcohol + โรคประจำตัว/ร้ายแรง)
+  const healthSummary = (hi: any): string => {
+    if (!hi) return ''
+    const cond: string[] = []
+    if (hi.chronic?.has) cond.push(`โรคประจำตัว${hi.chronic.detail ? ': ' + hi.chronic.detail : ''}`)
+    if (hi.severeIllness?.has) cond.push(`โรคร้ายแรง${hi.severeIllness.detail ? ': ' + hi.severeIllness.detail : ''}`)
+    const base = cond.length ? cond.join(' · ') : 'สุขภาพแข็งแรง ไม่มีโรคประจำตัว'
+    return [base, [hi.smoke, hi.alcohol].filter(Boolean).join(' · ')].filter(Boolean).join(' · ')
+  }
+  // รายได้ทุกประเภทจาก incomeSources: amount = รายเดือน ยกเว้น "โบนัส" = รายปี (หลายแถวได้: เงินเดือนหลัก/ที่ปรึกษา/ลงทุน/ค่าเช่า/ปันผล ฯลฯ)
+  const incomeList = (sources: any, fallbackSalary = 0): { label: string; amount: number; yearly: number; isBonus: boolean }[] => {
+    const arr = (Array.isArray(sources) ? sources : []).map((r: any) => {
+      const amt = toNum(r?.amount)
+      const isBonus = (r?.label || '').includes('โบนัส')
+      const label = r?.source ? `${r.label} · ${r.source}` : (r?.label || 'รายได้')
+      return { label, amount: amt, yearly: isBonus ? amt : amt * 12, isBonus }
+    }).filter((r: any) => r.amount > 0)
+    if (arr.length === 0 && fallbackSalary > 0) arr.push({ label: 'เงินเดือน', amount: fallbackSalary, yearly: fallbackSalary * 12, isBonus: false })
+    return arr
+  }
+  const hobbyOf = (hi: any): string => hi?.hobby?.has ? (hi.hobby.detail?.trim() || 'มี') : ''
+  const familyCards = [
+    { name: selfName, age: selfAge, status: client?.maritalStatus, occ: client?.occupation || client?.jobTitle, incomes: incomeList(client?.incomeSources, toNum(client?.salary)), health: healthSummary(client?.healthInfo), hobby: hobbyOf(client?.healthInfo), tint: CY },
+    ...(hasSpouse ? [{ name: spouseName, age: client?.spouseAge, status: client?.maritalStatus, occ: client?.spouseProfile?.occupation || client?.spouseOccupation || client?.spouseProfile?.jobTitle, incomes: incomeList(client?.spouseIncomeSources, toNum(client?.spouseJobs?.[0]?.salary) || toNum(client?.spouseIncome)), health: healthSummary(client?.spouseProfile?.healthInfo), hobby: hobbyOf(client?.spouseProfile?.healthInfo), tint: VI }] : []),
+  ].map(p => ({ ...p, totalYear: p.incomes.reduce((s, r) => s + r.yearly, 0) }))
+
+  // บิดา/มารดา (ผู้อยู่ในอุปการะ) จาก parentsInfo + fatherAge/motherAge ของแต่ละคน
+  const parentHealth = (h: string | undefined, ch: any) => [h, ch?.has ? `โรคประจำตัว${ch.detail ? ': ' + ch.detail : ''}` : ''].filter(Boolean).join(' · ')
+  const mkParents = (src: any, owner: string) => {
+    const pi = src?.parentsInfo || {}
+    return [
+      { rel: 'บิดา', name: pi.fatherName, age: src?.fatherAge, health: parentHealth(pi.fatherHealth, pi.fatherChronic), owner },
+      { rel: 'มารดา', name: pi.motherName, age: src?.motherAge, health: parentHealth(pi.motherHealth, pi.motherChronic), owner },
+    ].filter(p => toNum(p.age) > 0 || (p.name && p.name.trim()))
+  }
+  const dependents = [
+    ...mkParents(client, selfName),
+    ...(hasSpouse ? mkParents(client?.spouseProfile, spouseName) : []),
+  ]
+  const careExpense = toNum(client?.parentCareExpense) + (hasSpouse ? toNum(client?.spouseProfile?.parentCareExpense) : 0)
+
+  // รายการ person สำหรับ layout คู่กัน
+  const people = [
+    { key: 'self' as Person, name: selfName, ratios: rSelf, ret: retSelf, ins: insSelf, cov: covSelf, tint: CY },
+    ...(hasSpouse ? [{ key: 'spouse' as Person, name: spouseName, ratios: rSpouse, ret: retSpouse, ins: insSpouse, cov: covSpouse, tint: VI }] : []),
+  ]
+
+  // สัดส่วนสินทรัพย์ลงทุน (สำหรับสไลด์ลงทุน — ตาม invPerson)
+  const allocation = useMemo(() => {
+    const assets: any[] = invProfile?.investmentAssets ?? []
+    const groups: Record<string, number> = {}
+    assets.forEach(a => { const v = toNum(a.currentValue); if (v > 0) groups[a.assetClass || 'อื่นๆ'] = (groups[a.assetClass || 'อื่นๆ'] || 0) + v })
+    return Object.entries(groups).map(([name, value]) => ({ name, value }))
+  }, [invProfile])
+
+  const mc = useMemo(() => {
+    const isSelf = invPerson === 'self'
+    const key = isSelf ? 'self' : 'spouse'
+    const currentAge = isSelf ? selfAge : (client?.spouseAge ?? null)
+    // อายุขัย/อายุเกษียณ = ตามสมมุติฐานแผนเกษียณเป็นหลัก → settings → ค่าเริ่มต้น
+    const expectedLifespan = retPlan?.[key]?.lifeExpectancy ?? (isSelf ? profile?.lifeExpectancySelf : profile?.lifeExpectancySpouse) ?? 85
+    const retirementAge = retPlan?.[key]?.retirementAge ?? (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? 60
+    const assets: any[] = invProfile?.investmentAssets ?? []
+    const assetReturn = (a: any): number | null => {
+      let r = annualizedReturn(toNum(a.investAmount), toNum(a.currentValue), a.investDate)
+      if (r === null) { const m = parseFloat(a.annualReturn); if (!isNaN(m)) r = m }
+      return r
+    }
+    const totalValue = assets.reduce((s, a) => s + toNum(a.currentValue), 0)
+    let wr = 0, cv = 0
+    assets.forEach(a => { const v = toNum(a.currentValue), r = assetReturn(a); if (r !== null && v > 0) { cv += v; wr += r * v } })
+    const portfolioReturn = cv > 0 ? wr / cv : null
+    const riskSrc = isSelf ? profile : profile?.spouseRisk
+    const riskLabel = String(riskSrc?.riskLabel ?? riskSrc?.riskLevel ?? '')
+    const tier: 'low' | 'mid' | 'high' = /สูง/.test(riskLabel) ? 'high' : /กลาง|ปานกลาง/.test(riskLabel) ? 'mid' : /ต่ำ/.test(riskLabel) ? 'low' : ((portfolioReturn ?? 0) >= 8 ? 'high' : (portfolioReturn ?? 0) >= 4 ? 'mid' : 'low')
+    const sigma = { low: 6, mid: 11, high: 16 }[tier]
+    if (currentAge === null || portfolioReturn === null || totalValue <= 0) return { rows: [] as any[], retirementAge, currentAge, expectedLifespan }
+    const mu = portfolioReturn / 100, sd = sigma / 100, years = expectedLifespan - currentAge
+    const rng = mulberry32((Math.round(totalValue) ^ (Math.round(portfolioReturn * 100) << 3) ^ (sigma << 1) ^ 0x9e3779b9) >>> 0)
+    const byYear: number[][] = Array.from({ length: years + 1 }, () => [])
+    for (let p = 0; p < 1000; p++) {
+      let v = totalValue; byYear[0].push(v)
+      for (let y = 1; y <= years; y++) {
+        let u1 = rng(); if (u1 < 1e-12) u1 = 1e-12
+        const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * rng())
+        v *= Math.exp((mu - (sd * sd) / 2) + sd * z); byYear[y].push(v)
+      }
+    }
+    const rows = byYear.map((arr, y) => {
+      const srt = arr.slice().sort((a, b) => a - b)
+      return { age: currentAge + y, p10: percentile(srt, 0.10), p50: percentile(srt, 0.50), p90: percentile(srt, 0.90), band: [percentile(srt, 0.10), percentile(srt, 0.90)] as [number, number] }
+    })
+    return { rows, retirementAge, currentAge, expectedLifespan }
+  }, [invPerson, client, profile, invProfile, selfAge, retPlan])
+
+  const portfolioTotal = allocation.reduce((s, a) => s + a.value, 0)
+
+  // โครงสร้างกระแสเงินสด/ภาษี ต่อคน
+  const expAnnual = (prefix: string, pkey: Person, exclude?: string) => {
+    const ek = pkey === 'self' ? 'client' : 'spouse'
+    return (expenses ?? []).filter(e => String(e.category).startsWith(prefix) && e.category !== exclude && (e.person === ek || e.person === 'shared'))
+      .reduce((s, e) => { const m = toMonthly(toNum(e.amount), e.frequency) * 12; return s + (e.person === 'shared' ? m / 2 : m) }, 0)
+  }
+  const taxOf = (pkey: Person): number => {
+    const st = taxPlan?.[pkey]
+    if (!st) return 0
+    try { return calc({ ...defaultState(), ...(st as TaxState) }).tax } catch { return 0 }
+  }
+
+  // ── มรดก (ลูกค้าหลัก) ──
+  const estate = useMemo(() => {
+    const inputs: any = estatePlan?.self ?? {}
+    const netWorth = toNum(rSelf?.summary?.netWorth)
+    const married = /สมรส/.test(String(client?.maritalStatus ?? '')) || hasSpouse
+    const spouseIsHeir = !!inputs.spouseAlive && married
+    const spouseHalf = spouseIsHeir ? netWorth * (toNum(inputs.maritalAssetPct ?? 100) / 100) / 2 : 0
+    const estateVal = Math.max(0, netWorth - spouseHalf)
+    const children: any[] = client?.children ?? []
+    const parentsAlive = (inputs.fatherAlive ? 1 : 0) + (inputs.motherAlive ? 1 : 0)
+    const wishes: any[] = inputs.wishes ?? []
+    const wishTotal = wishes.reduce((s, w) => s + (Number(w.pct) || 0), 0)
+    const useWill = !!inputs.hasWill && wishes.length > 0 && wishTotal > 0
+    const THRESH = 100_000_000
+    const heirTax = (share: number, rel: string) => rel === 'spouse' ? 0 : Math.max(0, share - THRESH) * (rel === 'lineal' ? 0.05 : 0.10)
+    let taxHeirs: { name: string; share: number; rel: string }[]
+    if (useWill) {
+      taxHeirs = wishes.filter(w => (Number(w.pct) || 0) > 0).map(w => ({ name: w.name || 'ผู้รับ', share: estateVal * (Number(w.pct) || 0) / 100, rel: w.rel || 'lineal' }))
+    } else {
+      const shares = children.length + (spouseIsHeir ? 1 : 0) + parentsAlive
+      const each = shares > 0 ? estateVal / shares : estateVal
+      taxHeirs = []
+      children.forEach((c, i) => taxHeirs.push({ name: c.name || `บุตรคนที่ ${i + 1}`, share: each, rel: 'lineal' }))
+      if (inputs.fatherAlive) taxHeirs.push({ name: 'บิดา', share: each, rel: 'lineal' })
+      if (inputs.motherAlive) taxHeirs.push({ name: 'มารดา', share: each, rel: 'lineal' })
+      if (spouseIsHeir) taxHeirs.push({ name: spouseName, share: each, rel: 'spouse' })
+    }
+    const totalTax = taxHeirs.reduce((s, h) => s + heirTax(h.share, h.rel), 0)
+    return { estateVal, useWill, taxHeirs, totalTax, hasWill: !!inputs.hasWill, willType: inputs.willType }
+  }, [estatePlan, rSelf, client, hasSpouse, spouseName])
+
+  // มูลค่ากองทุนเกษียณตามอายุ (สะสม→ถอน) ต่อคน จาก projectionRows
+  const retChart = useMemo(() => {
+    const val = (r: any) => Math.round(r.phase === 'accumulation' ? (r.totalAccum ?? 0) : (r.closeBalance ?? 0))
+    const map = new Map<number, any>()
+    const add = (rows: any[] | undefined, key: string) => (rows ?? []).forEach((r: any) => { const o = map.get(r.age) || { age: r.age }; o[key] = val(r); map.set(r.age, o) })
+    add(retSelf?.projectionRows, 'self')
+    if (hasSpouse) add(retSpouse?.projectionRows, 'spouse')
+    return [...map.values()].sort((a, b) => a.age - b.age)
+  }, [retSelf, retSpouse, hasSpouse])
+
+  // กราฟเงินออมสะสมทุนการศึกษา 3 สถาบัน (บุตรคนแรก) — reuse buildEduChart
+  const eduChart = useMemo(() => {
+    const children: any[] = client?.children ?? []
+    if (children.length === 0) return null
+    const c0 = children[0]
+    const age = toNum(c0.age)
+    const setting: ChildSetting = (Array.isArray(eduPlan) && eduPlan[0]) ? eduPlan[0] : { type: 'private', savingYears: 10, includeMaster: false, excludedLevels: [] }
+    const res = buildEduChart({ age, setting, eduCosts: profile?.educationCosts ?? {}, inflationPct: toNum(profile?.educationInflation ?? 5), ratePct: toNum(profile?.educationFundReturn ?? 4), incomeGrowthPct: toNum(client?.salaryIncreaseRate) })
+    return { ...res, childName: c0.name || 'บุตร', childCount: children.length, savingYears: Math.max(1, setting.savingYears) }
+  }, [client, eduPlan, profile])
+
+  // เป้าหมายทางการเงินทั้งหมด: กรอกเอง (financialGoals) + เกษียณ + ทุนการศึกษาบุตร
+  const goalItems = useMemo(() => {
+    const items: { name: string; when: string; amount: number; cat: string }[] = []
+    const bands: ('short' | 'medium' | 'long')[] = ['short', 'medium', 'long']
+    const bandLabel: Record<string, string> = { short: 'ระยะสั้น (≤3 ปี)', medium: 'ระยะกลาง (3–7 ปี)', long: 'ระยะยาว (>7 ปี)' }
+    const pushGoals = (g: any) => bands.forEach(b => (g?.[b] ?? []).forEach((r: any) => {
+      if (!r?.name?.trim()) return
+      const td = r.targetDate ? String(r.targetDate).trim() : ''
+      const when = td ? (/^\d+$/.test(td) ? `ภายใน ${td} ปี` : td) : bandLabel[b]
+      items.push({ name: r.name, when, amount: toNum(r.targetAmount), cat: 'manual' })
+    }))
+    const fg = client?.financialGoals || {}
+    if (fg.self || fg.spouse) { pushGoals(fg.self); pushGoals(fg.spouse) } else pushGoals(fg)
+    // เกษียณ (ต่อคน)
+    people.forEach(p => {
+      if (p.ret && p.ret.needed > 0) {
+        const ra = retPlan?.[p.key]?.retirementAge
+        items.push({ name: `เกษียณอายุ · ${p.name}`, when: ra ? `เมื่ออายุ ${ra} ปี` : 'ตามแผนเกษียณ', amount: p.ret.needed, cat: 'retire' })
+      }
+    })
+    // ทุนการศึกษาบุตร
+    if (edu && edu.totalNominal > 0) items.push({ name: `ทุนการศึกษาบุตร (${edu.childCount} คน)`, when: 'ตามช่วงวัยการศึกษา', amount: edu.totalNominal, cat: 'edu' })
+    // ประกันชีวิต (ทุนที่ควรมี · needs) + ประกันสุขภาพ (ค่ารักษาที่ควรมี) ต่อคน
+    people.forEach(p => {
+      if (p.ins && p.ins.need > 0) items.push({ name: `ทุนประกันชีวิต · ${p.name}`, when: 'คุ้มครองครอบครัว', amount: p.ins.need, cat: 'ins' })
+      const ipd = p.cov?.radarData?.find((d: any) => d.key === 'ipd')?.recommended ?? 0
+      if (ipd > 0) items.push({ name: `ความคุ้มครองสุขภาพ · ${p.name}`, when: 'ค่ารักษาพยาบาล', amount: ipd, cat: 'ins' })
+    })
+    return items
+  }, [client, people, retPlan, edu])
+  const mainGoals = goalItems.filter(g => g.cat !== 'ins')
+  const insGoals = goalItems.filter(g => g.cat === 'ins')
+
+  const cOf = (k: string) => pres[k]?.comment || ''
+  const hidOf = (k: string) => !!pres[k]?.hidden
+  const SLIDE_LABEL: Record<string, string> = {
+    family: 'ข้อมูลครอบครัว', goals: 'เป้าหมายการเงิน', insgoals: 'เป้าหมายด้านการประกัน', balance: 'งบดุล', cashflow: 'งบกระแสเงินสด',
+    assetmix: 'โครงสร้างสินทรัพย์', cfmix: 'โครงสร้างกระแสเงินสด', ratios: 'อัตราส่วน/สุขภาพการเงิน',
+    insurance: 'ความเสี่ยง & ประกัน', investment: 'การลงทุน', retirement: 'แผนเกษียณ',
+    education: 'ทุนการศึกษาบุตร', edu2: 'กราฟทุนการศึกษา', tax: 'ภาษีเงินได้', estate: 'การจัดการมรดก', action: 'แผนปฏิบัติการ', retire2: 'กราฟเกษียณ', holistic: 'ไทม์ไลน์แผนดำเนินการ',
+  }
+  const labelOf = (key: string) => {
+    const m = /^action-(\d+)$/.exec(key)
+    if (m) return `แผนปฏิบัติการ (หน้า ${m[1]})`
+    const sp = subPlanSlides.find(s => s.id === key)
+    if (sp) return `แผนดำเนินการ · ${sp.title}`
+    return SLIDE_LABEL[key] ?? key
+  }
+  const openDialog = (key: string) => setDialog({ key, title: labelOf(key) })
+  const commentFooter = (key: string) => <AdvisorComment slideKey={key} label={labelOf(key)} comment={cOf(key)} hidden={hidOf(key)} onEdit={openDialog} onToggleHide={onToggleHide} />
+
+  const RATIO_META: Record<string, { name: string; std: string; unit: string }> = {
+    ratio1: { name: 'สภาพคล่อง', std: '> 1 เท่า', unit: 'times' },
+    ratio2: { name: 'เงินสำรองฉุกเฉิน', std: '3–6 เดือน', unit: 'months' },
+    ratio3: { name: 'สภาพคล่อง/ความมั่งคั่ง', std: '> 15%', unit: 'pct' },
+    ratio4: { name: 'หนี้สินต่อสินทรัพย์', std: '< 50%', unit: 'pct' },
+    ratio5: { name: 'ชำระหนี้ต่อรายได้', std: '< 35–45%', unit: 'pct' },
+    ratio6: { name: 'หนี้ไม่จดจำนอง', std: '< 15–20%', unit: 'pct' },
+    ratio7: { name: 'การออม', std: '≥ 10%', unit: 'pct' },
+    ratio8: { name: 'การลงทุน', std: '≥ 50%', unit: 'pct' },
+  }
+  const stateCol: Record<string, string> = { good: GR, warning: AM, danger: RD, nodata: MUTED }
+  const fmtRatio = (v: number | null, unit: string) => v === null ? '—' : unit === 'times' ? `${v.toFixed(2)} เท่า` : unit === 'months' ? `${v.toFixed(1)} เดือน` : `${v.toFixed(0)}%`
+
+  // งบดุล/งบกระแส ต่อคน
+  const balanceRows = (r: any) => {
+    const sm = r?.summary ?? {}
+    const liquid = toNum(sm.liquidAssets), invest = toNum(sm.investAssets), total = toNum(sm.totalAssets)
+    const personal = Math.max(0, total - liquid - invest)
+    return { liquid, invest, personal, total, debt: toNum(sm.totalDebtBalance), net: toNum(sm.netWorth) }
+  }
+
+  return (
+    <SlideEditor.Provider value={{ editMode, snap, overlays, setEls: onOverlayChange, advisorName: advisor?.fullName, advisorPhone: advisor?.phone }}>
+      {/* แถบเครื่องมือแก้ไข */}
+      {editMode && (
+        <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6, padding: '8px 14px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 10 }}>
+          <span style={{ fontSize: 12.5, color: 'var(--text-secondary)', fontWeight: 700 }}>โหมดแก้ไขสไลด์</span>
+          <button onClick={() => setSnap(s => !s)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+              background: snap ? 'var(--cyan)' : 'transparent', color: snap ? '#00201d' : 'var(--text-secondary)', border: `1px solid ${snap ? 'var(--cyan)' : 'var(--card-border)'}` }}>
+            <Grid3x3 size={14} /> จัดเข้ากริด {snap ? 'เปิด' : 'ปิด'}
+          </button>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>· มุมขวาบนของแต่ละสไลด์ = เพิ่มข้อความ/รูป · ดับเบิลคลิกข้อความเพื่อแก้ · เพิ่มหน้าใหม่ท้ายสุด</span>
+        </div>
+      )}
+      {/* แถบควบคุม (เฉพาะสไลด์ลงทุนที่ต้องเลือกคน) */}
+      {hasSpouse && (
+        <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+          <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>กราฟการลงทุน (สไลด์ที่ 12) แสดงของ:</span>
+          {([['self', selfName, User], ['spouse', spouseName, Users]] as const).map(([p, lbl, Ic]) => (
+            <button key={p} onClick={() => setInvPerson(p)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 13px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                background: invPerson === p ? 'var(--cyan)' : 'transparent', color: invPerson === p ? '#00201d' : 'var(--text-secondary)', border: `1px solid ${invPerson === p ? 'var(--cyan)' : 'var(--card-border)'}` }}>
+              <Ic size={14} /> {lbl}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div id="report-paper" style={{ display: 'flex', flexDirection: 'column', gap: 22, alignItems: 'center' }}>
+
+        {/* ── 1. ปก ── */}
+        <Slide slideId="cover" noFooter>
+          {/* accent เรขาคณิตบางๆ มุมขวาบน (พิมพ์ได้) */}
+          <div style={{ position: 'absolute', top: -160, right: -140, width: 460, height: 460, borderRadius: '50%', background: `radial-gradient(circle at center, ${CY}12 0%, ${CY}00 66%)`, pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: -110, left: -90, width: 300, height: 300, borderRadius: '50%', background: `radial-gradient(circle at center, ${INK}0a 0%, ${INK}00 68%)`, pointerEvents: 'none' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800, letterSpacing: '0.24em', color: INK }}>
+              <span style={{ width: 6, height: 6, borderRadius: 999, background: CY }} />WEALTHPRO · FINANCIAL PRESENTATION
+            </div>
+            <div style={{ margin: 'auto 0', paddingLeft: 2 }}>
+              <div style={{ width: 64, height: 4, background: CY, borderRadius: 3, marginBottom: 26 }} />
+              <h1 style={{ fontSize: 50, fontWeight: 800, color: INK, margin: 0, lineHeight: 1.06, letterSpacing: '-0.025em', maxWidth: 720 }}>{title}</h1>
+              <div style={{ fontSize: 21, color: SUB, marginTop: 20, fontWeight: 500 }}>
+                นำเสนอ คุณ{clientFull}{hasSpouse && spouseFull ? ` · คุณ${spouseFull}` : ''}
+              </div>
+              <div style={{ fontSize: 13, color: MUTED, marginTop: 7, letterSpacing: '0.03em' }}>{today}</div>
+            </div>
+            <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 18, display: 'flex', alignItems: 'center', gap: 16 }}>
+              {advisor?.photo ? <img src={advisor.photo} alt="" style={{ width: 58, height: 58, borderRadius: '50%', objectFit: 'cover', boxShadow: `0 0 0 1px ${LINE}, 0 6px 16px rgba(12,32,53,0.14)` }} /> : <div style={{ width: 58, height: 58, borderRadius: '50%', background: LINE }} />}
+              <div>
+                <div style={{ fontSize: 10.5, color: MUTED, letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 700 }}>เสนอโดย</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: INK, marginTop: 1 }}>{advisor?.fullName || 'ที่ปรึกษาการเงิน'}</div>
+                <div style={{ fontSize: 12.5, color: SUB }}>{[advisor?.position, advisor?.phone, advisor?.email].filter(Boolean).join('  ·  ')}</div>
+              </div>
+            </div>
+          </div>
+        </Slide>
+
+        {/* ── 2. สารบัญ ── */}
+        <Slide slideId="agenda">
+          <SlideHead icon={ListChecks} kicker="Agenda" title="หัวข้อการนำเสนอ" />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, flex: 1, alignContent: 'center' }}>
+            {[
+              { n: '01', t: 'ภาพรวมการวางแผนการเงิน', s: 'ข้อมูลครอบครัว เป้าหมาย และกระบวนการ', c: CY },
+              { n: '02', t: 'ผลการวิเคราะห์ข้อมูล', s: 'งบการเงิน อัตราส่วน ความเสี่ยง การลงทุน เกษียณ ภาษี มรดก', c: GR },
+              { n: '03', t: 'แผนปฏิบัติการเพื่อบรรลุเป้าหมาย', s: 'สิ่งที่ต้องทำในแต่ละด้าน พร้อมกำหนดการ', c: AM },
+              { n: '04', t: 'สรุปแผนการเงินแบบองค์รวม', s: 'ภาพรวม 6 ด้านของความมั่งคั่ง', c: VI },
+            ].map(x => (
+              <div key={x.n} style={{ display: 'flex', gap: 18, alignItems: 'center', background: PAPER, border: `1px solid ${LINE}`, borderRadius: 16, padding: '22px 24px', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', right: 2, top: -18, fontSize: 100, fontWeight: 900, color: `${x.c}12`, lineHeight: 1, letterSpacing: '-0.05em', pointerEvents: 'none' }}>{x.n}</div>
+                <div style={{ width: 3, alignSelf: 'stretch', minHeight: 44, background: x.c, borderRadius: 2, flexShrink: 0 }} />
+                <div style={{ position: 'relative' }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', color: x.c }}>{x.n}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: INK, marginTop: 2, letterSpacing: '-0.01em' }}>{x.t}</div>
+                  <div style={{ fontSize: 13, color: SUB, marginTop: 3 }}>{x.s}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Slide>
+
+        {/* ── 3. กระบวนการวางแผน 6 ขั้น ── */}
+        <Slide slideId="process">
+          <SlideHead icon={Target} kicker="Process" title="กระบวนการวางแผนการเงิน 6 ขั้นตอน" />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, flex: 1, alignContent: 'center' }}>
+            {[
+              { s: 'Step 1', t: 'ข้อมูลส่วนบุคคล & สถานะการเงินปัจจุบัน', ic: User, c: CY },
+              { s: 'Step 2', t: 'ความเสี่ยงและการประกันภัย', ic: ShieldCheck, c: VI },
+              { s: 'Step 3', t: 'การออมและลงทุนเพื่อเป้าหมาย', ic: PiggyBank, c: GR },
+              { s: 'Step 4', t: 'การเกษียณอายุ', ic: Wallet, c: AM },
+              { s: 'Step 5', t: 'ภาษีและมรดก', ic: Receipt, c: '#0ea5e9' },
+              { s: 'Step 6', t: 'การวางแผนการเงินแบบองค์รวม', ic: Target, c: RD },
+            ].map((x, i) => (
+              <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'center', background: PAPER, border: `1px solid ${LINE}`, borderRadius: 14, padding: '18px 20px' }}>
+                <div style={{ width: 46, height: 46, borderRadius: 12, background: `${x.c}14`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `inset 0 0 0 1px ${x.c}30` }}><x.ic size={23} color={x.c} /></div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: x.c, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{x.s}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: INK, lineHeight: 1.25, marginTop: 1, letterSpacing: '-0.005em' }}>{x.t}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Slide>
+
+        {/* ── 4. ข้อมูลพื้นฐานครอบครัว ── */}
+        <Slide slideId="family">
+          <SlideHead icon={Users} kicker="Family" title="ข้อมูลพื้นฐานครอบครัว" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, flex: 1, justifyContent: 'center' }}>
+            {/* แถวบน: ลูกค้า | คู่สมรส */}
+            <div style={{ display: 'grid', gridTemplateColumns: hasSpouse ? '1fr 1fr' : '1fr', gap: 16 }}>
+              {familyCards.map((p, i) => (
+                <div key={i} style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 14, padding: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <span style={{ width: 38, height: 38, borderRadius: 999, background: `${p.tint}18`, color: p.tint, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={21} /></span>
+                    <div>
+                      <div style={{ fontSize: 17, fontWeight: 800, color: INK }}>{p.name}</div>
+                      <div style={{ fontSize: 12.5, color: SUB }}>อายุ {p.age ?? '—'} ปี{p.status ? ` · ${p.status}` : ''}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 13.5 }}>
+                    {p.occ && <FamilyRow label="อาชีพ" value={p.occ} />}
+                    {p.incomes.map((inc, j) => (
+                      <div key={j} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, lineHeight: 1.45 }}>
+                        <span style={{ color: SUB }}>{inc.label}</span>
+                        <span style={{ color: GR, fontWeight: 600, whiteSpace: 'nowrap' }}>{fmt(inc.amount)} /{inc.isBonus ? 'ปี' : 'เดือน'}</span>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, borderTop: `1px solid ${LINE}`, paddingTop: 4, marginTop: 1 }}>
+                      <span style={{ color: INK, fontWeight: 700 }}>รายได้รวม/ปี</span>
+                      <span style={{ color: INK, fontWeight: 800, whiteSpace: 'nowrap', fontFamily: 'monospace' }}>{fmt(p.totalYear)} บาท</span>
+                    </div>
+                    {p.health && <FamilyRow label="สุขภาพ" value={p.health} />}
+                    {p.hobby && <FamilyRow label="งานอดิเรก" value={p.hobby} />}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* แถวล่าง: บุตร | บิดา-มารดา (คู่กันเพื่อประหยัดพื้นที่) */}
+            {((client?.children ?? []).length > 0 || dependents.length > 0) && (
+              <div style={{ display: 'grid', gridTemplateColumns: ((client?.children ?? []).length > 0 && dependents.length > 0) ? '1fr 1fr' : '1fr', gap: 16 }}>
+                {(client?.children ?? []).length > 0 && (
+                  <div style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 14, padding: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}><Baby size={19} color={AM} /><span style={{ fontSize: 15.5, fontWeight: 800, color: INK }}>บุตร</span></div>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      {(client?.children ?? []).map((c: any, i: number) => (
+                        <div key={i} style={{ flex: '1 1 130px', minWidth: 120, background: '#fff', border: `1px solid ${LINE}`, borderRadius: 10, padding: '9px 14px' }}>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: INK, display: 'block' }}>{c.name || `บุตรคนที่ ${i + 1}`}</span>
+                          <span style={{ fontSize: 12, color: SUB }}>อายุ {toNum(c.age)} ปี{c.school ? ` · ${c.school}` : ''}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {dependents.length > 0 && (
+                  <div style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 14, padding: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><HeartPulse size={19} color={RD} /><span style={{ fontSize: 15.5, fontWeight: 800, color: INK }}>บิดา / มารดา (ในอุปการะ)</span></div>
+                      {careExpense > 0 && <span style={{ fontSize: 12, color: SUB }}>ค่าดูแล <b style={{ color: AM }}>{fmt(careExpense)}</b>/เดือน</span>}
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      {dependents.map((d, i) => (
+                        <div key={i} style={{ background: '#fff', border: `1px solid ${LINE}`, borderRadius: 10, padding: '9px 14px' }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: INK }}>{d.rel}{d.name ? ` · ${d.name}` : ''}{hasSpouse ? <span style={{ fontSize: 11, color: MUTED, fontWeight: 400 }}> (ของ{d.owner})</span> : ''}</div>
+                          <div style={{ fontSize: 12, color: SUB }}>อายุ {toNum(d.age) || '—'} ปี{d.health ? ` · ${d.health}` : ''}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </Slide>
+
+        {/* ── 5. แผนผังเป้าหมายทางการเงิน ── */}
+        <Slide slideId="goals" footer={commentFooter('goals')}>
+          <SlideHead icon={Target} kicker="Goals" title="แผนผังเป้าหมายทางการเงิน" accent={GR} />
+          {mainGoals.length > 0
+            ? <GoalTable title="เป้าหมายทางการเงิน" rows={mainGoals} totalColor={GR} />
+            : <Empty text="ยังไม่มีเป้าหมายทางการเงิน — กรอกที่หน้าเป้าหมาย หรือแผนเกษียณ/การศึกษา" />}
+        </Slide>
+
+        {/* ── 5b. เป้าหมายด้านการประกัน ── */}
+        <Slide slideId="insgoals" footer={commentFooter('insgoals')}>
+          <SlideHead icon={ShieldCheck} kicker="Protection Goals" title="เป้าหมายด้านการประกัน" accent={VI} />
+          {insGoals.length > 0
+            ? <GoalTable title="เป้าหมายด้านการประกัน" rows={insGoals} totalColor={VI} />
+            : <Empty text="ยังไม่มีข้อมูลความต้องการประกัน — กรอกที่หน้าวางแผนประกัน" />}
+        </Slide>
+
+        {/* ── 6. งบดุล ── */}
+        <Slide slideId="balance" footer={commentFooter('balance')}>
+          <SlideHead icon={Scale} kicker="Balance Sheet" title="งบดุล (ณ ปัจจุบัน)" />
+          <TwoCol>
+            {people.map(p => {
+              const b = balanceRows(p.ratios)
+              return (
+                <div key={p.key}>
+                  <PersonHead name={p.name} tint={p.tint} />
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                    <tbody>
+                      {[['สินทรัพย์สภาพคล่อง', b.liquid, CY], ['สินทรัพย์ลงทุน', b.invest, GR], ['สินทรัพย์ส่วนตัว', b.personal, AM], ['รวมสินทรัพย์', b.total, INK], ['หนี้สินรวม', b.debt, RD], ['ความมั่งคั่งสุทธิ', b.net, b.net >= 0 ? GR : RD]].map(([l, v, c]: any, i) => (
+                        <tr key={i} style={{ borderBottom: `1px solid ${LINE}`, fontWeight: (l === 'รวมสินทรัพย์' || l === 'ความมั่งคั่งสุทธิ') ? 800 : 400 }}>
+                          <td style={{ padding: '9px 4px', color: SUB }}>{l}</td>
+                          <td style={{ padding: '9px 4px', textAlign: 'right', fontFamily: 'monospace', color: c, fontWeight: 700 }}>{fmt(v)}</td>
+                          <td style={{ padding: '9px 4px', textAlign: 'right', color: MUTED, width: 52 }}>{['สินทรัพย์สภาพคล่อง', 'สินทรัพย์ลงทุน', 'สินทรัพย์ส่วนตัว'].includes(l) ? `${pct(v, b.total)}%` : ''}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            })}
+          </TwoCol>
+        </Slide>
+
+        {/* ── โครงสร้างสินทรัพย์ (ต่อจากงบดุล) ── */}
+        <Slide slideId="assetmix" footer={commentFooter('assetmix')}>
+          <SlideHead icon={Scale} kicker="Asset Structure" title="โครงสร้างสินทรัพย์" accent={CY} />
+          <TwoCol>
+            {people.map(p => {
+              const b = balanceRows(p.ratios)
+              return (
+                <div key={p.key} style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: 14 }}>
+                  <PersonHead name={p.name} tint={p.tint} />
+                  <MiniPie data={[{ name: 'สภาพคล่อง', value: b.liquid }, { name: 'ลงทุน', value: b.invest }, { name: 'ส่วนตัว', value: b.personal }]} />
+                </div>
+              )
+            })}
+          </TwoCol>
+        </Slide>
+
+        {/* ── 7. งบกระแสเงินสด ── */}
+        <Slide slideId="cashflow" footer={commentFooter('cashflow')}>
+          <SlideHead icon={Banknote} kicker="Cash Flow" title="งบกระแสเงินสด (ต่อปี)" accent={GR} />
+          <TwoCol>
+            {people.map(p => {
+              const sm = p.ratios?.summary ?? {}
+              const income = toNum(sm.totalAnnualIncome), net = toNum(sm.netAnnualCashFlow), sav = toNum(sm.annualSavings)
+              const expense = Math.max(0, income - net)
+              return (
+                <div key={p.key}>
+                  <PersonHead name={p.name} tint={p.tint} />
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                    <tbody>
+                      {[['รายได้รวม', income, GR], ['รายจ่ายรวม (รวมออม/ภาษี)', expense, RD], ['เงินออม/ลงทุน', sav, VI], ['กระแสเงินสดสุทธิ', net, net >= 0 ? CY : RD]].map(([l, v, c]: any, i) => (
+                        <tr key={i} style={{ borderBottom: `1px solid ${LINE}`, fontWeight: l === 'กระแสเงินสดสุทธิ' ? 800 : 400 }}>
+                          <td style={{ padding: '10px 4px', color: SUB }}>{l}</td>
+                          <td style={{ padding: '10px 4px', textAlign: 'right', fontFamily: 'monospace', color: c, fontWeight: 700 }}>{fmt(v)}</td>
+                          <td style={{ padding: '10px 4px', textAlign: 'right', color: MUTED, width: 52 }}>{income > 0 ? `${pct(v, income)}%` : ''}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            })}
+          </TwoCol>
+        </Slide>
+
+        {/* ── 9. โครงสร้างกระแสเงินสด ── */}
+        <Slide slideId="cfmix" footer={commentFooter('cfmix')}>
+          <SlideHead icon={Banknote} kicker="Cash Flow Structure" title="โครงสร้างกระแสเงินสด" accent={GR} />
+          <TwoCol>
+            {people.map(p => {
+              const sm = p.ratios?.summary ?? {}
+              const income = toNum(sm.totalAnnualIncome)
+              const fixed = expAnnual('fixed_', p.key)
+              const variable = expAnnual('var_', p.key, 'var_tax')
+              const saving = expAnnual('saving_', p.key) || toNum(sm.annualSavings)
+              const tax = taxOf(p.key)
+              const net = Math.max(0, income - fixed - variable - saving - tax)
+              const data = [{ name: 'คงที่', value: fixed }, { name: 'ผันแปร', value: variable }, { name: 'ออม/ลงทุน', value: saving }, { name: 'ภาษี', value: tax }, { name: 'เงินสดสุทธิ', value: net }].filter(d => d.value > 0)
+              return (
+                <div key={p.key} style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: 14 }}>
+                  <PersonHead name={p.name} tint={p.tint} />
+                  {income > 0 ? <MiniPie data={data} /> : <Empty text="ยังไม่มีข้อมูลรายรับ-รายจ่าย" />}
+                </div>
+              )
+            })}
+          </TwoCol>
+          <div style={{ fontSize: 11.5, color: MUTED, textAlign: 'center', marginTop: 6 }}>* ภาษีประมาณจากแผนภาษี · รายจ่ายจากงบค่าใช้จ่าย (รายการร่วมแบ่งครึ่ง)</div>
+        </Slide>
+
+        {/* ── 10. อัตราส่วน + Health Score ── */}
+        <Slide slideId="ratios" footer={commentFooter('ratios')}>
+          <SlideHead icon={Activity} kicker="Financial Health" title="สถานะสุขภาพทางการเงิน" />
+          <TwoCol>
+            {people.map(p => (
+              <div key={p.key} style={{ display: 'flex', flexDirection: 'column' }}>
+                <PersonHead name={p.name} tint={p.tint} />
+                <div style={{ display: 'flex', gap: 14, flex: 1 }}>
+                  <div style={{ width: 150, display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
+                    {p.ratios?.healthScore != null ? <HealthGauge score={p.ratios.healthScore} label={p.ratios.healthLabel || ''} size={160} /> : <Empty text="—" />}
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {(p.ratios?.ratios ?? []).map((e: any) => {
+                      const m = RATIO_META[e.key]; if (!m) return null
+                      const col = stateCol[e.state] ?? MUTED
+                      return (
+                        <div key={e.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: 999, background: col, flexShrink: 0 }} />
+                          <span style={{ flex: 1, fontSize: 12.5, color: INK, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</span>
+                          <span style={{ fontSize: 12.5, fontWeight: 800, fontFamily: 'monospace', color: col }}>{fmtRatio(e.value, m.unit)}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </TwoCol>
+        </Slide>
+
+        {/* ── 11. ความเสี่ยง & ประกัน ── */}
+        <Slide slideId="insurance" footer={commentFooter('insurance')}>
+          <SlideHead icon={ShieldCheck} kicker="Risk & Protection" title="ความเสี่ยงและความคุ้มครอง" accent={VI} />
+          <TwoCol>
+            {people.map(p => (
+              <div key={p.key} style={{ display: 'flex', flexDirection: 'column' }}>
+                <PersonHead name={p.name} tint={p.tint} />
+                <div style={{ display: 'flex', gap: 12, flex: 1 }}>
+                  <div style={{ flex: 1, background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, minHeight: 200 }}>
+                    {p.cov.hasPolicies ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart data={p.cov.radarData} outerRadius="70%">
+                          <PolarGrid stroke={HAIR} />
+                          <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9.5, fill: SUB }} />
+                          <Radar name="เกณฑ์ที่ควรมี" dataKey="benchmark" stroke={MUTED} strokeDasharray="4 3" fill={MUTED} fillOpacity={0.08} />
+                          <Radar name="ความคุ้มครองที่มี" dataKey="actual" stroke={p.tint} strokeWidth={2} fill={p.tint} fillOpacity={0.28} />
+                          <Legend wrapperStyle={{ fontSize: 10 }} />
+                          <Tooltip />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    ) : <Empty text="ยังไม่มีกรมธรรม์" />}
+                  </div>
+                  <div style={{ width: 150, display: 'flex', flexDirection: 'column', gap: 8, justifyContent: 'center' }}>
+                    <div style={{ textAlign: 'center', background: PAPER, border: `1px solid ${LINE}`, borderRadius: 10, padding: '10px 8px' }}>
+                      <div style={{ fontSize: 11.5, color: SUB }}>คะแนนคุ้มครอง</div>
+                      <div style={{ fontSize: 30, fontWeight: 800, color: p.cov.avg >= 70 ? GR : p.cov.avg >= 40 ? AM : RD, fontFamily: 'monospace' }}>{p.cov.avg}</div>
+                    </div>
+                    {p.ins && <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                      {([['ทุนที่ควรมี', p.ins.need, AM], ['มีอยู่', p.ins.have, GR], ['ยังขาด', p.ins.gap, p.ins.gap > 0 ? RD : GR]] as const).map(([lbl, val, col]) => (
+                        <div key={lbl}>
+                          <div style={{ fontSize: 11, color: SUB }}>{lbl}</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'monospace', color: col, lineHeight: 1.1 }}>{fmt(val)} <span style={{ fontSize: 11, fontWeight: 400, color: MUTED }}>บาท</span></div>
+                        </div>
+                      ))}
+                    </div>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </TwoCol>
+        </Slide>
+
+        {/* ── 12. การลงทุนปัจจุบัน ── */}
+        <Slide slideId="investment" footer={commentFooter('investment')}>
+          <SlideHead icon={TrendingUp} kicker="Investment" title={`สถานะการลงทุน · ${invPerson === 'self' ? selfName : spouseName}`} accent={GR} />
+          <div style={{ display: 'flex', gap: 22, flex: 1, minHeight: 0 }}>
+            <div style={{ width: 320, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: INK, marginBottom: 6 }}>สัดส่วนสินทรัพย์ลงทุน</div>
+              {portfolioTotal > 0 ? <MiniPie data={allocation} /> : <Empty text="ยังไม่มีข้อมูลสินทรัพย์ลงทุน" />}
+              {portfolioTotal > 0 && <div style={{ fontSize: 13, fontWeight: 800, color: INK, marginTop: 8 }}>รวม {fmt(portfolioTotal)} บาท</div>}
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: INK, marginBottom: 6 }}>จำลองมูลค่าพอร์ตในอนาคต (Monte Carlo)</div>
+              {mc.rows.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={mc.rows} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
+                    <defs><linearGradient id="pdMcBand" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={CY} stopOpacity={0.24} /><stop offset="100%" stopColor={CY} stopOpacity={0.05} /></linearGradient></defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke={HAIR} vertical={false} />
+                    <XAxis dataKey="age" tick={{ fontSize: 10, fill: MUTED }} interval={4} axisLine={{ stroke: LINE }} tickLine={false} />
+                    <YAxis tickFormatter={v => fmtM(v)} tick={{ fontSize: 10, fill: MUTED }} width={44} axisLine={false} tickLine={false} />
+                    <Tooltip formatter={(v: any) => Array.isArray(v) ? `${fmt(v[0])} – ${fmt(v[1])}` : `${fmt(v)} บาท`} labelFormatter={a => `อายุ ${a} ปี`} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    {mc.retirementAge >= mc.currentAge! && mc.retirementAge <= mc.expectedLifespan && <ReferenceLine x={mc.retirementAge} stroke={AM} strokeDasharray="4 4" label={{ value: `เกษียณ ${mc.retirementAge}`, position: 'insideTopRight', fill: AM, fontSize: 10 }} />}
+                    <Area type="monotone" dataKey="band" stroke="none" fill="url(#pdMcBand)" name="ช่วง 80% (P10–P90)" />
+                    <Line type="monotone" dataKey="p90" stroke={GR} dot={false} strokeWidth={1.5} strokeDasharray="5 3" name="ดี (P90)" />
+                    <Line type="monotone" dataKey="p50" stroke={INK} dot={false} strokeWidth={2.6} name="ค่ากลาง (median)" />
+                    <Line type="monotone" dataKey="p10" stroke={RD} dot={false} strokeWidth={1.5} strokeDasharray="5 3" name="แย่ (P10)" />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              ) : <Empty text="ยังไม่มีข้อมูลเพียงพอ" />}
+            </div>
+          </div>
+        </Slide>
+
+        {/* ── 13. เป้าหมาย & แผนเกษียณ ── */}
+        <Slide slideId="retirement" footer={commentFooter('retirement')}>
+          <SlideHead icon={PiggyBank} kicker="Retirement" title="เป้าหมายและแผนเกษียณ" accent={CY} />
+          <div style={{ display: 'flex', gap: 22, flex: 1, minHeight: 0 }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <ResponsiveContainer width="100%" height="90%">
+                <BarChart data={people.map(p => ({ name: p.name, สินทรัพย์: Math.round(p.ret?.sources.asset ?? 0), ปกส: Math.round(p.ret?.sources.sso ?? 0), PVD: Math.round(p.ret?.sources.pvd ?? 0), ชดเชย: Math.round(p.ret?.sources.severance ?? 0), ต้องการ: Math.round(p.ret?.needed ?? 0) }))} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={HAIR} vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: SUB }} axisLine={{ stroke: LINE }} tickLine={false} />
+                  <YAxis tickFormatter={v => fmtM(v)} tick={{ fontSize: 10, fill: MUTED }} width={44} axisLine={false} tickLine={false} />
+                  <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  {/* แท่งซ้าย = เงินที่ต้องการ · แท่งขวา = เงินที่มี (ซ้อนย่อยตามแหล่งเงิน) — สี categorical + คั่น 2px */}
+                  <Bar dataKey="ต้องการ" fill="#f59e0b" radius={[4, 4, 0, 0]} name="เงินที่ต้องการ" maxBarSize={64} />
+                  <Bar dataKey="สินทรัพย์" stackId="have" fill="#10b981" stroke="#fff" strokeWidth={1} maxBarSize={64} />
+                  <Bar dataKey="ปกส" stackId="have" fill="#0284c7" stroke="#fff" strokeWidth={1} maxBarSize={64} />
+                  <Bar dataKey="PVD" stackId="have" fill="#8b5cf6" stroke="#fff" strokeWidth={1} maxBarSize={64} />
+                  <Bar dataKey="ชดเชย" stackId="have" fill="#f43f5e" stroke="#fff" strokeWidth={1} radius={[4, 4, 0, 0]} maxBarSize={64} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={{ width: 300, display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'center' }}>
+              {people.map(p => (
+                <div key={p.key} style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 14.5, fontWeight: 800, color: INK }}>{p.name}</span>
+                    {p.ret && <ReadyPill pct={p.ret.readinessPct} />}
+                  </div>
+                  {p.ret ? (
+                    <div style={{ fontSize: 12.5, color: SUB, lineHeight: 1.6 }}>
+                      <div>ต้องการ: <b style={{ color: AM }}>{fmt(p.ret.needed)}</b></div>
+                      <div>มีแล้ว: <b style={{ color: GR }}>{fmt(p.ret.have)}</b> · ขาด: <b style={{ color: p.ret.gap > 0 ? RD : GR }}>{fmt(p.ret.gap)}</b></div>
+                      <div>ต้องออม/เดือน: <b style={{ color: CY }}>{fmt((p.ret.annualSavings || 0) / 12)}</b></div>
+                    </div>
+                  ) : <div style={{ fontSize: 12.5, color: MUTED }}>ยังไม่มีข้อมูลแผนเกษียณ</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </Slide>
+
+        {/* ── 13b. คาดการณ์มูลค่ากองทุนเกษียณ ── */}
+        <Slide slideId="retire2" footer={commentFooter('retire2')}>
+          <SlideHead icon={PiggyBank} kicker="Retirement Projection" title="คาดการณ์มูลค่ากองทุนเกษียณ" accent={CY} />
+          {retChart.length > 0 ? (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+              <div style={{ fontSize: 12, color: SUB, marginBottom: 8 }}>สะสมช่วงทำงาน → ใช้จ่ายหลังเกษียณ · มูลค่ากองทุนคงเหลือตามอายุ</div>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={retChart} margin={{ top: 8, right: 16, left: 6, bottom: 6 }}>
+                  <defs><linearGradient id="pdRetSelf" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={CY} stopOpacity={0.22} /><stop offset="100%" stopColor={CY} stopOpacity={0.04} /></linearGradient></defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke={HAIR} vertical={false} />
+                  <XAxis dataKey="age" tick={{ fontSize: 10, fill: MUTED }} interval={4} axisLine={{ stroke: LINE }} tickLine={false} />
+                  <YAxis tickFormatter={v => fmtM(v)} tick={{ fontSize: 10, fill: MUTED }} width={46} axisLine={false} tickLine={false} />
+                  <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} labelFormatter={a => `อายุ ${a} ปี`} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  {retSelf?.retireAge != null && <ReferenceLine x={retSelf.retireAge} stroke={AM} strokeDasharray="4 4" label={{ value: `เกษียณ ${retSelf.retireAge}`, position: 'insideTopRight', fill: AM, fontSize: 10 }} />}
+                  <Area type="monotone" dataKey="self" name={selfName} stroke={CY} strokeWidth={2.4} fill="url(#pdRetSelf)" dot={false} />
+                  {hasSpouse && <Line type="monotone" dataKey="spouse" name={spouseName} stroke={VI} strokeWidth={2.2} dot={false} />}
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          ) : <Empty text="ยังไม่มีข้อมูลแผนเกษียณเพียงพอ — กรอกที่หน้าแผนเกษียณ" />}
+        </Slide>
+
+        {/* ── 14. ทุนการศึกษาบุตร ── */}
+        <Slide slideId="education" footer={commentFooter('education')}>
+          <SlideHead icon={GraduationCap} kicker="Education" title="เป้าหมายและแผนการศึกษาบุตร" accent={AM} />
+          {edu ? (
+            <div style={{ display: 'flex', gap: 22, marginTop: 24, marginBottom: 24 }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <Stat label="จำนวนบุตร" value={`${edu.childCount}`} sub="คน" />
+                  <Stat label="ค่าเล่าเรียนรวม (อนาคต)" value={fmt(edu.totalNominal)} sub="บาท" color={AM} />
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <Stat label="เงินก้อนวันนี้ (PV)" value={fmt(edu.totalPV)} sub="บาท" color={CY} />
+                  <Stat label="ต้องออม/เดือน" value={fmt(edu.monthlySaving)} sub="บาท" color={GR} />
+                </div>
+              </div>
+              <div style={{ width: 360, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <GoalBar rows={[{ name: 'ทุนการศึกษา', needed: edu.totalNominal, have: edu.totalPV }]} />
+                <div style={{ fontSize: 11.5, color: MUTED, textAlign: 'center', marginTop: 4 }}>เทียบค่าเล่าเรียนรวมในอนาคต กับเงินก้อนที่ต้องเตรียมวันนี้</div>
+              </div>
+            </div>
+          ) : <Empty text="ยังไม่มีข้อมูลบุตร/ค่าเล่าเรียน" />}
+        </Slide>
+
+        {/* ── 14b. กราฟเงินออมสะสมทุนการศึกษา (3 สถาบัน) ── */}
+        <Slide slideId="edu2" footer={commentFooter('edu2')}>
+          <SlideHead icon={GraduationCap} kicker="Education Projection" title="เงินออมสะสมเพื่อทุนการศึกษา" accent={AM} />
+          {eduChart && eduChart.hasData ? (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+              <div style={{ fontSize: 12, color: SUB, marginBottom: 8 }}>{eduChart.childName} · ออม {eduChart.savingYears} ปี · มูลค่ากองทุนสะสมรายปี แยกตามประเภทสถาบัน{eduChart.childCount > 1 ? ` (แสดงบุตรคนที่ 1 จาก ${eduChart.childCount})` : ''}</div>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={eduChart.chartData} margin={{ top: 8, right: 16, left: 6, bottom: 6 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={HAIR} vertical={false} />
+                  <XAxis dataKey="year" tick={{ fontSize: 10, fill: MUTED }} axisLine={{ stroke: LINE }} tickLine={false} />
+                  <YAxis tickFormatter={v => fmtM(v)} tick={{ fontSize: 10, fill: MUTED }} width={46} axisLine={false} tickLine={false} />
+                  <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} labelFormatter={y => `ปี พ.ศ. ${y}`} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  {eduChart.types.map(t => <Line key={t.key} type="monotone" dataKey={t.key} name={`สถาบัน${t.label}`} stroke={t.color} strokeWidth={2.2} dot={false} connectNulls />)}
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          ) : <Empty text="ยังไม่มีข้อมูลบุตร/ค่าเล่าเรียน — กรอกที่หน้าทุนการศึกษา" />}
+        </Slide>
+
+        {/* ── 15. ภาษีเงินได้ ── */}
+        <Slide slideId="tax" footer={commentFooter('tax')}>
+          <SlideHead icon={Receipt} kicker="Income Tax" title="ภาษีเงินได้" accent="#0ea5e9" />
+          <TwoCol>
+            {people.map(p => {
+              const st = taxPlan?.[p.key]
+              const r = st ? (() => { try { return calc({ ...defaultState(), ...(st as TaxState) }) } catch { return null } })() : null
+              return (
+                <div key={p.key}>
+                  <PersonHead name={p.name} tint={p.tint} />
+                  {r ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <Stat label="ภาษีที่ต้องชำระ" value={fmt(r.netTax)} sub="บาท/ปี" color={AM} />
+                        <Stat label="อัตราภาษีเฉลี่ย" value={`${r.eff.toFixed(1)}%`} color={INK} />
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <Stat label="เงินได้สุทธิ" value={fmtM(r.ni)} color={INK} />
+                        <Stat label="ค่าลดหย่อนรวม" value={fmtM(r.allD)} color={GR} />
+                      </div>
+                      <div style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 10, padding: '10px 14px' }}>
+                        <div style={{ fontSize: 12, color: SUB, marginBottom: 6 }}>ค่าลดหย่อนหลักที่ใช้</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px' }}>
+                          {r.deducts.slice(0, 8).map((d: any) => (
+                            <span key={d.l} style={{ fontSize: 11.5, color: INK, background: '#fff', border: `1px solid ${LINE}`, borderRadius: 999, padding: '2px 9px' }}>{d.l} {fmtM(d.v)}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : <Empty text="ยังไม่มีข้อมูลแผนภาษี" />}
+                </div>
+              )
+            })}
+          </TwoCol>
+        </Slide>
+
+        {/* ── 16. การจัดการมรดก ── */}
+        <Slide slideId="estate" footer={commentFooter('estate')}>
+          <SlideHead icon={Landmark} kicker="Estate" title="เป้าหมายและการจัดการมรดก" accent={VI} />
+          <div style={{ display: 'flex', gap: 22, flex: 1 }}>
+            <div style={{ width: 300, display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'center' }}>
+              <Stat label="กองมรดกสุทธิ (โดยประมาณ)" value={fmt(estate.estateVal)} sub="บาท" color={VI} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: estate.hasWill ? `${GR}0e` : `${AM}0e`, border: `1px solid ${estate.hasWill ? GR : AM}44`, borderRadius: 12, padding: '12px 16px' }}>
+                {estate.hasWill ? <Check size={20} color={GR} /> : <AlertTriangle size={20} color={AM} />}
+                <div><div style={{ fontSize: 14, fontWeight: 700, color: INK }}>{estate.hasWill ? 'มีพินัยกรรมแล้ว' : 'ยังไม่มีพินัยกรรม'}</div><div style={{ fontSize: 11.5, color: SUB }}>{estate.hasWill ? (estate.willType || '—') : 'แบ่งตามทายาทโดยธรรม'}</div></div>
+              </div>
+              <Stat label="ภาษีมรดก (ประมาณ)" value={fmt(estate.totalTax)} sub="บาท" color={estate.totalTax > 0 ? AM : GR} />
+            </div>
+            <div style={{ flex: 1, background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: INK, marginBottom: 8 }}>การกระจายมรดก · {estate.useWill ? 'ตามพินัยกรรม' : 'ตามกฎหมาย'}</div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead><tr style={{ borderBottom: `1px solid #cbd5e1` }}><th style={{ textAlign: 'left', padding: '6px 4px', color: SUB }}>ผู้รับมรดก</th><th style={{ textAlign: 'right', padding: '6px 4px', color: SUB }}>ส่วนแบ่ง</th><th style={{ textAlign: 'right', padding: '6px 4px', color: SUB }}>ภาษี</th></tr></thead>
+                <tbody>
+                  {estate.taxHeirs.length === 0 ? <tr><td colSpan={3} style={{ padding: 12, textAlign: 'center', color: MUTED }}>ยังไม่มีข้อมูลทายาท</td></tr>
+                    : estate.taxHeirs.map((h, i) => {
+                      const tax = h.rel === 'spouse' ? 0 : Math.max(0, h.share - 100_000_000) * (h.rel === 'lineal' ? 0.05 : 0.10)
+                      return <tr key={i} style={{ borderBottom: `1px solid ${LINE}` }}>
+                        <td style={{ padding: '7px 4px', color: INK }}>{h.name}{h.rel === 'spouse' && <span style={{ fontSize: 10.5, color: MUTED }}> (ยกเว้น)</span>}</td>
+                        <td style={{ padding: '7px 4px', textAlign: 'right', fontFamily: 'monospace', color: INK }}>{fmt(h.share)}</td>
+                        <td style={{ padding: '7px 4px', textAlign: 'right', fontFamily: 'monospace', color: tax > 0 ? AM : GR }}>{fmt(tax)}</td>
+                      </tr>
+                    })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </Slide>
+
+        {/* ── 17. แผนปฏิบัติการ (แบ่งหลายหน้าอัตโนมัติ) ── */}
+        {actionPages.map((pageItems, k) => (
+          <Slide key={actionIds[k]} slideId={actionIds[k]} footer={commentFooter(actionIds[k])}>
+            <SlideHead icon={ClipboardCheck} kicker="Action Plan" title={`แผนปฏิบัติการที่แนะนำ${actionPages.length > 1 ? ` (${k + 1}/${actionPages.length})` : ''}`} accent={GR} />
+            {actionItems.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {k === 0 && (
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <Stat label="รายการทั้งหมด" value={`${actionItems.length}`} sub="รายการ" />
+                    <Stat label="เสร็จแล้ว" value={`${actionItems.filter(a => a.status === 'done' || a.completedAt).length}`} color={GR} />
+                    <Stat label="กำลังทำ/ค้าง" value={`${actionItems.filter(a => a.status !== 'done' && !a.completedAt).length}`} color={AM} />
+                  </div>
+                )}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  {pageItems.map((a, i) => {
+                    const done = a.status === 'done' || a.completedAt
+                    return (
+                      <div key={a.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: PAPER, border: `1px solid ${LINE}`, borderRadius: 10, padding: '9px 12px' }}>
+                        <div style={{ width: 20, height: 20, borderRadius: 6, background: done ? GR : '#fff', border: `2px solid ${done ? GR : '#cbd5e1'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{done && <Check size={12} color="#fff" />}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, color: INK, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</div>
+                          <div style={{ fontSize: 11, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{[a.owner, a.priority ? `ลำดับ ${a.priority}` : null, a.dueDate ? new Date(a.dueDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : null].filter(Boolean).join(' · ')}</div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : <Empty text="ยังไม่มีแผนปฏิบัติการ — สร้างที่หน้าแผนปฏิบัติการ" />}
+          </Slide>
+        ))}
+
+        {/* ── 17b. แผนดำเนินการต่อด้าน (sub-plan) — สไลด์ละรายการ ── */}
+        {subPlanSlides.map(sp => {
+          const accent = SUBPLAN_ACCENT[sp.category] ?? GR
+          const moneyKeys = sp.cols.filter(c => c.type === 'money').map(c => c.key)
+          const totals: Record<string, number> = {}
+          moneyKeys.forEach(k => { totals[k] = sp.rows.reduce((s, r) => s + toNum(r[k]), 0) })
+          return (
+            <Slide key={sp.id} slideId={sp.id} footer={commentFooter(sp.id)}>
+              <SlideHead icon={ClipboardCheck} kicker="Action Detail" title={`แผนดำเนินการ · ${sp.title}`} accent={accent} />
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
+                <thead>
+                  <tr style={{ borderBottom: `2px solid ${LINE}` }}>
+                    {sp.cols.map(c => <th key={c.key} style={{ textAlign: c.type === 'money' ? 'right' : 'left', padding: '9px 8px', color: SUB, fontWeight: 700 }}>{c.label}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sp.rows.map((r, i) => (
+                    <tr key={i} style={{ borderBottom: `1px solid ${LINE}` }}>
+                      {sp.cols.map(c => (
+                        <td key={c.key} style={{ padding: '10px 8px', textAlign: c.type === 'money' ? 'right' : 'left', color: INK, fontFamily: c.type === 'money' ? 'monospace' : 'inherit', fontWeight: c.type === 'money' ? 700 : 400 }}>
+                          {c.type === 'money' ? fmt(toNum(r[c.key])) : c.type === 'date' ? fmtSchedule(r[c.key]) : (r[c.key] || '—')}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+                {moneyKeys.length > 0 && (
+                  <tfoot>
+                    <tr style={{ borderTop: `2px solid ${LINE}` }}>
+                      {sp.cols.map((c, ci) => (
+                        <td key={c.key} style={{ padding: '10px 8px', textAlign: c.type === 'money' ? 'right' : 'left', fontWeight: 800, fontFamily: c.type === 'money' ? 'monospace' : 'inherit', color: c.type === 'money' ? accent : INK }}>
+                          {ci === 0 ? 'รวม' : c.type === 'money' ? fmt(totals[c.key]) : ''}
+                        </td>
+                      ))}
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </Slide>
+          )
+        })}
+
+        {/* ── 18. ไทม์ไลน์แผนดำเนินการ ── */}
+        <Slide slideId="holistic" footer={commentFooter('holistic')}>
+          <SlideHead icon={CalendarClock} kicker="Timeline" title="ไทม์ไลน์แผนดำเนินการ" accent={VI} />
+          {timelineItems.length > 0 ? (() => {
+            const catLabel: Record<string, string> = { liquidity: 'สภาพคล่อง', insurance: 'ประกัน', retirement: 'เกษียณ', education: 'การศึกษา', estate: 'มรดก' }
+            const n = timelineItems.length
+            const cols = `repeat(${n}, 1fr)`
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', marginTop: 8 }}>
+                {/* แถบไล่สี + จุดวันที่ */}
+                <div style={{ display: 'grid', gridTemplateColumns: cols, background: 'linear-gradient(90deg, #7c3aed 0%, #2563eb 55%, #059669 100%)', borderRadius: 10, padding: '12px 4px' }}>
+                  {timelineItems.map((t, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, color: '#fff', padding: '0 4px' }}>
+                      <div style={{ width: 18, height: 18, borderRadius: 999, background: '#fff', border: `3px solid rgba(255,255,255,0.55)`, flexShrink: 0 }} />
+                      <div style={{ lineHeight: 1.05 }}>
+                        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{t.date.toLocaleDateString('th-TH', { month: 'short' })}</div>
+                        <div style={{ fontSize: 15, fontWeight: 800 }}>{t.date.toLocaleDateString('th-TH', { year: 'numeric' }).replace('พ.ศ. ', '')}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* เส้นประหย่อนลง */}
+                <div style={{ display: 'grid', gridTemplateColumns: cols, height: 22 }}>
+                  {timelineItems.map((_, i) => <div key={i} style={{ display: 'flex', justifyContent: 'center' }}><div style={{ borderLeft: `2px dotted #cbd5e1`, height: '100%' }} /></div>)}
+                </div>
+                {/* การ์ดข้อความ */}
+                <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 8, alignItems: 'start' }}>
+                  {timelineItems.map((t, i) => (
+                    <div key={i} style={{ background: PAPER, border: `1px solid ${LINE}`, borderTop: `3px solid ${t.accent}`, borderRadius: 10, padding: '10px 11px', minWidth: 0 }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: t.accent, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{catLabel[t.category] ?? t.category}</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 700, color: INK, lineHeight: 1.3, margin: '3px 0', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{t.title}</div>
+                      {t.amount > 0 && <div style={{ fontSize: 13, fontWeight: 800, fontFamily: 'monospace', color: t.accent }}>{fmt(t.amount)} บาท</div>}
+                      {t.desc && <div style={{ fontSize: 11, color: SUB, lineHeight: 1.35, marginTop: 3, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{t.desc}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })() : <Empty text="ยังไม่มีกำหนดการในแผนดำเนินการ — กรอก 'กำหนดการ' ในหน้าแผนปฏิบัติการ" />}
+        </Slide>
+
+        {/* ── หน้าที่ผู้ใช้เพิ่มเอง (custom slides) ── */}
+        {customSlides.map((cs, i) => (
+          <div key={cs.id} style={{ position: 'relative', width: '100%', maxWidth: 1120, display: 'flex', justifyContent: 'center' }}>
+            <Slide slideId={cs.id} />
+            {editMode && (
+              <div className="no-print" style={{ position: 'absolute', top: 8, left: 8, display: 'flex', gap: 6, zIndex: 45 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: '#fff', background: 'rgba(15,42,67,0.86)', borderRadius: 6, padding: '4px 9px' }}>หน้าใหม่ {i + 1}</span>
+                <button onClick={() => onMoveSlide(cs.id, -1)} title="เลื่อนขึ้น" style={customBtn}><ArrowUp size={13} /></button>
+                <button onClick={() => onMoveSlide(cs.id, 1)} title="เลื่อนลง" style={customBtn}><ArrowDown size={13} /></button>
+                <button onClick={() => onDelSlide(cs.id)} title="ลบหน้า" style={{ ...customBtn, color: '#fecaca' }}><Trash2 size={13} /></button>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* ── หน้าขอบคุณ (ท้ายสุดเสมอ — หลัง custom slides) ── */}
+        <Slide slideId="thankyou" noFooter pad={0}>
+          <div style={{ position: 'absolute', inset: 0, background: '#ffffff', color: INK, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+            {/* รูปที่ปรึกษา */}
+            <div style={{ width: '40%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 44, flexShrink: 0 }}>
+              <div style={{ position: 'relative', width: '100%', maxWidth: 330 }}>
+                {(thankYouPhoto || advisor?.photo)
+                  ? <img src={thankYouPhoto || advisor?.photo} alt="" style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', borderRadius: 10, boxShadow: '0 14px 44px rgba(15,42,67,0.22)' }} />
+                  : <div style={{ width: '100%', aspectRatio: '3 / 4', borderRadius: 10, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={64} color={MUTED} /></div>}
+                {editMode && (
+                  <>
+                    <button className="no-print" onClick={() => thankPhotoRef.current?.click()}
+                      style={{ position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: 'rgba(15,42,67,0.86)', color: '#fff', border: 'none', borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      <ImagePlus size={13} /> เปลี่ยนรูป
+                    </button>
+                    <input ref={thankPhotoRef} type="file" accept="image/*" style={{ display: 'none' }}
+                      onChange={async e => { const f = e.target.files?.[0]; if (f) { try { const { src } = await downscaleImage(f); onThankYouPhoto?.(src) } catch { /* */ } } e.target.value = '' }} />
+                  </>
+                )}
+              </div>
+            </div>
+            {/* ข้อความ */}
+            <div style={{ flex: 1, paddingRight: 56, textAlign: 'right', minWidth: 0 }}>
+              <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <div style={{ fontSize: 74, fontWeight: 900, letterSpacing: '0.01em', lineHeight: 1, color: INK }}>THANK YOU</div>
+                <div style={{ width: 90, height: 5, background: CY, borderRadius: 3, marginTop: 12 }} />
+              </div>
+              <div style={{ marginTop: 18, fontSize: 15.5, lineHeight: 2, color: SUB }}>
+                {advisor?.address && <div>{advisor.address}</div>}
+                {advisor?.phone && <div>{advisor.phone}</div>}
+                {advisor?.email && <div>{advisor.email}</div>}
+              </div>
+              <div style={{ marginTop: 22, display: 'inline-block', background: PAPER, border: `1px solid ${LINE}`, borderLeft: `3px solid ${CY}`, borderRadius: 8, padding: '13px 22px', textAlign: 'left' }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: INK }}>{advisor?.fullName || 'ที่ปรึกษาการเงิน'}{advisor?.licenseCFP ? ', CFP' : ''}</div>
+                {advisor?.position && <div style={{ fontSize: 14, color: SUB, marginTop: 1 }}>{advisor.position}</div>}
+                {advisor?.company && <div style={{ fontSize: 14, color: SUB }}>{advisor.company}</div>}
+              </div>
+            </div>
+          </div>
+        </Slide>
+
+        {/* ปุ่มเพิ่มหน้า (edit mode) */}
+        {editMode && (
+          <button className="no-print" onClick={onAddSlide}
+            style={{ width: '100%', maxWidth: 1120, aspectRatio: '16 / 9', border: `2px dashed ${MUTED}`, borderRadius: 10, background: '#fff', color: SUB, fontSize: 18, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+            <FilePlus2 size={26} /> เพิ่มหน้าใหม่
+          </button>
+        )}
+      </div>
+
+      {dialog && <CommentDialog title={dialog.title} value={cOf(dialog.key)} onSave={t => onComment(dialog.key, t)} onClose={() => setDialog(null)} />}
+    </SlideEditor.Provider>
+  )
+}
+
+const customBtn: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 6, border: 'none', background: 'rgba(15,42,67,0.86)', color: '#fff', cursor: 'pointer' }
+
+/* ── แผนผังเป้าหมาย: รวม self+spouse แยก ระยะสั้น/กลาง/ยาว ── */

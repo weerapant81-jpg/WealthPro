@@ -1,0 +1,35 @@
+# ── dependencies ──
+node_modules/
+**/node_modules/
+
+# ── env / secrets (ห้าม commit) ──
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# ── build output ──
+dist/
+build/
+**/dist/
+**/build/
+frontend/dev-dist/
+
+# ── prisma ──
+# schema commit ได้ แต่ไม่เอา migration lock ของ local dev ถ้ามี
+**/*.db
+**/*.db-journal
+
+# ── logs / cache ──
+*.log
+npm-debug.log*
+.vite/
+.cache/
+.DS_Store
+Thumbs.db
+
+# ── editor ──
+.vscode/
+.idea/

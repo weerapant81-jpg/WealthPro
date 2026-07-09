@@ -1,0 +1,410 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER         // ลูกค้า (data record ที่ FA ดูแล — ไม่ล็อกอิน)
+  ADMIN        // นักวางแผน (FA)
+  SUPER_ADMIN  // ผู้ให้บริการแอป (เราเอง) — โพสต์ข่าว/ประกาศ + สิทธิ์ FA ทั้งหมด
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  password           String?   // null สำหรับผู้ที่ล็อกอินผ่าน Google (ไม่มีรหัสผ่าน)
+  googleId           String?   @unique // Google account sub — ตั้งเมื่อผูก/ล็อกอินด้วย Google
+  appleId            String?   @unique // Apple account sub — ตั้งเมื่อผูก/ล็อกอินด้วย Apple
+  name               String
+  phone              String?
+  birthDate          DateTime?
+  role               Role      @default(USER)
+  isEmailVerified    Boolean   @default(false)
+  emailVerifyToken   String?
+  emailVerifyExpires DateTime?
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
+  isApproved         Boolean   @default(false)
+  advisorProfile     Json?
+  createdById        String?   // FA (ADMIN/SUPER_ADMIN) ที่สร้างลูกค้ารายนี้
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([createdById])
+
+  profile            Profile?
+  clientProfile      ClientProfile?
+  investmentProfile  InvestmentProfile?
+  incomes       Income[]
+  expenses      Expense[]
+  assets              Asset[]
+  liabilities         Liability[]
+  goals               Goal[]
+  lifeInsurances      LifeInsurancePolicy[]
+  propertyInsurances  PropertyInsurance[]
+}
+
+model ClientProfile {
+  id                 String    @id @default(cuid())
+  userId             String    @unique
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Personal info
+  photo              String?   // รูปโปรไฟล์ลูกค้า (base64 data URL)
+  firstName          String?
+  lastName           String?
+  nickname           String?
+  birthDate          DateTime?
+  nationalId         String?
+  maritalStatus      String?
+  nationality        String?   @default("เนเธ—เธข")
+  education          String?
+  educationField     String?
+  occupation         String?
+  jobTitle           String?
+  workYears          Float?
+  salary             Float?
+  salaryIncreaseRate Float?
+  company            String?
+  additionalJobs     Json?
+  address            String?
+  addrHouseNo        String?
+  addrSubdistrict    String?
+  addrDistrict       String?
+  addrProvince       String?
+  addrZipcode        String?
+  consent            Json?
+  phone              String?
+  contactEmail       String?
+  contactChannel     String?
+
+  // Welfare
+  hasSocialSecurity     Boolean?  @default(false)
+  socialSecurityYears   Float?
+  hasGroupInsurance     Boolean?  @default(false)
+  giRoomLimit           Float?
+  giMedicalLimit        Float?
+  giSurgeryLimit        Float?
+  giOpdLimit            Float?
+  hasPVD                Boolean?  @default(false)
+  pvdEmployeeRate       Float?
+  pvdEmployerRate       Float?
+  pvdCurrentValue       Float?
+  pvdReturnRate         Float?
+  healthInfo            Json?
+
+  // Spouse
+  spouseName         String?
+  spouseAge          Int?
+  spouseOccupation   String?
+  spouseIncome       Float?
+  spouseJobs         Json?
+  spouseProfile      Json?
+  incomeSources         Json?
+  spouseIncomeSources   Json?
+
+  // Parents
+  fatherAge          Int?
+  motherAge          Int?
+  parentCareExpense  Float?
+  dependents         Int?      @default(0)
+  parentsInfo        Json?
+
+  // เป้าหมายทางการเงิน (per person {self, spouse}) — บันทึกจากหน้าเป้าหมายทางการเงิน
+  financialGoals     Json?
+
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  children           Child[]
+}
+
+model Child {
+  id              String        @id @default(cuid())
+  clientProfileId String
+  clientProfile   ClientProfile @relation(fields: [clientProfileId], references: [id], onDelete: Cascade)
+  name            String?
+  age             Int?
+  school          String?
+  createdAt       DateTime      @default(now())
+}
+
+model Profile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  age            Int?
+  occupation     String?
+  familySize     Int      @default(1)
+  riskScore      Int?
+  riskLevel      Int?
+  riskLabel      String?
+  riskAnswers    Json?
+  riskAssessedAt DateTime?
+  spouseRisk     Json?
+
+  retirementAgeSelf    Int?
+  retirementAgeSpouse  Int?
+  lifeExpectancySelf   Int?
+  lifeExpectancySpouse Int?
+
+  inflationRate        Float @default(3.0)
+  educationInflation   Float @default(5.0)
+  rentInflation        Float @default(4.0)
+  medicalInflation      Float @default(5.0)
+  creditCardRate       Float @default(16.0)
+  cashAdvanceRate      Float @default(16.0)
+  personalLoanRate     Float @default(16.0)
+  homeLoanRate          Float @default(6.0)
+  carLoanRate           Float @default(5.0)
+  educationFundReturn  Float @default(4.0)
+  educationReturnDuring Float @default(4.0)
+  preRetirementReturn  Float @default(4.0)
+  postRetirementReturn Float @default(4.0)
+  expectedReturn       Float @default(7.0)
+  taxRate              Float @default(10.0)
+
+  educationCostYear    Int?
+  educationCosts       Json?
+  financialGoals       Json?
+  retirementPlan       Json?
+  pvdPlan              Json?
+  ssoPlan              Json?
+  insurancePlan        Json?
+  educationPlan        Json?
+  taxPlan              Json?
+  reportPlan           Json?
+  severancePlan        Json?
+  cashflowPlan         Json?
+  estatePlan           Json?
+  planReviewDate       DateTime?  // นัดทบทวนแผนครั้งถัดไป
+
+  pvdReturnRate        Float?   // อัตราผลตอบแทนเฉลี่ย 5 ปี กองทุนสำรองเลี้ยงชีพ (%)
+  pvdReturnAsOf        String?  // ข้อมูล ณ ...
+  ssoReturnRate        Float?   // อัตราผลตอบแทนเฉลี่ย 5 ปี กองทุนประกันสังคม (%)
+  ssoReturnAsOf        String?  // ข้อมูล ณ ... (เช่น "เฉลี่ย 5 ปี (ก.พ. 2568)")
+
+  updatedAt      DateTime @updatedAt
+}
+
+model Income {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  amount    Float
+  frequency String    @default("MONTHLY")
+  category  String    @default("salary")
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Expense {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  amount    Float
+  frequency String    @default("MONTHLY")
+  category  String
+  isFixed   Boolean   @default(true)
+  person    String    @default("client")  // client | spouse | shared
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Asset {
+  id         String        @id @default(cuid())
+  userId     String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  value      Float
+  category   String
+  returnRate Float         @default(0)
+  person     String        @default("client")  // client | spouse | shared
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+}
+
+model Liability {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  balance        Float
+  interestRate   Float
+  monthlyPayment Float
+  category       String
+  person         String   @default("client")  // client | spouse | shared
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model LifeInsurancePolicy {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  insuredPerson String
+  policyNumber  String?
+  policyDate    DateTime?
+  sumAssured    Float?
+  insuranceType String?
+  premium       Float?
+  cashValue     Float?
+  policyAge     Float?
+  company       String?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  riders        LifeInsuranceRider[]
+  beneficiaries LifeInsuranceBeneficiary[]
+}
+
+model LifeInsuranceRider {
+  id             String              @id @default(cuid())
+  policyId       String
+  policy         LifeInsurancePolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  riderType      String
+  planName       String?
+  coverageAmount Float?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+}
+
+model LifeInsuranceBeneficiary {
+  id           String              @id @default(cuid())
+  policyId     String
+  policy       LifeInsurancePolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  name         String
+  relationship String?
+  sharePercent Float?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+}
+
+model PropertyInsurance {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coverageType   String
+  policyNumber   String?
+  insuranceType  String?
+  coverageAmount Float?
+  premium        Float?
+  coveragePeriod String?
+  company        String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model InvestmentProfile {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  savingsAccounts  Json?
+  personalAssets   Json?
+  investmentAssets Json?
+  liabilities      Json?
+  unwantedTypes    Json?
+  preferredTypes   Json?
+  constraints      Json?
+  assumptions      Json?
+  spouseData       Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model FinancialAdviceRule {
+  id        String   @id @default(cuid())
+  ratioKey  String   // ratio1 โ€ฆ ratio8
+  category  String   // liquidity | debt | savings
+  state     String   // good | warning | danger
+  advice    String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@unique([ratioKey, state])
+}
+
+model Goal {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  targetAmount  Float
+  currentAmount Float        @default(0)
+  targetDate    DateTime
+  priority      Int          @default(1)
+  category      String
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+// ── ข้อมูลของนักวางแผน (FA) เอง — ผูกกับ advisorId (userId ของ FA) ไม่ใช่ลูกค้า ──
+model Appointment {
+  id         String   @id @default(cuid())
+  advisorId  String
+  title      String
+  clientName String?
+  date       DateTime
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([advisorId])
+}
+
+model Task {
+  id        String   @id @default(cuid())
+  advisorId String
+  title     String
+  done      Boolean  @default(false)
+  dueDate   DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([advisorId])
+}
+
+// รายการปฏิบัติตามแผนการเงิน — ผูกกับลูกค้า (userId = effectiveUserId)
+model ActionItem {
+  id          String    @id @default(cuid())
+  userId      String
+  person      String    @default("self")   // self|spouse — วางแผนแยกคน
+  title       String
+  category    String    @default("other")  // liquidity|debt|savings|insurance|retirement|education|tax|estate|other
+  status      String    @default("todo")    // todo|doing|done|deferred
+  owner       String    @default("client")  // client|advisor
+  priority    String    @default("medium")  // high|medium|low
+  dueDate     DateTime?
+  note        String?
+  metricKey   String?   // ผูกค่าปัจจุบันกับข้อมูลจริง (เช่น insuranceCoverage)
+  baseline    Float?    // ค่าตั้งต้นตอนสร้างรายการ
+  current     Float?    // ค่าปัจจุบันที่กรอกเอง (override ค่าจากระบบ)
+  target      Float?    // ค่าเป้าหมาย
+  source      String    @default("manual")  // manual|auto
+  autoKey     String?   // กันเพิ่มซ้ำจากคำแนะนำเดียวกัน
+  subPlan     Json?     // ตารางแผนดำเนินการย่อย (เช่น แผนซื้อประกัน [{desc,sumInsured,premium,schedule}])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  @@index([userId])
+}
+
+// ข่าว/ประกาศจากผู้ให้บริการแอป (SUPER_ADMIN โพสต์ · FA อ่าน) — global
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+

@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<title>คำนวณภาษีเงินได้ พ.ศ. 2569</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun','Noto Sans Thai','Segoe UI',system-ui,sans-serif;background:#f0f5fd;min-height:100vh;-webkit-text-size-adjust:100%}
+input[type=number]{-moz-appearance:textfield;-webkit-appearance:none}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.hdr{background:-webkit-linear-gradient(315deg,#0a1628 0%,#162c5e 60%,#1e3a78 100%);background:linear-gradient(135deg,#0a1628 0%,#162c5e 60%,#1e3a78 100%);padding:14px 16px 12px;color:#fff;position:-webkit-sticky;position:sticky;top:0;z-index:100;box-shadow:0 4px 20px rgba(10,22,40,.4)}
+.hdr-in{max-width:980px;margin:0 auto;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:space-between;justify-content:space-between;-webkit-flex-wrap:wrap;flex-wrap:wrap;gap:10px}
+.hdr h1{margin:0;font-size:17px;font-weight:800;color:#fff}
+.hdr-sub{margin:2px 0 0;font-size:11px;color:#b8d0f5}
+.hdr-by{margin:1px 0 0;font-size:10px;color:#e2ac3a;font-weight:600;letter-spacing:.3px}
+.sbox{display:-webkit-flex;display:flex;gap:12px;-webkit-flex-wrap:wrap;flex-wrap:wrap;-webkit-align-items:center;align-items:center;background:rgba(255,255,255,.08);border-radius:12px;padding:8px 14px;border:1px solid rgba(255,255,255,.13)}
+.si{text-align:center;min-width:64px}
+.sl{font-size:9px;opacity:.7;text-transform:uppercase;letter-spacing:.5px;margin-bottom:1px}
+.sv{font-size:17px;font-weight:900;letter-spacing:-1px}
+.prepaid-wrap{display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column;-webkit-align-items:center;align-items:center;gap:2px}
+.prepaid-label{font-size:9px;opacity:.7;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.prepaid-inp{width:100px;padding:4px 6px 4px 16px;border:1.5px solid rgba(255,255,255,.25);border-radius:7px;font-size:13px;font-weight:700;color:#fff;background:rgba(255,255,255,.12);outline:none;font-family:inherit;text-align:center;-webkit-appearance:none;appearance:none}
+.prepaid-inp:focus{border-color:#e2ac3a}
+.prepaid-pfx{position:absolute;left:5px;top:50%;-webkit-transform:translateY(-50%);transform:translateY(-50%);font-size:11px;color:rgba(255,255,255,.6);pointer-events:none}
+.prepaid-box{position:relative;display:inline-block}
+.hdr-btns{display:-webkit-flex;display:flex;gap:6px}
+.btn-reset{padding:6px 14px;border-radius:20px;border:1.5px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+.btn-reset:hover{background:rgba(255,255,255,.2)}
+.btn-save{padding:6px 14px;border-radius:20px;border:none;background:#e2ac3a;color:#0a1628;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit}
+.btn-save:hover{background:#f0bc4a}
+.grid{max-width:980px;margin:0 auto;padding:14px 12px 40px;display:-webkit-flex;display:flex;gap:14px}
+.col-l{-webkit-flex:1;flex:1;min-width:0}
+.col-r{width:330px;-webkit-flex-shrink:0;flex-shrink:0;position:-webkit-sticky;position:sticky;top:98px;-webkit-align-self:start;align-self:start;max-height:calc(100vh - 110px);overflow-y:auto}
+.col-r::-webkit-scrollbar{display:none}
+.card{background:#fff;border-radius:14px;margin-bottom:11px;border:1.5px solid #deeafc;overflow:hidden;box-shadow:0 2px 8px rgba(10,22,40,.06)}
+.chdr{width:100%;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:10px;padding:11px 15px;background:none;border:none;cursor:pointer;text-align:left}
+.chdr.open{border-bottom:1.5px solid #deeafc}
+.cion{width:28px;height:28px;border-radius:8px;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:center;justify-content:center;font-size:13px;-webkit-flex-shrink:0;flex-shrink:0}
+.ctit{font-size:13px;font-weight:700;color:#0f2044;-webkit-flex:1;flex:1}
+.carr{font-size:10px;color:#6b9ee8;display:inline-block;-webkit-transition:-webkit-transform .2s;transition:transform .2s}
+.cbdy{padding:11px 15px}
+.ig{margin-bottom:11px}
+.itop{display:-webkit-flex;display:flex;-webkit-justify-content:space-between;justify-content:space-between;-webkit-align-items:baseline;align-items:baseline;margin-bottom:3px}
+.ilbl{font-size:12px;font-weight:600;color:#0f2044}
+.isub{font-size:10px;color:#3b6fd4}
+.iwrp{position:relative}
+.ipfx{position:absolute;left:10px;top:50%;-webkit-transform:translateY(-50%);transform:translateY(-50%);font-size:13px;color:#3b6fd4;font-weight:600;pointer-events:none}
+.inp{width:100%;padding:8px 8px 8px 25px;border:1.5px solid #deeafc;border-radius:9px;font-size:15px;color:#0a1628;background:#f0f5fd;outline:none;font-family:inherit;-webkit-appearance:none;appearance:none}
+.inp:focus{border-color:#3b6fd4}
+.inote{margin:3px 0 0;font-size:10px;color:#6b9ee8;line-height:1.4}
+.chips{display:-webkit-flex;display:flex;gap:5px;-webkit-flex-wrap:wrap;flex-wrap:wrap;margin-top:5px}
+.chip{padding:5px 11px;border-radius:20px;border:1.5px solid #b8d0f5;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#2251a3;-webkit-tap-highlight-color:transparent}
+.chip.on{background:#1e3a78;border-color:#2251a3;color:#fff}
+.ibox{background:#f0f5fd;border:1.5px solid #b8d0f5;border-radius:9px;padding:8px 11px;margin-bottom:11px}
+.ibtit{font-size:11px;color:#1e3a78;font-weight:700;margin-bottom:2px}
+.ibtxt{font-size:10px;color:#2251a3;line-height:1.5}
+.tbox{background:#f0f5fd;border:1.5px solid #b8d0f5;border-radius:9px;padding:8px 11px}
+.ttxt{font-size:13px;color:#162c5e;font-weight:700}
+/* result card */
+.rc{background:-webkit-linear-gradient(315deg,#0a1628 0%,#162c5e 100%);background:linear-gradient(145deg,#0a1628 0%,#162c5e 100%);border-radius:15px;padding:16px;margin-bottom:11px;box-shadow:0 6px 24px rgba(10,22,40,.3);border:1px solid #1e3a78}
+.rtlbl{font-size:10px;color:#6b9ee8;margin-bottom:3px;text-transform:uppercase;letter-spacing:.8px;text-align:center}
+.rtamt{font-size:34px;font-weight:900;letter-spacing:-2px;line-height:1;text-align:center}
+.rtpaid{font-size:11px;color:#6b9ee8;text-align:center;margin-top:4px}
+.minis{display:-webkit-flex;display:flex;-webkit-justify-content:center;justify-content:center;gap:14px;margin-top:10px;-webkit-flex-wrap:wrap;flex-wrap:wrap}
+.mini{text-align:center}
+.minilbl{font-size:9px;color:#6b9ee8;margin-bottom:1px}
+.miniv{font-size:15px;font-weight:800}
+.barsec{border-top:1px solid rgba(255,255,255,.1);padding-top:10px;margin-top:12px}
+.gauge{margin-bottom:7px}
+.gtop{display:-webkit-flex;display:flex;-webkit-justify-content:space-between;justify-content:space-between;margin-bottom:2px}
+.glbl{font-size:11px;color:#6b9ee8}
+.gval{font-size:11px;font-weight:700;color:#fff}
+.gtrk{height:5px;background:rgba(255,255,255,.12);border-radius:6px;overflow:hidden}
+.gfil{height:100%;border-radius:6px;-webkit-transition:width .5s;transition:width .5s}
+.tbox2{display:-webkit-flex;display:flex;gap:8px;margin-top:10px;background:rgba(255,255,255,.07);border-radius:10px;padding:9px 11px;border:1px solid rgba(255,255,255,.1)}
+.tbox2>div{-webkit-flex:1;flex:1}
+.tlbl2{font-size:9px;color:#6b9ee8;margin-bottom:1px}
+.tval2{font-size:13px;font-weight:800}
+.wcard{background:#fff;border-radius:13px;padding:14px;margin-bottom:11px;border:1.5px solid #deeafc;box-shadow:0 2px 8px rgba(10,22,40,.06)}
+.wcard h3{margin:0 0 9px;font-size:12px;font-weight:700;color:#0f2044;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:5px}
+.brow{margin-bottom:6px}
+.btop{display:-webkit-flex;display:flex;-webkit-justify-content:space-between;justify-content:space-between;margin-bottom:2px}
+.blbl{font-size:10px;color:#2251a3}
+.btax{font-size:10px;font-weight:700}
+.btrk{height:5px;background:#f0f5fd;border-radius:4px;overflow:hidden;border:1px solid #deeafc}
+.bfil{height:100%;border-radius:4px;-webkit-transition:width .5s;transition:width .5s}
+.drow{display:-webkit-flex;display:flex;-webkit-justify-content:space-between;justify-content:space-between;-webkit-align-items:center;align-items:center;padding:4px 0;border-bottom:1px solid #f0f5fd}
+.ddot{width:7px;height:7px;border-radius:50%;-webkit-flex-shrink:0;flex-shrink:0;margin-right:6px}
+.dlbl{font-size:11px;color:#1e3a78}
+.dval{font-size:11px;font-weight:700;color:#0f2044}
+.dtot{display:-webkit-flex;display:flex;-webkit-justify-content:space-between;justify-content:space-between;-webkit-align-items:center;align-items:center;padding-top:8px;border-top:2px solid #162c5e;margin-top:3px}
+.dtotl{font-size:12px;font-weight:700;color:#0f2044}
+.dtotv{font-size:12px;font-weight:900;color:#162c5e}
+.warn{background:#fff7ed;border:1.5px solid #fed7aa;border-radius:8px;padding:6px 9px;margin-bottom:8px}
+.warnt{font-size:10px;color:#c2410c;font-weight:700}
+.warntxt{font-size:10px;color:#9a3412;margin-top:2px}
+.fnote{font-size:10px;color:#3b6fd4;text-align:center;margin-top:10px;line-height:1.6;padding:0 4px}
+/* advice box */
+.advice-wrap{max-width:980px;margin:0 auto;padding:0 12px 40px}
+.advice-card{background:#fff;border-radius:14px;border:1.5px solid #deeafc;box-shadow:0 2px 8px rgba(10,22,40,.06);overflow:hidden}
+.advice-hdr{background:-webkit-linear-gradient(315deg,#162c5e,#2251a3);background:linear-gradient(135deg,#162c5e,#2251a3);padding:12px 16px;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:8px}
+.advice-hdr span{font-size:16px}
+.advice-hdr h2{margin:0;font-size:14px;font-weight:700;color:#fff}
+.advice-body{padding:14px 16px}
+.adv-row{display:-webkit-flex;display:flex;gap:10px;-webkit-align-items:flex-start;align-items:flex-start;padding:9px 0;border-bottom:1px solid #f0f5fd}
+.adv-icon{font-size:16px;-webkit-flex-shrink:0;flex-shrink:0;margin-top:1px}
+.adv-title{font-size:12px;font-weight:700;color:#0f2044;margin-bottom:2px}
+.adv-text{font-size:11px;color:#2251a3;line-height:1.5}
+.adv-save{font-size:11px;font-weight:700;color:#059669;margin-top:2px}
+.adv-none{font-size:13px;color:#10b981;font-weight:600;text-align:center;padding:12px 0}
+/* print / PDF */
+@media print{
+  body{background:#fff}
+  .hdr{position:static;box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .hdr-btns,.col-l,.advice-wrap{display:none!important}
+  .grid{display:block;padding:0}
+  .col-r{width:100%;position:static;max-height:none;overflow:visible}
+  .rc,.wcard,.advice-card{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-shadow:none}
+  .pdf-page{display:block!important}
+  @page{margin:15mm}
+}
+.pdf-page{display:none}
+@media(max-width:640px){
+  .grid{-webkit-flex-direction:column;flex-direction:column}
+  .col-r{width:100%;position:static;max-height:none}
+  .hdr h1{font-size:14px}
+  .sv{font-size:15px}
+  .sbox{gap:8px;padding:7px 10px}
+  .rtamt{font-size:28px}
+  .hdr-btns{gap:4px}
+  .btn-reset,.btn-save{font-size:11px;padding:5px 10px}
+}
+/* ── Dark theme override (applied when ?theme=dark) ── */
+html.dark body{background:#0d1626;color:#f0f6ff}
+html.dark .card,html.dark .wcard{background:#0f1c30;border-color:rgba(255,255,255,.08);box-shadow:none}
+html.dark .ctit,html.dark .ilbl,html.dark .dval,html.dark .dtotl,html.dark .dtotv,html.dark .ttxt,html.dark .wcard h3{color:#f0f6ff}
+html.dark .inp{background:#0d1626;border-color:rgba(255,255,255,.12);color:#f0f6ff}
+html.dark .inp:focus{border-color:#38bdf8}
+html.dark .ipfx{color:#7ea8cc}
+html.dark .ibox,html.dark .tbox{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1)}
+html.dark .isub,html.dark .inote,html.dark .carr,html.dark .blbl,html.dark .ibtxt,html.dark .ibtit,html.dark .dlbl{color:#7ea8cc}
+html.dark .chip{background:#0f1c30;border-color:rgba(255,255,255,.15);color:#7ea8cc}
+html.dark .chip.on{background:#1e3a78;border-color:#38bdf8;color:#fff}
+html.dark .btrk{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.1)}
+html.dark .warn{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.4)}
+html.dark .warnt{color:#fbbf24}
+</style>
+<script>(function(){try{var t=new URLSearchParams(location.search).get('theme');if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}})();</script>
+</head>
+<body>
+<div id="app"></div>
+
+<!-- PDF print page (hidden until print) -->
+<div class="pdf-page" id="pdf-page"></div>
+
+<script>
+var LANG={
+th:{title:"คำนวณภาษีเงินได้บุคคลธรรมดา",sub:"ปีภาษี พ.ศ. 2569 (ค.ศ. 2026) · มาตรา 40(1)–40(8)",
+l_calc:"ภาษีคำนวณได้",l_prepaid:"ภาษีชำระไว้แล้ว",l_due:"ภาษีที่ต้องชำระ",l_eff:"อัตราจริง",
+btn_r:"Reset",btn_s:"บันทึก PDF",
+s1:"รายได้ทั้งปี",s2:"ลดหย่อนส่วนตัวและครอบครัว",s3:"ประกัน",s4:"การออมและลงทุน",s5:"มาตรการกระตุ้นเศรษฐกิจและบริจาค",
+f_sal:"เงินเดือนรวม",f_sal_n:"รวมเงินเดือน 12 เดือน",f_bon:"โบนัส",
+f_42:"รายได้ฟรีแลนซ์ / ค่าจ้าง",f_43:"ค่าลิขสิทธิ์ / สิทธิบัตร / กู๊ดวิลล์",
+f_int:"ดอกเบี้ย",f_div:"เงินปันผล",f_ren:"รายได้จากค่าเช่า",
+f_pro:"รายได้วิชาชีพอิสระ",f_pty:"ประเภทวิชาชีพ 40(6)",f_doc:"แพทย์",f_oth:"วิชาชีพอื่นๆ",
+f_47:"ค่ารับเหมา",f_48:"รายได้อื่นๆ",f_ti:"รายได้รวมทั้งปี",f_exp:"หักค่าใช้จ่ายรวม",
+f_mar:"สถานภาพสมรส",f_sin:"โสด",f_wed:"มีคู่สมรส",f_spi:"คู่สมรสมีรายได้หรือไม่?",
+f_sno:"ไม่มีรายได้ (ลดหย่อนได้)",f_sye:"มีรายได้",
+f_chi:"จำนวนบุตร",f_par:"พ่อแม่ที่ลดหย่อนได้ (อายุ≥60)",f_dis:"ผู้พิการที่ดูแล",f_ppl:"คน",
+f_li:"ประกันชีวิต / ประกันออมทรัพย์",f_li_n:"สูงสุด 100,000 บาท",
+f_hi:"ประกันสุขภาพตนเอง",f_hi_n:"สูงสุด 25,000 บาท (รวมกับชีวิตไม่เกิน 100,000)",
+f_ph:"ประกันสุขภาพบิดามารดา",f_ph_n:"สูงสุด 15,000 บาท",
+f_ss:"ประกันสังคม",f_ss_n:"สูงสุด 10,500 บาท",
+f_gcap:"เงื่อนไขรวม",f_gtxt:"RMF + ประกันบำนาญ + PVD + กบข. + กอช. รวมกันต้องไม่เกิน 500,000 บาท",
+f_rmf:"กองทุน RMF",f_rmf_n:"สูงสุด 30% ของเงินได้ (รวมกลุ่มไม่เกิน 500,000)",
+f_ann:"ประกันบำนาญ",f_ann_n:"สูงสุด 15% ของเงินได้ แต่ไม่เกิน 200,000 บาท",
+f_pvd:"กองทุนสำรองเลี้ยงชีพ (PVD)",f_pvd_n:"สูงสุด 15% ของเงินได้ แต่ไม่เกิน 500,000 บาท",
+f_gov:"กองทุนบำเหน็จบำนาญราชการ (กบข.)",f_gov_n:"รวมกลุ่มไม่เกิน 500,000 บาท",
+f_nsf:"กองทุนการออมแห่งชาติ (กอช.)",f_nsf_n:"สูงสุด 30,000 บาท",
+f_esg:"กองทุน Thai ESG",f_esg_n:"สูงสุด 30% ของเงินได้ แต่ไม่เกิน 300,000 บาท (แยกเพดาน)",
+f_mor:"ดอกเบี้ยกู้ยืมซื้อบ้าน",f_mor_n:"สูงสุด 100,000 บาท",
+f_er:"Easy e-Receipt 2569",f_er_n:"สูงสุด 50,000 บาท",
+f_sd:"ช้อปดีมีคืน",f_op:"OTOP",f_op_n:"สูงสุด 10,000 บาท",
+f_nh:"ราคาบ้านใหม่ที่ซื้อ (คำนวณ 0.5%)",f_nh_n:"ลดหย่อน 0.5% สูงสุด 100,000 บาท",
+f_edu:"บริจาคเพื่อการศึกษา / กีฬา",f_edu_n:"สูงสุด 10% ของเงินได้สุทธิ",
+f_don:"บริจาคทั่วไป",f_don_n:"ยกเว้น 2 เท่า สูงสุด 10% ของเงินได้สุทธิ",
+f_pol:"บริจาคพรรคการเมือง",f_pol_n:"สูงสุด 10,000 บาท",
+r_due:"ภาษีที่ต้องชำระ",r_eff:"อัตราจริง",r_top:"อัตราขั้นบน",r_mth:"เฉลี่ย/เดือน",
+r_inc:"รายได้รวม",r_exp:"ค่าใช้จ่าย",r_per:"ลดหย่อนส่วนตัว",r_ins:"ลดหย่อนประกัน",r_sav:"ลดหย่อนการออม",r_spe:"มาตรการกระตุ้น",
+r_ald:"ลดหย่อนรวม",r_ni:"เงินได้สุทธิ",
+bk:"ขั้นบันไดภาษี",bk_net:"สุทธิ",bk_ex:"ยกเว้นภาษี",
+d_tit:"รายละเอียดค่าลดหย่อน",d_tot:"รวมลดหย่อนทั้งหมด",
+d_exp:"ค่าใช้จ่าย (หักอัตโนมัติ)",d_sel:"ส่วนตัว",d_spo:"คู่สมรส",d_chi:"บุตร",
+d_par:"พ่อแม่",d_dis:"ผู้พิการ",d_li:"ประกันชีวิต",d_hi:"ประกันสุขภาพ",
+d_ph:"ประกัน พ่อแม่",d_ss:"ประกันสังคม",d_ann:"ประกันบำนาญ",
+w_cap:"กลุ่ม RMF+บำนาญ+PVD+กบข.+กอช. เกินเพดาน",w_bef:"ก่อน cap",w_to:"ใช้ได้จริง",w_aut:"(ปรับสัดส่วนอัตโนมัติ)",
+paid:"ภาษีคำนวณได้",paid2:"ชำระไว้แล้ว",
+adv_tit:"คำแนะนำในการวางแผนภาษี",adv_none:"คุณใช้สิทธิ์ลดหย่อนอย่างเต็มที่แล้ว!",adv_sv:"ประหยัดภาษีได้ประมาณ",
+fn:"* ผลการคำนวณเป็นเพียงการประมาณการเบื้องต้น กรุณาตรวจสอบกับกรมสรรพากรหรือผู้เชี่ยวชาญก่อนยื่นแบบ ภ.ง.ด.90/91",
+a_li:"ประกันชีวิต/ออมทรัพย์",a_li_t:"สามารถซื้อเพิ่มได้อีก",a_li_c:"(เหลือเพดาน 100,000)",
+a_hi:"ประกันสุขภาพ",a_hi_t:"สามารถซื้อเพิ่มได้อีก",a_hi_c:"(เหลือเพดาน 25,000)",
+a_ss:"ประกันสังคม",a_ss_t:"สามารถเพิ่มได้อีก",a_ss_c:"(เหลือเพดาน 10,500)",
+a_rmf:"กองทุน RMF",a_rmf_t:"สามารถซื้อเพิ่มได้อีก",a_rmf_c:"(RMF+กลุ่มเหลือ",
+a_ann:"ประกันบำนาญ",a_ann_t:"สามารถซื้อเพิ่มได้อีก",a_ann_c:"(เหลือเพดาน 200,000 หรือ 15%)",
+a_esg:"กองทุน Thai ESG",a_esg_t:"สามารถซื้อเพิ่มได้อีก",a_esg_c:"(เหลือเพดาน 300,000 หรือ 30%)",
+a_mor:"ดอกเบี้ยกู้ยืมซื้อบ้าน",a_mor_t:"นำดอกเบี้ยมาลดหย่อนได้อีก",a_mor_c:"(เหลือเพดาน 100,000)",
+a_er:"Easy e-Receipt 2569",a_er_t:"สามารถใช้จ่ายเพิ่มได้อีก",a_er_c:"(เหลือเพดาน 50,000)",
+a_don:"บริจาคทั่วไป",a_don_t:"สามารถบริจาคเพิ่มได้อีก",a_don_c:"(ยกเว้น 2 เท่า เหลือเพดาน 10%)",
+p_rep:"รายงานคำนวณภาษีเงินได้บุคคลธรรมดา",p_dat:"วันที่พิมพ์",
+p_ti:"รายได้รวม",p_ni:"เงินได้สุทธิ",p_tx:"ภาษีคำนวณได้",p_du:"ภาษีที่ต้องชำระ",p_pp:"ชำระไว้แล้ว",
+p_ex:"หักค่าใช้จ่าย",p_ad:"รวมลดหย่อนทั้งหมด",p_ts:"สรุปภาษี",p_id:"สรุปรายได้และค่าลดหย่อน",
+p_ef:"อัตราภาษีจริง",p_ma:"อัตราภาษีขั้นบน",p_mt:"เฉลี่ยต่อเดือน",
+p_av:"คำแนะนำวางแผนภาษี",p_an:"ใช้สิทธิ์ลดหย่อนอย่างเต็มที่แล้ว",
+p_ft:"ผลการคำนวณเป็นเพียงการประมาณการเบื้องต้น กรุณาตรวจสอบกับกรมสรรพากรก่อนยื่นแบบ ภ.ง.ด.90/91",
+p_by:"จัดทำโดย Weerapan CFP",pr_btn:"พิมพ์ / บันทึก PDF",pr_cl:"ปิด"
+},
+en:{title:"Personal Income Tax Calculator",sub:"Tax Year 2026 (B.E. 2569) · Section 40(1)–40(8)",
+l_calc:"Calculated Tax",l_prepaid:"Tax Prepaid",l_due:"Tax Due",l_eff:"Eff. Rate",
+btn_r:"Reset",btn_s:"Save PDF",
+s1:"Annual Income",s2:"Personal & Family Deductions",s3:"Insurance",s4:"Savings & Investments",s5:"Stimulus & Donations",
+f_sal:"Salary (Total)",f_sal_n:"Total 12-month salary",f_bon:"Bonus",
+f_42:"Freelance / Service Income",f_43:"Copyright / Patent / Goodwill",
+f_int:"Interest Income",f_div:"Dividend Income",f_ren:"Rental Income",
+f_pro:"Professional Income",f_pty:"Profession Type 40(6)",f_doc:"Medical Doctor",f_oth:"Other Professions",
+f_47:"Contract Income",f_48:"Other Income",f_ti:"Total Annual Income",f_exp:"Total Expense Deduction",
+f_mar:"Marital Status",f_sin:"Single",f_wed:"Married",f_spi:"Does spouse have income?",
+f_sno:"No income (deductible)",f_sye:"Has income",
+f_chi:"No. of Children",f_par:"Parents (age 60+)",f_dis:"Disabled Dependents",f_ppl:"person(s)",
+f_li:"Life / Savings Insurance",f_li_n:"Max 100,000 THB",
+f_hi:"Health Insurance (Self)",f_hi_n:"Max 25,000 THB",
+f_ph:"Parents Health Insurance",f_ph_n:"Max 15,000 THB",
+f_ss:"Social Security",f_ss_n:"Max 10,500 THB",
+f_gcap:"Group Limit",f_gtxt:"RMF + Annuity + PVD + GPF + NSF combined must not exceed 500,000 THB",
+f_rmf:"RMF Fund",f_rmf_n:"Max 30% of income (group cap 500,000)",
+f_ann:"Annuity Insurance",f_ann_n:"Max 15% of income, not exceeding 200,000 THB",
+f_pvd:"Provident Fund (PVD)",f_pvd_n:"Max 500,000 THB",
+f_gov:"Government Pension Fund (GPF)",f_gov_n:"Group cap 500,000 THB",
+f_nsf:"National Savings Fund (NSF)",f_nsf_n:"Max 30,000 THB",
+f_esg:"Thai ESG Fund",f_esg_n:"Max 30% of income, not exceeding 300,000 THB (separate cap)",
+f_mor:"Home Loan Interest",f_mor_n:"Max 100,000 THB",
+f_er:"Easy e-Receipt 2026",f_er_n:"Max 50,000 THB",
+f_sd:"Shop and Save Campaign",f_op:"OTOP Products",f_op_n:"Max 10,000 THB",
+f_nh:"New Home Price (0.5% deduction)",f_nh_n:"0.5% deduction, max 100,000 THB",
+f_edu:"Education / Sports Donation",f_edu_n:"Max 10% of net income",
+f_don:"General Donation",f_don_n:"2x deduction, max 10% of net income",
+f_pol:"Political Party Donation",f_pol_n:"Max 10,000 THB",
+r_due:"Tax Due",r_eff:"Eff. Rate",r_top:"Top Rate",r_mth:"Monthly",
+r_inc:"Total Income",r_exp:"Expenses",r_per:"Personal Ded.",r_ins:"Insurance Ded.",r_sav:"Savings Ded.",r_spe:"Stimulus",
+r_ald:"Total Deductions",r_ni:"Net Income",
+bk:"Tax Brackets",bk_net:"Net",bk_ex:"Exempt",
+d_tit:"Deduction Details",d_tot:"Total Deductions",
+d_exp:"Expenses (auto)",d_sel:"Personal",d_spo:"Spouse",d_chi:"Children",
+d_par:"Parents",d_dis:"Disabled",d_li:"Life Insurance",d_hi:"Health Insurance",
+d_ph:"Parents Insurance",d_ss:"Social Security",d_ann:"Annuity Insurance",
+w_cap:"Group RMF+Annuity+PVD+GPF+NSF exceeded cap",w_bef:"Before cap",w_to:"Allowed",w_aut:"(auto-adjusted)",
+paid:"Calculated Tax",paid2:"Tax Prepaid",
+adv_tit:"Tax Planning Recommendations",adv_none:"You have fully utilized all deductions!",adv_sv:"Est. tax saving",
+fn:"This is an estimate only. Verify with the Revenue Department or tax professional before filing.",
+a_li:"Life Insurance",a_li_t:"Additional room",a_li_c:"(cap remaining: 100,000)",
+a_hi:"Health Insurance",a_hi_t:"Additional room",a_hi_c:"(cap remaining: 25,000)",
+a_ss:"Social Security",a_ss_t:"Additional room",a_ss_c:"(cap remaining: 10,500)",
+a_rmf:"RMF Fund",a_rmf_t:"Additional room",a_rmf_c:"(group remaining",
+a_ann:"Annuity Insurance",a_ann_t:"Additional room",a_ann_c:"(cap: 200,000 or 15%)",
+a_esg:"Thai ESG Fund",a_esg_t:"Additional room",a_esg_c:"(cap: 300,000 or 30%)",
+a_mor:"Home Loan Interest",a_mor_t:"Additional deductible room",a_mor_c:"(cap remaining: 100,000)",
+a_er:"Easy e-Receipt 2026",a_er_t:"Additional spending room",a_er_c:"(cap remaining: 50,000)",
+a_don:"General Donation",a_don_t:"Additional donation room",a_don_c:"(2x deduction, max 10% net income)",
+p_rep:"Personal Income Tax Report",p_dat:"Print Date",
+p_ti:"Total Income",p_ni:"Net Income",p_tx:"Calculated Tax",p_du:"Tax Due",p_pp:"Tax Prepaid",
+p_ex:"Expense Deduction",p_ad:"Total Deductions",p_ts:"Tax Summary",p_id:"Income & Deduction Summary",
+p_ef:"Effective Tax Rate",p_ma:"Top Marginal Rate",p_mt:"Monthly Average",
+p_av:"Tax Planning Recommendations",p_an:"All deductions fully utilized",
+p_ft:"This is an estimate only. Verify with the Revenue Department or a tax professional before filing.",
+p_by:"Prepared by Weerapan CFP",pr_btn:"Print / Save PDF",pr_cl:"Close"
+}
+};
+var lang="th";
+function T(k){return(LANG[lang]&&LANG[lang][k])?LANG[lang][k]:(LANG.th[k]||k);}
+function setLang(l){
+  lang=l;
+  var bth=document.getElementById("btn-th");
+  var ben=document.getElementById("btn-en");
+  if(bth){bth.style.background=l==="th"?"#e2ac3a":"rgba(255,255,255,.15)";bth.style.color=l==="th"?"#0a1628":"#fff";}
+  if(ben){ben.style.background=l==="en"?"#e2ac3a":"rgba(255,255,255,.15)";ben.style.color=l==="en"?"#0a1628":"#fff";}
+  render();
+}
+
+var N={900:"#0a1628",800:"#0f2044",700:"#162c5e",600:"#1e3a78",500:"#2251a3",400:"#3b6fd4",300:"#6b9ee8",200:"#b8d0f5",100:"#deeafc",50:"#f0f5fd",gold:"#e2ac3a"};
+
+var BRACKETS=[
+  {min:0,max:150000,rate:0},{min:150000,max:300000,rate:0.05},
+  {min:300000,max:500000,rate:0.10},{min:500000,max:750000,rate:0.15},
+  {min:750000,max:1000000,rate:0.20},{min:1000000,max:2000000,rate:0.25},
+  {min:2000000,max:5000000,rate:0.30},{min:5000000,max:9999999999,rate:0.35}
+];
+
+function calcTax(inc){var t=0;for(var i=0;i<BRACKETS.length;i++){var b=BRACKETS[i];if(inc<=b.min)break;t+=(Math.min(inc,b.max)-b.min)*b.rate;}return Math.max(0,t);}
+function getMR(ni){var r=0;for(var i=0;i<BRACKETS.length;i++){if(ni>BRACKETS[i].min)r=BRACKETS[i].rate;}return r*100;}
+function fmt(n){return new Intl.NumberFormat("th-TH",{maximumFractionDigits:2}).format(n);}
+function fmtB(n){if(n>=1000000)return fmt(n/1000000)+" ล.";if(n>=1000)return fmt(n/1000)+" พัน";return fmt(n);}
+
+var DEFAULT={salary:0,bonus:0,income40_2:0,income40_3:0,interest:0,dividend:0,
+  prof40_6:0,prof40_6type:"other",income40_7:0,rental:0,other40:0,
+  maritalStatus:"single",spouseIncome:false,children:0,parents:0,disabled:0,
+  lifeIns:0,healthIns:0,parentHealthIns:0,socialSec:0,
+  rmf:0,annuityIns:0,pvd:0,govPension:0,nsf:0,thaiesg:0,
+  mortgage:0,easyReceipt:0,shopDee:0,otop:0,donation:0,eduDonation:0,politicalDonate:0,newHome:0,
+  prepaid:0,s1:true,s2:true,s3:true,s4:true,s5:true};
+
+var S={};
+for(var k in DEFAULT)S[k]=DEFAULT[k];
+
+function compute(){
+  var s=S;
+  // รายได้แต่ละมาตรา
+  var ti40_1 = s.salary + s.bonus;
+  var ti40_2 = s.income40_2;
+  var ti40_3 = s.income40_3;
+  var ti40_4 = s.interest + s.dividend;
+  var ti40_6 = s.prof40_6;
+  var ti40_7 = s.income40_7;
+  var ti40_5 = s.rental;
+  var ti40_8 = s.other40;
+  var ti = ti40_1 + ti40_2 + ti40_3 + ti40_4 + ti40_6 + ti40_7 + ti40_5 + ti40_8;
+
+  // ค่าใช้จ่าย
+  // 40(1)+40(2)+40(3) รวมกัน 50% ไม่เกิน 100,000
+  var exp_123 = Math.min((ti40_1 + ti40_2 + ti40_3) * 0.50, 100000);
+  // 40(4) หักไม่ได้
+  var exp_4 = 0;
+  // 40(5) เช่า 30%
+  var exp_5 = ti40_5 * 0.30;
+  // 40(6) แพทย์ 60%, อื่นๆ 40%
+  var exp_6 = s.prof40_6type === "doctor" ? ti40_6 * 0.60 : ti40_6 * 0.40;
+  // 40(7) รับเหมา 60%
+  var exp_7 = ti40_7 * 0.60;
+  // 40(8) อื่นๆ 60%
+  var exp_8 = ti40_8 * 0.60;
+  var expD = exp_123 + exp_4 + exp_5 + exp_6 + exp_7 + exp_8;
+
+  var selfD=60000,spouseD=(s.maritalStatus==="married"&&!s.spouseIncome)?60000:0;
+  var childD=Math.min(s.children,3)*30000,parentD=s.parents*30000,disD=s.disabled*60000;
+  var perD=selfD+spouseD+childD+parentD+disD;
+  var lifeD=Math.min(s.lifeIns,100000),hlthD=Math.min(s.healthIns,25000),phD=Math.min(s.parentHealthIns,15000),ssD=Math.min(s.socialSec,10500);
+  var insD=Math.min(lifeD+hlthD,100000)+phD+ssD;
+  var net1=ti-expD;
+  var rmfR=Math.min(s.rmf,net1*0.30),annR=Math.min(s.annuityIns,Math.min(net1*0.15,200000));
+  var pvdR=Math.min(s.pvd,500000),govR=Math.min(s.govPension,500000),nsfR=Math.min(s.nsf,30000);
+  var gRaw=rmfR+annR+pvdR+govR+nsfR,gCap=500000,rat=gRaw>gCap?gCap/gRaw:1;
+  var rmfD=rmfR*rat,annD=annR*rat,pvdD=pvdR*rat,govD=govR*rat,nsfD=nsfR*rat;
+  var esgD=Math.min(s.thaiesg,Math.min(net1*0.30,300000));
+  var savD=rmfD+annD+pvdD+govD+nsfD+esgD;
+  var spendD=Math.min(s.mortgage,100000)+Math.min(s.easyReceipt,50000)+Math.min(s.shopDee,50000)+Math.min(s.otop,10000)+Math.min(s.donation*2,net1*0.10)+Math.min(s.eduDonation,net1*0.10)+Math.min(s.politicalDonate,10000)+Math.min(s.newHome*0.005,100000);
+  var allD=expD+perD+insD+savD+spendD;
+  var ni=Math.max(0,ti-allD),tax=calcTax(ni);
+  var netTax=Math.max(0,tax-s.prepaid);
+  var eff=ti>0?(tax/ti)*100:0;
+  return {ti:ti,ti40_1:ti40_1,ti40_2:ti40_2,ti40_3:ti40_3,ti40_4:ti40_4,ti40_6:ti40_6,ti40_7:ti40_7,ti40_5:ti40_5,ti40_8:ti40_8,
+    expD:expD,exp_123:exp_123,exp_5:exp_5,exp_6:exp_6,exp_7:exp_7,exp_8:exp_8,
+    perD:perD,insD:insD,savD:savD,spendD:spendD,allD:allD,ni:ni,tax:tax,netTax:netTax,
+    eff:eff,mr:getMR(ni),mth:netTax/12,
+    selfD:selfD,spouseD:spouseD,childD:childD,parentD:parentD,disD:disD,
+    lifeD:lifeD,hlthD:hlthD,phD:phD,ssD:ssD,
+    rmfD:rmfD,annD:annD,pvdD:pvdD,govD:govD,nsfD:nsfD,esgD:esgD,
+    gRaw:gRaw,gCap:gCap,net1:net1};
+}
+
+function genAdvice(c){
+  var s=S,items=[],net1=c.net1;
+  var lifeRoom=100000-s.lifeIns;
+  if(lifeRoom>0){var sv=calcTax(c.ni)-calcTax(Math.max(0,c.ni-Math.min(lifeRoom,100000)));if(sv>0)items.push({icon:"🛡️",title:T("a_li"),text:T("a_li_t")+" ฿"+fmt(lifeRoom)+" "+T("a_li_c"),save:sv});}
+  var hlthRoom=25000-s.healthIns;
+  if(hlthRoom>0){var sv2=calcTax(c.ni)-calcTax(Math.max(0,c.ni-Math.min(hlthRoom,25000)));if(sv2>0)items.push({icon:"❤️",title:T("a_hi"),text:T("a_hi_t")+" ฿"+fmt(hlthRoom)+" "+T("a_hi_c"),save:sv2});}
+  var ssRoom=10500-s.socialSec;
+  if(ssRoom>0){var sv3=calcTax(c.ni)-calcTax(Math.max(0,c.ni-ssRoom));if(sv3>0)items.push({icon:"👷",title:T("a_ss"),text:T("a_ss_t")+" ฿"+fmt(ssRoom)+" "+T("a_ss_c"),save:sv3});}
+  var groupUsed=c.gRaw,groupRoom=Math.max(0,500000-groupUsed);
+  var rmfMax=Math.min(net1*0.30,500000-groupUsed);
+  if(rmfMax>s.rmf&&rmfMax>0){var addRmf=rmfMax-s.rmf;var sv4=calcTax(c.ni)-calcTax(Math.max(0,c.ni-addRmf));if(sv4>0)items.push({icon:"📈",title:T("a_rmf"),text:T("a_rmf_t")+" ฿"+fmt(addRmf)+" "+T("a_rmf_c")+" ฿"+fmt(groupRoom)+")",save:sv4});}
+  var annMax=Math.min(net1*0.15,200000,Math.max(0,500000-groupUsed));
+  if(annMax>s.annuityIns&&annMax>0){var addAnn=annMax-s.annuityIns;var sv5=calcTax(c.ni)-calcTax(Math.max(0,c.ni-addAnn));if(sv5>0)items.push({icon:"🏦",title:T("a_ann"),text:T("a_ann_t")+" ฿"+fmt(addAnn)+" "+T("a_ann_c"),save:sv5});}
+  var esgMax=Math.min(net1*0.30,300000),esgRoom=esgMax-s.thaiesg;
+  if(esgRoom>0){var sv6=calcTax(c.ni)-calcTax(Math.max(0,c.ni-esgRoom));if(sv6>0)items.push({icon:"🌿",title:T("a_esg"),text:T("a_esg_t")+" ฿"+fmt(esgRoom)+" "+T("a_esg_c"),save:sv6});}
+  var mortRoom=100000-s.mortgage;
+  if(mortRoom>0)items.push({icon:"🏠",title:T("a_mor"),text:T("a_mor_t")+" ฿"+fmt(mortRoom)+" "+T("a_mor_c"),save:0});
+  var erRoom=50000-s.easyReceipt;
+  if(erRoom>0){var sv7=calcTax(c.ni)-calcTax(Math.max(0,c.ni-erRoom));if(sv7>0)items.push({icon:"🧾",title:T("a_er"),text:T("a_er_t")+" ฿"+fmt(erRoom)+" "+T("a_er_c"),save:sv7});}
+  var donMax=Math.min(net1*0.10/2,net1*0.05),donRoom=donMax-s.donation;
+  if(donRoom>0){var sv8=calcTax(c.ni)-calcTax(Math.max(0,c.ni-donRoom*2));if(sv8>0)items.push({icon:"❤️",title:T("a_don"),text:T("a_don_t")+" ฿"+fmt(donRoom)+" "+T("a_don_c"),save:sv8});}
+  return items;
+}
+
+function inp(key,label,sub,note){
+  return '<div class="ig"><div class="itop"><label class="ilbl">'+label+'</label>'+(sub?'<span class="isub">'+sub+'</span>':'')+
+    '</div><div class="iwrp"><span class="ipfx">฿</span><input class="inp" type="number" min="0" data-key="'+key+'" value="'+S[key]+'"/></div>'+
+    (note?'<p class="inote">'+note+'</p>':'')+
+  '</div>';
+}
+function chips(key,label,opts){
+  var btns=opts.map(function(o){var on=String(S[key])===String(o.v);return '<button class="chip'+(on?' on':'')+'" data-key="'+key+'" data-val="'+o.v+'">'+o.l+'</button>';}).join('');
+  return '<div class="ig"><label class="ilbl">'+label+'</label><div class="chips">'+btns+'</div></div>';
+}
+function sec(sk,icon,title,ac,body){
+  var open=S[sk];
+  return '<div class="card"><button class="chdr'+(open?' open':'')+'" data-sec="'+sk+'">'+
+    '<span class="cion" style="background:'+ac+'22">'+icon+'</span><span class="ctit">'+title+'</span>'+
+    '<span class="carr" style="-webkit-transform:'+(open?'rotate(180deg)':'rotate(0deg)')+';transform:'+(open?'rotate(180deg)':'rotate(0deg)')+'">▼</span>'+
+  '</button>'+(open?'<div class="cbdy">'+body+'</div>':'')+
+  '</div>';
+}
+function gauge(lbl,val,tot,col){
+  var pct=tot>0?Math.min(100,(val/tot)*100):0;
+  return '<div class="gauge"><div class="gtop"><span class="glbl">'+lbl+'</span><span class="gval">฿'+fmt(val)+'</span></div><div class="gtrk"><div class="gfil" style="width:'+pct+'%;background:'+col+'"></div></div></div>';
+}
+
+function render(){
+  var c=compute();
+  var taxColor=c.eff<5?"#22c55e":c.eff<15?N.gold:"#f87171";
+  var bColors=[N[100],N[200],N[300],N[400],N[500],N[600],N[700],N[800]];
+  var advice=genAdvice(c);
+  var deducts=[{l:T("d_exp"),v:c.expD,c:N[300]},{l:T("d_sel"),v:c.selfD,c:N[400]}];
+  if(c.spouseD>0)deducts.push({l:T("d_spo"),v:c.spouseD,c:N[500]});
+  if(c.childD>0)deducts.push({l:T("d_chi"),v:c.childD,c:N[600]});
+  if(c.parentD>0)deducts.push({l:T("d_par"),v:c.parentD,c:N[700]});
+  if(c.disD>0)deducts.push({l:T("d_dis"),v:c.disD,c:N[800]});
+  if(c.lifeD>0)deducts.push({l:T("d_li"),v:c.lifeD,c:"#f59e0b"});
+  if(c.hlthD>0)deducts.push({l:T("d_hi"),v:c.hlthD,c:"#fbbf24"});
+  if(c.phD>0)deducts.push({l:T("d_ph"),v:c.phD,c:"#fcd34d"});
+  if(c.ssD>0)deducts.push({l:T("d_ss"),v:c.ssD,c:"#fb923c"});
+  if(c.rmfD>0)deducts.push({l:"RMF",v:c.rmfD,c:"#10b981"});
+  if(c.annD>0)deducts.push({l:T("d_ann"),v:c.annD,c:"#2dd4bf"});
+  if(c.pvdD>0)deducts.push({l:"PVD",v:c.pvdD,c:"#059669"});
+  if(c.govD>0)deducts.push({l:"GPF/กบข.",v:c.govD,c:"#047857"});
+  if(c.nsfD>0)deducts.push({l:"NSF/กอช.",v:c.nsfD,c:"#065f46"});
+  if(c.esgD>0)deducts.push({l:"Thai ESG",v:c.esgD,c:"#34d399"});
+  var bracketHTML="";
+  for(var i=0;i<BRACKETS.length-1;i++){
+    var b=BRACKETS[i],filled=c.ni>b.min?Math.min(c.ni,b.max)-b.min:0,pct=(b.max-b.min)>0?(filled/(b.max-b.min))*100:0,col=bColors[i];
+    bracketHTML+='<div class="brow"><div class="btop"><span class="blbl">'+(b.rate===0?T("bk_ex"):(b.rate*100)+'%')+' · ฿'+fmtB(b.min)+'–'+fmtB(b.max)+'</span>'+(pct>0?'<span class="btax" style="color:'+col+'">฿'+fmt(filled*b.rate)+'</span>':'')+
+    '</div><div class="btrk"><div class="bfil" style="width:'+pct+'%;background:'+col+'"></div></div></div>';
+  }
+  var dRows=deducts.map(function(r){return '<div class="drow"><div style="display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center"><div class="ddot" style="background:'+r.c+'"></div><span class="dlbl">'+r.l+'</span></div><span class="dval">฿'+fmt(r.v)+'</span></div>';}).join('');
+  var advHTML='';
+  if(advice.length===0){advHTML='<div class="adv-none">✅ '+T("adv_none")+'</div>';}
+  else{for(var j=0;j<advice.length;j++){var a=advice[j];advHTML+='<div class="adv-row"><span class="adv-icon">'+a.icon+'</span><div><div class="adv-title">'+a.title+'</div><div class="adv-text">'+a.text+'</div>'+(a.save>0?'<div class="adv-save">💰 '+T("adv_sv")+' ฿'+fmt(a.save)+'</div>':'')+
+    '</div></div>';}}
+  var lbtn='<button id="btn-th" onclick="setLang(\'th\')" style="padding:5px 14px;border-radius:15px;border:1.5px solid rgba(255,255,255,.4);font-size:12px;font-weight:700;cursor:pointer;margin-right:4px;background:'+(lang==="th"?"#e2ac3a":"rgba(255,255,255,.15)")+';color:'+(lang==="th"?"#0a1628":"#fff")+'">TH</button>'+
+    '<button id="btn-en" onclick="setLang(\'en\')" style="padding:5px 14px;border-radius:15px;border:1.5px solid rgba(255,255,255,.4);font-size:12px;font-weight:700;cursor:pointer;background:'+(lang==="en"?"#e2ac3a":"rgba(255,255,255,.15)")+';color:'+(lang==="en"?"#0a1628":"#fff")+'">EN</button>';
+  var html=
+  '<div class="hdr"><div class="hdr-in">'+
+    '<div>'+
+      '<div style="display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:8px;margin-bottom:1px"><span style="font-size:19px">🇹🇭</span><h1>'+T("title")+'</h1></div>'+
+      '<p class="hdr-sub">'+T("sub")+'</p>'+
+      '<p class="hdr-by">By Weerapan CFP®</p>'+
+    '</div>'+
+    '<div style="display:-webkit-flex;display:flex;gap:10px;-webkit-flex-wrap:wrap;flex-wrap:wrap;-webkit-align-items:center;align-items:center">'+
+      '<div class="sbox">'+
+        '<div class="si"><div class="sl">'+T("l_calc")+'</div><div class="sv" style="color:#6b9ee8">฿'+fmt(c.tax)+'</div></div>'+
+        '<div style="width:1px;background:rgba(255,255,255,.15)"></div>'+
+        '<div class="prepaid-wrap"><div class="prepaid-label">'+T("l_prepaid")+'</div>'+
+        '<div class="prepaid-box"><span class="prepaid-pfx">฿</span><input class="prepaid-inp" type="number" min="0" id="prepaid-inp" value="'+S.prepaid+'"/></div></div>'+
+        '<div style="width:1px;background:rgba(255,255,255,.15)"></div>'+
+        '<div class="si"><div class="sl">'+T("l_due")+'</div><div class="sv" style="color:'+N.gold+'">฿'+fmt(c.netTax)+'</div></div>'+
+        '<div style="width:1px;background:rgba(255,255,255,.15)"></div>'+
+        '<div class="si"><div class="sl">'+T("l_eff")+'</div><div class="sv" style="color:#fff">'+c.eff.toFixed(2)+'%</div></div>'+
+      '</div>'+
+      '<div class="hdr-btns">'+lbtn+
+        '<button class="btn-reset" id="btn-reset">🔄 '+T("btn_r")+'</button>'+
+        '<button class="btn-save" id="btn-save">🖨️ '+T("btn_s")+'</button>'+
+      '</div>'+
+    '</div>'+
+  '</div></div>'+
+  '<div class="grid"><div class="col-l">'+
+    sec("s1","💰",T("s1"),"#16a34a",
+      inp("salary",T("f_sal"),"Sec.40(1)",T("f_sal_n"))+
+      inp("bonus",T("f_bon"),"Sec.40(1)","")+
+      inp("income40_2",T("f_42"),"Sec.40(2)","")+
+      inp("income40_3",T("f_43"),"Sec.40(3)","")+
+      inp("interest",T("f_int"),"Sec.40(4)","")+
+      inp("dividend",T("f_div"),"Sec.40(4)","")+
+      inp("rental",T("f_ren"),"Sec.40(5)","")+
+      inp("prof40_6",T("f_pro"),"Sec.40(6)","")+
+      chips("prof40_6type",T("f_pty"),[{v:"doctor",l:T("f_doc")},{v:"other",l:T("f_oth")}])+
+      inp("income40_7",T("f_47"),"Sec.40(7)","")+
+      inp("other40",T("f_48"),"Sec.40(8)","")+
+      '<div class="tbox"><div class="ttxt">'+T("f_ti")+': ฿'+fmt(c.ti)+'</div>'+
+      '<div style="font-size:11px;color:#2251a3;margin-top:4px">'+T("f_exp")+': ฿'+fmt(c.expD)+'</div></div>')+
+    sec("s2","👪",T("s2"),N[600],
+      chips("maritalStatus",T("f_mar"),[{v:"single",l:T("f_sin")},{v:"married",l:T("f_wed")}])+
+      (S.maritalStatus==="married"?chips("spouseIncome",T("f_spi"),[{v:false,l:T("f_sno")},{v:true,l:T("f_sye")}]):"")+
+      chips("children",T("f_chi"),[0,1,2,3,4,5].map(function(n){return{v:n,l:n+" "+T("f_ppl")}}))+
+      chips("parents",T("f_par"),[0,1,2,3,4].map(function(n){return{v:n,l:n+" "+T("f_ppl")}}))+
+      chips("disabled",T("f_dis"),[0,1,2].map(function(n){return{v:n,l:n+" "+T("f_ppl")}})))+
+    sec("s3","🛡️",T("s3"),"#d97706",
+      inp("lifeIns",T("f_li"),"",T("f_li_n"))+
+      inp("healthIns",T("f_hi"),"",T("f_hi_n"))+
+      inp("parentHealthIns",T("f_ph"),"",T("f_ph_n"))+
+      inp("socialSec",T("f_ss"),"",T("f_ss_n")))+
+    sec("s4","📈",T("s4"),"#059669",
+      '<div class="ibox"><div class="ibtit">⚠️ '+T("f_gcap")+'</div><div class="ibtxt">'+T("f_gtxt")+'</div></div>'+
+      inp("rmf",T("f_rmf"),"",T("f_rmf_n"))+
+      inp("annuityIns",T("f_ann"),"",T("f_ann_n"))+
+      inp("pvd",T("f_pvd"),"",T("f_pvd_n"))+
+      inp("govPension",T("f_gov"),"",T("f_gov_n"))+
+      inp("nsf",T("f_nsf"),"",T("f_nsf_n"))+
+      inp("thaiesg",T("f_esg"),"",T("f_esg_n")))+
+    sec("s5","🛒",T("s5"),"#dc2626",
+      inp("mortgage",T("f_mor"),"",T("f_mor_n"))+
+      inp("easyReceipt",T("f_er"),"",T("f_er_n"))+
+      inp("shopDee",T("f_sd"),"","")+
+      inp("otop",T("f_op"),"",T("f_op_n"))+
+      inp("newHome",T("f_nh"),"",T("f_nh_n"))+
+      inp("eduDonation",T("f_edu"),"",T("f_edu_n"))+
+      inp("donation",T("f_don"),"",T("f_don_n"))+
+      inp("politicalDonate",T("f_pol"),"",T("f_pol_n")))+
+  '</div>'+
+  '<div class="col-r">'+
+    '<div class="rc">'+
+      '<div class="rtlbl">'+T("r_due")+'</div>'+
+      '<div class="rtamt" style="color:'+N.gold+'">฿'+fmt(c.netTax)+'</div>'+
+      (S.prepaid>0?'<div class="rtpaid">'+T("paid")+' ฿'+fmt(c.tax)+' − '+T("paid2")+' ฿'+fmt(S.prepaid)+'</div>':'')+
+      '<div class="minis">'+
+        '<div class="mini"><div class="minilbl">'+T("r_eff")+'</div><div class="miniv" style="color:'+taxColor+'">'+c.eff.toFixed(2)+'%</div></div>'+
+        '<div class="mini"><div class="minilbl">'+T("r_top")+'</div><div class="miniv" style="color:#fff">'+c.mr.toFixed(0)+'%</div></div>'+
+        '<div class="mini"><div class="minilbl">'+T("r_mth")+'</div><div class="miniv" style="color:#fff">฿'+fmt(c.mth)+'</div></div>'+
+      '</div>'+
+      '<div class="barsec">'+
+        gauge(T("r_inc"),c.ti,c.ti,N[300])+
+        gauge(T("r_exp"),c.expD,c.ti,"#60a5fa")+
+        gauge(T("r_per"),c.perD,c.ti,"#818cf8")+
+        gauge(T("r_ins"),c.insD,c.ti,"#fbbf24")+
+        gauge(T("r_sav"),c.savD,c.ti,"#34d399")+
+        gauge(T("r_spe"),c.spendD,c.ti,"#f87171")+
+      '</div>'+
+      '<div class="tbox2">'+
+        '<div><div class="tlbl2">'+T("r_ald")+'</div><div class="tval2" style="color:#fff">฿'+fmt(c.allD)+'</div></div>'+
+        '<div><div class="tlbl2">'+T("r_ni")+'</div><div class="tval2" style="color:'+N.gold+'">฿'+fmt(c.ni)+'</div></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="wcard"><h3><span>📊</span> '+T("bk")+' <span style="margin-left:auto;font-size:10px;font-weight:500;color:'+N[400]+'">'+T("bk_net")+' ฿'+fmt(c.ni)+'</span></h3>'+bracketHTML+'</div>'+
+    '<div class="wcard">'+
+      '<h3><span>📋</span> '+T("d_tit")+'</h3>'+
+      (c.gRaw>c.gCap?'<div class="warn"><div class="warnt">⚠️ '+T("w_cap")+'</div><div class="warntxt">'+T("w_bef")+': ฿'+fmt(c.gRaw)+' '+T("w_to")+': ฿'+fmt(c.gCap)+' '+T("w_aut")+'</div></div>':'')+
+      dRows+'<div class="dtot"><span class="dtotl">'+T("d_tot")+'</span><span class="dtotv">฿'+fmt(c.allD)+'</span></div>'+
+    '</div>'+
+    '<p class="fnote">'+T("fn")+'</p>'+
+  '</div></div>'+
+  '<div class="advice-wrap"><div class="advice-card">'+
+    '<div class="advice-hdr"><span>💡</span><h2>'+T("adv_tit")+'</h2></div>'+
+    '<div class="advice-body">'+advHTML+'</div>'+
+  '</div></div>';
+  document.getElementById("app").innerHTML=html;
+  buildPDFPage(c,deducts,advice);
+  bindEvents();
+}
+
+function buildPDFPage(c,deducts,advice){
+  var d=new Date(),yr=lang==="en"?d.getFullYear():d.getFullYear()+543;
+  var dateStr=d.getDate()+'/'+(d.getMonth()+1)+'/'+yr;
+  var deductRows=deducts.map(function(r){return '<tr><td style="padding:4px 8px;color:#333">'+r.l+'</td><td style="padding:4px 8px;text-align:right;font-weight:600">฿'+fmt(r.v)+'</td></tr>';}).join('');
+  var advRows=advice.length===0?'<p style="color:#059669;font-weight:600">✅ '+T("p_an")+'</p>':
+    advice.map(function(a){return '<div style="margin-bottom:8px;padding:8px 10px;background:#f0f9ff;border-left:3px solid #2251a3;border-radius:4px"><div style="font-weight:700;font-size:12px">'+a.icon+' '+a.title+'</div><div style="font-size:11px;color:#444;margin-top:2px">'+a.text+'</div>'+(a.save>0?'<div style="font-size:11px;color:#059669;font-weight:700;margin-top:2px">💰 '+T("adv_sv")+' ฿'+fmt(a.save)+'</div>':'')+
+    '</div>';}).join('');
+  document.getElementById("pdf-page").innerHTML=
+  '<div style="font-family:Sarabun,sans-serif;max-width:700px;margin:0 auto;color:#111">'+
+    '<div style="background:linear-gradient(135deg,#0a1628,#1e3a78);color:#fff;padding:20px 24px;border-radius:8px;margin-bottom:20px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+        '<div><div style="font-size:18px;font-weight:800;margin-bottom:2px">🇹🇭 '+T("p_rep")+'</div>'+
+        '<div style="font-size:12px;opacity:.8">'+T("sub")+'</div>'+
+        '<div style="font-size:11px;color:#e2ac3a;margin-top:2px">By Weerapan CFP®</div></div>'+
+        '<div style="text-align:right;font-size:11px;opacity:.7">'+T("p_dat")+': '+dateStr+'</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:20px;margin-top:14px;flex-wrap:wrap">'+
+        '<div style="text-align:center"><div style="font-size:10px;opacity:.7;text-transform:uppercase">'+T("p_ti")+'</div><div style="font-size:20px;font-weight:900">฿'+fmt(c.ti)+'</div></div>'+
+        '<div style="text-align:center"><div style="font-size:10px;opacity:.7;text-transform:uppercase">'+T("p_ni")+'</div><div style="font-size:20px;font-weight:900">฿'+fmt(c.ni)+'</div></div>'+
+        '<div style="text-align:center"><div style="font-size:10px;opacity:.7;text-transform:uppercase">'+T("p_tx")+'</div><div style="font-size:20px;font-weight:900">฿'+fmt(c.tax)+'</div></div>'+
+        '<div style="text-align:center"><div style="font-size:10px;opacity:.7;text-transform:uppercase">'+T("p_du")+'</div><div style="font-size:22px;font-weight:900;color:#e2ac3a">฿'+fmt(c.netTax)+'</div></div>'+
+        (S.prepaid>0?'<div style="text-align:center"><div style="font-size:10px;opacity:.7;text-transform:uppercase">'+T("p_pp")+'</div><div style="font-size:20px;font-weight:900">฿'+fmt(S.prepaid)+'</div></div>':'')+
+      '</div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">'+
+      '<div><div style="font-size:13px;font-weight:700;color:#162c5e;margin-bottom:8px;border-bottom:2px solid #162c5e;padding-bottom:4px">'+T("p_id")+'</div>'+
+        '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+          '<tr style="background:#f0f5fd"><td style="padding:4px 8px;color:#333">'+T("p_ti")+'</td><td style="padding:4px 8px;text-align:right;font-weight:600">฿'+fmt(c.ti)+'</td></tr>'+
+          (c.ti40_1>0?'<tr><td style="padding:4px 8px;color:#555;font-size:11px">&nbsp;· Sec.40(1)</td><td style="padding:4px 8px;text-align:right;font-size:11px">฿'+fmt(c.ti40_1)+'</td></tr>':'')+
+          (c.ti40_2>0?'<tr><td style="padding:4px 8px;color:#555;font-size:11px">&nbsp;· Sec.40(2)</td><td style="padding:4px 8px;text-align:right;font-size:11px">฿'+fmt(c.ti40_2)+'</td></tr>':'')+
+          (c.ti40_3>0?'<tr><td style="padding:4px 8px;color:#555;font-size:11px">&nbsp;· Sec.40(3)</td><td style="padding:4px 8px;text-align:right;font-size:11px">฿'+fmt(c.ti40_3)+'</td></tr>':'')+
+          (c.ti40_4>0?'<tr><td style="padding:4px 8px;color:#555;font-size:11px">&nbsp;· Sec.40(4)</td><td style="padding:4px 8px;text-align:right;font-size:11px">฿'+fmt(c.ti40_4)+'</td></tr>':'')+
+          (c.ti40_5>0?'<tr><td style="padding:4px 8px;color:#555;font-size:11px">&nbsp;· Sec.40(5)</td><td style="padding:4px 8px;text-align:right;font-size:11px">฿'+fmt(c.ti40_5)+'</td></tr>':'')+
+          (c.ti40_6>0?'<tr><td style="padding:4px 8px;color:#555;font-size:11px">&nbsp;· Sec.40(6)</td><td style="padding:4px 8px;text-align:right;font-size:11px">฿'+fmt(c.ti40_6)+'</td></tr>':'')+
+          (c.ti40_7>0?'<tr><td style="padding:4px 8px;color:#555;font-size:11px">&nbsp;· Sec.40(7)</td><td style="padding:4px 8px;text-align:right;font-size:11px">฿'+fmt(c.ti40_7)+'</td></tr>':'')+
+          (c.ti40_8>0?'<tr><td style="padding:4px 8px;color:#555;font-size:11px">&nbsp;· Sec.40(8)</td><td style="padding:4px 8px;text-align:right;font-size:11px">฿'+fmt(c.ti40_8)+'</td></tr>':'')+
+          '<tr><td style="padding:4px 8px;color:#333">'+T("p_ex")+'</td><td style="padding:4px 8px;text-align:right;font-weight:600">฿'+fmt(c.expD)+'</td></tr>'+
+          deductRows+
+          '<tr style="background:#162c5e;color:#fff"><td style="padding:5px 8px;font-weight:700">'+T("p_ad")+'</td><td style="padding:5px 8px;text-align:right;font-weight:800">฿'+fmt(c.allD)+'</td></tr>'+
+          '<tr style="background:#1e3a78;color:#e2ac3a"><td style="padding:5px 8px;font-weight:700">'+T("p_ni")+'</td><td style="padding:5px 8px;text-align:right;font-weight:800">฿'+fmt(c.ni)+'</td></tr>'+
+        '</table></div>'+
+      '<div><div style="font-size:13px;font-weight:700;color:#162c5e;margin-bottom:8px;border-bottom:2px solid #162c5e;padding-bottom:4px">'+T("p_ts")+'</div>'+
+        '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+          '<tr style="background:#f0f5fd"><td style="padding:4px 8px">'+T("p_tx")+'</td><td style="padding:4px 8px;text-align:right;font-weight:600">฿'+fmt(c.tax)+'</td></tr>'+
+          (S.prepaid>0?'<tr><td style="padding:4px 8px">'+T("p_pp")+'</td><td style="padding:4px 8px;text-align:right;font-weight:600;color:#dc2626">− ฿'+fmt(S.prepaid)+'</td></tr>':'')+
+          '<tr style="background:#e2ac3a"><td style="padding:5px 8px;font-weight:800;color:#0a1628">'+T("p_du")+'</td><td style="padding:5px 8px;text-align:right;font-weight:900;font-size:14px;color:#0a1628">฿'+fmt(c.netTax)+'</td></tr>'+
+          '<tr><td style="padding:4px 8px">'+T("p_ef")+'</td><td style="padding:4px 8px;text-align:right;font-weight:600">'+c.eff.toFixed(2)+'%</td></tr>'+
+          '<tr><td style="padding:4px 8px">'+T("p_ma")+'</td><td style="padding:4px 8px;text-align:right;font-weight:600">'+c.mr.toFixed(0)+'%</td></tr>'+
+          '<tr style="background:#f0f5fd"><td style="padding:4px 8px">'+T("p_mt")+'</td><td style="padding:4px 8px;text-align:right;font-weight:600">฿'+fmt(c.mth)+'</td></tr>'+
+        '</table>'+
+        '<div style="margin-top:14px"><div style="font-size:13px;font-weight:700;color:#162c5e;margin-bottom:8px;border-bottom:2px solid #162c5e;padding-bottom:4px">💡 '+T("p_av")+'</div>'+advRows+'</div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="font-size:9px;color:#888;text-align:center;margin-top:16px;border-top:1px solid #ddd;padding-top:10px">'+T("p_ft")+'<br>'+T("p_by")+'</div>'+
+  '</div>';
+}
+
+function doReset(){
+  for(var k in DEFAULT)S[k]=DEFAULT[k];
+  render();
+}
+
+function doPrint(){
+  var pdfContent=document.getElementById("pdf-page").innerHTML;
+  var win=window.open('','_blank');
+  if(!win){window.print();return;}
+  win.document.write('<!DOCTYPE html><html lang="'+(lang==="th"?"th":"en")+'"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>'+T("p_rep")+'</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Sarabun","Noto Sans Thai","Segoe UI",system-ui,sans-serif;background:#fff;padding:20px}@media print{body{padding:0}@page{margin:12mm}.no-print{display:none!important}}.no-print{text-align:center;margin-bottom:20px}.pbtn{padding:10px 28px;background:#1e3a78;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-right:8px}.cbtn{padding:10px 20px;background:#e2e8f0;color:#333;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}</style></head><body><div class="no-print"><button class="pbtn" onclick="window.print()">🖨️ '+T("pr_btn")+'</button><button class="cbtn" onclick="window.close()">'+T("pr_cl")+'</button></div>'+pdfContent+'</body></html>');
+  win.document.close();win.focus();
+}
+
+function bindEvents(){
+  var inputs=document.querySelectorAll(".inp");
+  for(var i=0;i<inputs.length;i++){
+    (function(el){
+      el.addEventListener("change",function(){S[el.dataset.key]=Math.max(0,Number(el.value)||0);render();});
+      el.addEventListener("focus",function(){el.style.borderColor="#3b6fd4";});
+      el.addEventListener("blur",function(){el.style.borderColor="#deeafc";});
+    })(inputs[i]);
+  }
+  var cps=document.querySelectorAll(".chip");
+  for(var j=0;j<cps.length;j++){
+    (function(el){
+      el.addEventListener("click",function(){
+        var k=el.dataset.key,raw=el.dataset.val;
+        if(raw==="true")S[k]=true;
+        else if(raw==="false")S[k]=false;
+        else if(!isNaN(Number(raw)))S[k]=Number(raw);
+        else S[k]=raw;
+        render();
+      });
+    })(cps[j]);
+  }
+  var secs=document.querySelectorAll("[data-sec]");
+  for(var k=0;k<secs.length;k++){
+    (function(el){el.addEventListener("click",function(){S[el.dataset.sec]=!S[el.dataset.sec];render();});})(secs[k]);
+  }
+  var pp=document.getElementById("prepaid-inp");
+  if(pp){pp.addEventListener("change",function(){S.prepaid=Math.max(0,Number(this.value)||0);render();});}
+  var br=document.getElementById("btn-reset");
+  if(br){br.addEventListener("click",doReset);}
+  var bs=document.getElementById("btn-save");
+  if(bs){bs.addEventListener("click",doPrint);}
+}
+
+render();
+</script>
+</body>
+</html>

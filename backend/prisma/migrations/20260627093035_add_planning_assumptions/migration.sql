@@ -1,0 +1,17 @@
+-- AlterTable
+ALTER TABLE "Profile" ADD COLUMN     "cashAdvanceRate" DOUBLE PRECISION NOT NULL DEFAULT 16.0,
+ADD COLUMN     "creditCardRate" DOUBLE PRECISION NOT NULL DEFAULT 16.0,
+ADD COLUMN     "educationCostYear" INTEGER,
+ADD COLUMN     "educationCosts" JSONB,
+ADD COLUMN     "educationFundReturn" DOUBLE PRECISION NOT NULL DEFAULT 4.0,
+ADD COLUMN     "educationInflation" DOUBLE PRECISION NOT NULL DEFAULT 5.0,
+ADD COLUMN     "educationReturnDuring" DOUBLE PRECISION NOT NULL DEFAULT 4.0,
+ADD COLUMN     "lifeExpectancySelf" INTEGER,
+ADD COLUMN     "lifeExpectancySpouse" INTEGER,
+ADD COLUMN     "personalLoanRate" DOUBLE PRECISION NOT NULL DEFAULT 16.0,
+ADD COLUMN     "postRetirementReturn" DOUBLE PRECISION NOT NULL DEFAULT 4.0,
+ADD COLUMN     "preRetirementReturn" DOUBLE PRECISION NOT NULL DEFAULT 4.0,
+ADD COLUMN     "rentInflation" DOUBLE PRECISION NOT NULL DEFAULT 4.0,
+ADD COLUMN     "retirementAgeSelf" INTEGER,
+ADD COLUMN     "retirementAgeSpouse" INTEGER,
+ALTER COLUMN "inflationRate" SET DEFAULT 3.0;
