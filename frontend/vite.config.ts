@@ -35,4 +35,17 @@ export default defineConfig({
     }),
   ],
   server: { proxy: { '/api': 'http://localhost:3001' } },
+  build: {
+    rollupOptions: {
+      output: {
+        // แยก vendor ก้อนใหญ่ออกเป็น chunk เดี่ยว — cache ได้นาน + pdf โหลดเฉพาะหน้า report
+        manualChunks(id: string) {
+          if (!id.includes('node_modules')) return
+          if (id.includes('recharts') || id.includes('d3-') || id.includes('victory-vendor')) return 'recharts'
+          if (id.includes('jspdf') || id.includes('html2canvas')) return 'pdf'
+          if (id.includes('react-router') || id.includes('@tanstack') || id.includes('/react-dom/') || id.includes('/react/')) return 'vendor'
+        },
+      },
+    },
+  },
 })

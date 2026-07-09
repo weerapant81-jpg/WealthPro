@@ -1,32 +1,39 @@
-﻿import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+﻿import { lazy, Suspense } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ClientProvider, useClient } from './context/ClientContext'
 import Layout from './components/Layout'
+// LoginPage โหลดทันที (หน้าแรกของผู้ยังไม่ล็อกอิน) — ที่เหลือ lazy แยกเป็น chunk ต่อหน้า
 import LoginPage from './pages/LoginPage'
-import VerifyEmailPage from './pages/VerifyEmailPage'
-import ResetPasswordPage from './pages/ResetPasswordPage'
-import DashboardPage from './pages/DashboardPage'
-import IncomePage from './pages/IncomePage'
-import RetirementPlanPage from './pages/RetirementPlanPage'
-import InsurancePlanPage from './pages/InsurancePlanPage'
-import EducationPlanPage from './pages/EducationPlanPage'
-import FinancialPlanPage from './pages/FinancialPlanPage'
-import UserProfilePage from './pages/UserProfilePage'
-import CalculatorPage from './pages/CalculatorPage'
-import ReportPage from './pages/ReportPage'
-import ProjectionPage from './pages/ProjectionPage'
-import SettingsPage from './pages/SettingsPage'
-import ClientProfilePage from './pages/ClientProfilePage'
-import AdminPage from './pages/AdminPage'
-import RiskAssessmentPage from './pages/RiskAssessmentPage'
-import TaxPlanningPage from './pages/TaxPlanningPage'
-import InvestmentAssumptionPage from './pages/InvestmentAssumptionPage'
-import ClientsPage from './pages/ClientsPage'
-import ActionPlanPage from './pages/ActionPlanPage'
-import ForwardCashflowPage from './pages/ForwardCashflowPage'
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'))
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const IncomePage = lazy(() => import('./pages/IncomePage'))
+const RetirementPlanPage = lazy(() => import('./pages/RetirementPlanPage'))
+const InsurancePlanPage = lazy(() => import('./pages/InsurancePlanPage'))
+const EducationPlanPage = lazy(() => import('./pages/EducationPlanPage'))
+const FinancialPlanPage = lazy(() => import('./pages/FinancialPlanPage'))
+const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
+const CalculatorPage = lazy(() => import('./pages/CalculatorPage'))
+const ReportPage = lazy(() => import('./pages/ReportPage'))
+const ProjectionPage = lazy(() => import('./pages/ProjectionPage'))
+const SettingsPage = lazy(() => import('./pages/SettingsPage'))
+const ClientProfilePage = lazy(() => import('./pages/ClientProfilePage'))
+const AdminPage = lazy(() => import('./pages/AdminPage'))
+const RiskAssessmentPage = lazy(() => import('./pages/RiskAssessmentPage'))
+const TaxPlanningPage = lazy(() => import('./pages/TaxPlanningPage'))
+const InvestmentAssumptionPage = lazy(() => import('./pages/InvestmentAssumptionPage'))
+const ClientsPage = lazy(() => import('./pages/ClientsPage'))
+const ActionPlanPage = lazy(() => import('./pages/ActionPlanPage'))
+const ForwardCashflowPage = lazy(() => import('./pages/ForwardCashflowPage'))
 
 const qc = new QueryClient()
+
+// fallback ระหว่างโหลด chunk ของแต่ละหน้า
+function PageLoader() {
+  return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>กำลังโหลด...</div>
+}
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -71,6 +78,7 @@ export default function App() {
       <AuthProvider>
         <ClientProvider>
           <BrowserRouter>
+            <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -95,6 +103,7 @@ export default function App() {
               <Route path="/investment" element={<PrivateRoute><InvestmentAssumptionPage /></PrivateRoute>} />
               <Route path="/clients" element={<AdminRoute><ClientsPage /></AdminRoute>} />
             </Routes>
+            </Suspense>
           </BrowserRouter>
         </ClientProvider>
       </AuthProvider>
