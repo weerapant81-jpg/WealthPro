@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "db:migrate": "prisma migrate dev",
-    "db:generate": "prisma generate"
+    "db:generate": "prisma generate",
+    "encrypt-ids": "ts-node --transpile-only src/scripts/migrate-encrypt-nationalid.ts"
   },
   "keywords": [],
   "author": "",
