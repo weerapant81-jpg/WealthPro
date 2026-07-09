@@ -407,4 +407,22 @@ model Announcement {
   updatedAt DateTime @updatedAt
 }
 
+// บันทึกการเข้าถึงข้อมูลลูกค้า (PDPA audit trail) — ใครดู/แก้/ลบข้อมูลของลูกค้าคนไหน เมื่อไหร่
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String   // FA ที่ทำรายการ (req.userId)
+  clientId  String?  // ลูกค้าที่ถูกเข้าถึง (req.effectiveUserId)
+  action    String   // VIEW | CREATE | UPDATE | DELETE
+  resource  String   // เช่น client-profile, insurance-plan
+  method    String
+  path      String
+  status    Int
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([clientId, createdAt])
+  @@index([createdAt])
+}
+
 

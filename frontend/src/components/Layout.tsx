@@ -328,6 +328,11 @@ export default function Layout({ children }: { children: ReactNode }) {
                     </div>
                     {user?.role && <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>สิทธิ์: {user.role}</div>}
                     <div style={{ borderTop: '1px solid var(--card-border)', margin: '8px 0 4px' }} />
+                    {isAdmin && (
+                      <button onClick={() => { setProfileOpen(false); navigate('/audit-log') }} style={menuItem}>
+                        <ScrollText size={15} /> บันทึกการเข้าถึงข้อมูล
+                      </button>
+                    )}
                     {isSuperAdmin && (
                       <button onClick={() => { setProfileOpen(false); navigate('/admin') }} style={{ ...menuItem, color: '#f59e0b' }}>
                         <ShieldCheck size={15} /> อนุมัตินักวางแผน

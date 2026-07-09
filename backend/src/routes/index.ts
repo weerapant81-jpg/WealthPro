@@ -37,6 +37,7 @@ import { getInvestmentProfile, upsertInvestmentProfile } from '../controllers/in
 import { getMarketReturns, getAssetReturn } from '../controllers/marketreturns.controller'
 import { quoteSymbol, annualReturn } from '../controllers/settrade.controller'
 import { chatCopilot } from '../controllers/copilot.controller'
+import { listAuditLogs } from '../controllers/audit.controller'
 import { authenticate, requireAdmin, requireSuperAdmin } from '../middleware/auth'
 
 const r = Router()
@@ -66,6 +67,9 @@ r.post('/clients', authenticate, requireAdmin, createClient)
 r.put('/clients/:id', authenticate, requireAdmin, updateClient)
 r.delete('/clients/:id', authenticate, requireAdmin, deleteClient)
 r.get('/advisor/summary', authenticate, requireAdmin, getAdvisorSummary)
+
+// PDPA audit log — FA เห็นของตัวเอง · SUPER_ADMIN เห็นทั้งหมด
+r.get('/audit-logs', authenticate, requireAdmin, listAuditLogs)
 
 // นัดหมาย + งาน ของนักวางแผน (FA) เอง
 r.get('/appointments', authenticate, requireAdmin, getAppointments)

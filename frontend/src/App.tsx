@@ -27,6 +27,7 @@ const InvestmentAssumptionPage = lazy(() => import('./pages/InvestmentAssumption
 const ClientsPage = lazy(() => import('./pages/ClientsPage'))
 const ActionPlanPage = lazy(() => import('./pages/ActionPlanPage'))
 const ForwardCashflowPage = lazy(() => import('./pages/ForwardCashflowPage'))
+const AuditLogPage = lazy(() => import('./pages/AuditLogPage'))
 
 const qc = new QueryClient()
 
@@ -102,6 +103,7 @@ export default function App() {
               <Route path="/forward-cashflow" element={<ClientRoute><ForwardCashflowPage /></ClientRoute>} />
               <Route path="/investment" element={<PrivateRoute><InvestmentAssumptionPage /></PrivateRoute>} />
               <Route path="/clients" element={<AdminRoute><ClientsPage /></AdminRoute>} />
+              <Route path="/audit-log" element={<AdminRoute><AuditLogPage /></AdminRoute>} />
             </Routes>
             </Suspense>
           </BrowserRouter>
