@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useClient, type ClientInfo } from '../context/ClientContext'
-import { Landmark, Wallet, Users, CheckCircle2, ChevronRight, Search, Circle, X, Rocket, ArrowRight } from 'lucide-react'
+import { Landmark, Wallet, Users, CheckCircle2, ChevronRight, Search, Circle, X, Rocket, ArrowRight, ShieldAlert } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 import { useIsCompact } from '../hooks/useViewport'
 import { AppointmentsWidget, TasksWidget, NewsWidget } from '../components/AdvisorWidgets'
 
@@ -89,6 +90,7 @@ export default function AdvisorDashboard() {
         </div>
       </div>
 
+      <SecurityBanner />
       <WelcomeChecklist />
 
       {/* KPIs */}
@@ -107,6 +109,40 @@ export default function AdvisorDashboard() {
 
       {/* ข่าวสารจากผู้ให้บริการ */}
       <NewsWidget />
+    </div>
+  )
+}
+
+/* ── แบนเนอร์เตือนเปิด 2FA — เตือนทุกครั้งที่ 2FA ยังปิด (ปิดได้แค่ราย session → เตือนซ้ำรอบหน้า) ── */
+function SecurityBanner() {
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const [dismissed, setDismissed] = useState(() => sessionStorage.getItem('wp_2fa_dismissed') === '1')
+  const { data: tfa } = useQuery<any>({ queryKey: ['2fa-status'], queryFn: () => api.get('/auth/2fa/status').then(r => r.data), retry: false })
+  if (dismissed || tfa == null || tfa.enabled) return null
+  const isSuper = user?.role === 'SUPER_ADMIN'
+  return (
+    <div style={{ ...card, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+      background: 'linear-gradient(150deg, rgba(245,158,11,0.14), var(--card-bg) 60%)', border: '1px solid #f59e0b' }}>
+      <ShieldAlert size={22} color="#f59e0b" style={{ flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 220 }}>
+        <div style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text-primary)' }}>
+          บัญชีนี้ยังไม่ได้เปิดการยืนยันตัวตน 2 ชั้น (2FA)
+        </div>
+        <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>
+          {isSuper
+            ? 'บัญชีผู้ดูแลระบบมีสิทธิ์สูง — แนะนำอย่างยิ่งให้เปิด 2FA เพื่อกันการเข้าถึงโดยไม่ได้รับอนุญาต'
+            : 'เพิ่มความปลอดภัยให้บัญชีและข้อมูลลูกค้า — ใช้เวลาตั้งค่าไม่ถึง 1 นาที'}
+        </div>
+      </div>
+      <button onClick={() => navigate('/user-profile')}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', background: '#f59e0b', color: '#1a1200', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+        เปิด 2FA <ArrowRight size={15} />
+      </button>
+      <button onClick={() => { sessionStorage.setItem('wp_2fa_dismissed', '1'); setDismissed(true) }} title="ปิดชั่วคราว"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, flexShrink: 0 }}>
+        <X size={16} />
+      </button>
     </div>
   )
 }
