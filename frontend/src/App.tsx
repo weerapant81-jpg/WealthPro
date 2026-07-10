@@ -1,4 +1,5 @@
 ﻿import { lazy, Suspense, Component, useEffect, type ReactNode } from 'react'
+import * as Sentry from '@sentry/react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -86,7 +87,9 @@ class RouteErrorBoundary extends Component<{ children: ReactNode }, { failed: bo
     if (isChunk && !sessionStorage.getItem('wp_reloaded')) {
       sessionStorage.setItem('wp_reloaded', '1')
       window.location.reload()
+      return
     }
+    if (!isChunk) Sentry.captureException(err)   // error จริงของแอป → ส่งเข้า Sentry (chunk error ข้าม กัน noise)
   }
   render() {
     if (this.state.failed) {
