@@ -65,6 +65,12 @@ export default function Layout({ children }: { children: ReactNode }) {
     setOpenMenus(m => ({ ...m, [path]: typeof v === 'function' ? v(!!m[path]) : v }))
   useEffect(() => { if (EXPANDABLE[currentPath]) setOpenMenus(m => ({ ...m, [currentPath]: true })) }, [currentPath])
   const initial = user?.name?.charAt(0).toUpperCase() ?? '?'
+  // รูปโปรไฟล์ FA (base64) จาก advisor-profile — ถ้ามีใช้รูป ไม่มีใช้ตัวอักษร
+  const { data: advProfile } = useQuery<any>({ queryKey: ['advisor-profile'], queryFn: () => api.get('/advisor-profile').then(r => r.data), retry: false })
+  const photo: string | undefined = advProfile?.photo || undefined
+  const avatarInner = photo
+    ? <img src={photo} alt="โปรไฟล์" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+    : initial
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
   const isSuperAdmin = user?.role === 'SUPER_ADMIN'
 
@@ -347,15 +353,15 @@ export default function Layout({ children }: { children: ReactNode }) {
             <div id="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }} />
             <div style={{ position: 'relative' }}>
               <button onClick={() => setProfileOpen(o => !o)} title="โปรไฟล์"
-                style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--cyan-dim)', border: '1.5px solid var(--cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, color: 'var(--cyan)', cursor: 'pointer' }}>
-                {initial}
+                style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', background: 'var(--cyan-dim)', border: '1.5px solid var(--cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, color: 'var(--cyan)', cursor: 'pointer', padding: 0 }}>
+                {avatarInner}
               </button>
               {profileOpen && (
                 <>
                   <div onClick={() => setProfileOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
                   <div style={{ position: 'absolute', top: 40, right: 0, zIndex: 70, minWidth: 220, background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 10, boxShadow: 'var(--shadow)', padding: '12px 14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--cyan-dim)', border: '1.5px solid var(--cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'var(--cyan)' }}>{initial}</div>
+                      <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: 'var(--cyan-dim)', border: '1.5px solid var(--cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'var(--cyan)' }}>{avatarInner}</div>
                       <div style={{ overflow: 'hidden' }}>
                         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.name}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.email}</div>
