@@ -304,43 +304,11 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 /* ─── helper: compute mid projection at retirement age ── */
 function toNum(v: any) { return parseFloat(String(v ?? '').replace(/,/g, '')) || 0 }
 
-export function useProjectedAssetAtRetirement(retirementAge: number, isSelf: boolean) {
-  const { data: invProfile } = useQuery({
-    queryKey: ['investment-profile'],
-    queryFn: () => api.get('/investment-profile').then(r => r.data),
-    retry: false,
-  })
-  const { data: clientProfile } = useQuery({
-    queryKey: ['client-profile'],
-    queryFn: () => api.get('/client-profile').then(r => r.data),
-    retry: false,
-  })
-
-  return useMemo(() => {
-    // อายุปัจจุบัน: ใช้สูตรเดียวกับแท็บ "มูลค่าสินทรัพย์ลงทุน" (ปีปัจจุบัน − ปีเกิด / spouseAge)
-    const birthDate = clientProfile?.birthDate ? new Date(clientProfile.birthDate) : null
-    const currentAge = isSelf
-      ? (birthDate ? new Date().getFullYear() - birthDate.getFullYear() : null)
-      : (clientProfile?.spouseAge ?? null)
-    // เลือกแหล่งตามคน: ลูกค้า = ฟิลด์หลัก, คู่สมรส = spouseData
-    const invSrc: any = isSelf ? invProfile : (invProfile?.spouseData ?? {})
-    const investmentAssets: any[] = invSrc?.investmentAssets ?? []
-    const totalValue = investmentAssets.reduce((s: number, a: any) => s + toNum(a.currentValue), 0)
-    let weightedReturn = 0, coveredVal = 0
-    investmentAssets.forEach((a: any) => {
-      const val = toNum(a.currentValue)
-      const r = parseFloat(a.annualReturn)
-      if (!isNaN(r) && val > 0) { coveredVal += val; weightedReturn += r * val }
-    })
-    // ไม่มีอัตราผลตอบแทนในรายการ → ใช้ 0% (ยังแสดงสินทรัพย์ลงทุนที่มีจริง ไม่ให้เป็น 0)
-    const portfolioReturn = coveredVal > 0 ? weightedReturn / coveredVal : 0
-
-    if (currentAge === null || totalValue === 0) return null
-    const rMid = portfolioReturn / 100
-    const yearsTo = retirementAge - currentAge
-    if (yearsTo <= 0) return totalValue
-    return totalValue * Math.pow(1 + rMid, yearsTo)
-  }, [invProfile, clientProfile, retirementAge, isSelf])
+export function useProjectedAssetAtRetirement(retirementAge: number, isSelf: boolean): number | null {
+  // "สินทรัพย์ ณ เกษียณ" = ค่ากลาง (median) จาก Monte Carlo ณ อายุเกษียณ
+  // → ตรงกับคอลัมน์ "สินทรัพย์เดิม" ในตาราง และ dashboard/รายงานใช้ค่าเดียวกัน
+  const medianByAge = useInvestmentMedianByAge(isSelf)
+  return useMemo(() => medianByAge.get(retirementAge) ?? null, [medianByAge, retirementAge])
 }
 
 /** ผลตอบแทนพอร์ต (weighted avg %) จากสินทรัพย์ลงทุนที่มี — ใช้โตคอลัมน์ "สินทรัพย์เดิม" · null = ไม่มีข้อมูลผลตอบแทน */
