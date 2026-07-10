@@ -8,6 +8,7 @@ import { PageHeader } from '../components/ui'
 import { card, inp, sel, btn } from '../styles/dark'
 import { TableExcelButton } from '../components/exportable'
 import { WizardNav } from '../components/WizardNav'
+import { ThaiDateInput } from '../components/ThaiDateInput'
 import { MoneyInputStr as CommaInput } from '../components/MoneyInput'
 import InsuranceTab from './InsuranceTab'
 import InvestmentProfileTab from './InvestmentProfileTab'
@@ -776,7 +777,7 @@ export default function ClientProfilePage() {
                 <Field label="ชื่อเล่น"><input value={form.nickname} onChange={e => set('nickname', e.target.value)} placeholder="ชื่อเล่น" style={inp} /></Field>
               </Grid>
               <Grid cols={3}>
-                <Field label="วันเดือนปีเกิด"><input type="date" value={form.birthDate} onChange={e => set('birthDate', e.target.value)} style={inp} /></Field>
+                <Field label="วันเดือนปีเกิด"><ThaiDateInput value={form.birthDate} onChange={v => set('birthDate', v)} /></Field>
                 <Field label="อายุปัจจุบัน">
                   <div style={{ ...inp, background: 'var(--divider)', display: 'flex', alignItems: 'center', color: 'var(--text-secondary)' }}>
                     {form.birthDate ? `${new Date().getFullYear() - new Date(form.birthDate).getFullYear()} ปี` : '— ปี'}
@@ -1183,7 +1184,7 @@ export default function ClientProfilePage() {
                 <Field label="ชื่อเล่น"><input value={spouseProfile.nickname} onChange={e => setSp('nickname', e.target.value)} placeholder="ชื่อเล่น" style={inp} /></Field>
               </Grid>
               <Grid cols={3}>
-                <Field label="วันเดือนปีเกิด"><input type="date" value={spouseProfile.birthDate} onChange={e => setSp('birthDate', e.target.value)} style={inp} /></Field>
+                <Field label="วันเดือนปีเกิด"><ThaiDateInput value={spouseProfile.birthDate} onChange={v => setSp('birthDate', v)} /></Field>
                 <Field label="อายุปัจจุบัน">
                   <div style={{ ...inp, background: 'var(--divider)', display: 'flex', alignItems: 'center', color: 'var(--text-secondary)' }}>
                     {spouseProfile.birthDate ? `${new Date().getFullYear() - new Date(spouseProfile.birthDate).getFullYear()} ปี` : '— ปี'}
