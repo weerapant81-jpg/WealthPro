@@ -263,11 +263,12 @@ export async function chatCopilot(req: AuthRequest, res: Response): Promise<void
   try {
     const stream = anthropic.messages.stream({
       model: MODEL,
-      max_tokens: 1600, // = thinking budget + คำตอบ (คำตอบยังสั้นตาม prompt · thinking ไม่ถูกสตรีมออกไป)
-      thinking: { type: 'enabled', budget_tokens: 1024 }, // คิดก่อนตอบ → แม่นขึ้นสำหรับคำถามวิเคราะห์หลายขั้น
+      max_tokens: 2000, // เผื่อ thinking (adaptive) + คำตอบ · คำตอบยังสั้นตาม prompt
+      thinking: { type: 'adaptive' }, // โหมดคิดก่อนตอบของโมเดลรุ่นใหม่ (แทน enabled+budget_tokens ที่ถูกยกเลิก → 400)
+      output_config: { effort: 'low' }, // คุมความลึกการคิด — low พอสำหรับ Q&A บนบริบทที่ให้ · เร็ว/ประหยัด
       system,
       messages: cleaned,
-    })
+    } as any)
     stream.on('text', (delta: string) => { res.write(delta) })
     const final = await stream.finalMessage()
     const u = final.usage
