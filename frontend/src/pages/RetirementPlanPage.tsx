@@ -9,6 +9,7 @@ import { Calculator, Plus, Trash2, TrendingUp, Check, Loader2 } from 'lucide-rea
 import { ChartFrame, TableExcelButton } from '../components/exportable'
 import { MoneyInput } from '../components/MoneyInput'
 import { useIsCompact } from '../hooks/useViewport'
+import { useInvestmentMedianByAge } from '../hooks/useInvestmentMonteCarlo'
 
 /* ─── number helpers ────────────────────────────── */
 const fmt = (n: number, d = 2) =>
@@ -123,7 +124,7 @@ function pvGoal(g: Goal, yearsToRet: number, yearsAfter: number, infRate: number
   return pv
 }
 
-export function calcPerson(p: Person, assetAtRetirement: number, extraAssets = 0, assetReturnPct?: number): CalcResult {
+export function calcPerson(p: Person, assetAtRetirement: number, extraAssets = 0, assetReturnPct?: number, existingAssetByAge?: Map<number, number>): CalcResult {
   const yearsTo = Math.max(0, p.retirementAge - p.currentAge)
   // ปีสุดท้ายที่ออมได้คืออายุ (เกษียณ − 1) — พอถึงปีเกษียณไม่มีรายได้ออมแล้ว
   const saveYears = Math.max(0, yearsTo - 1)
@@ -164,7 +165,9 @@ export function calcPerson(p: Person, assetAtRetirement: number, extraAssets = 0
   // Accumulation phase — ออม/สะสม ถึงอายุ (เกษียณ − 1) เท่านั้น (ปีสุดท้ายที่ออม = retireAge − 1)
   const currentAssetImplied = yearsTo > 0 ? assetAtRetirement / Math.pow(1 + ia, yearsTo) : assetAtRetirement
   for (let yr = 0; yr < yearsTo; yr++) {
-    const existingAsset = currentAssetImplied * Math.pow(1 + ia, yr)
+    // "สินทรัพย์เดิม" = ค่ากลาง (median) จาก Monte Carlo ราย "อายุ" ถ้ามี · ไม่มี → โตแบบ compound
+    const mcMedian = existingAssetByAge?.get(p.currentAge + yr)
+    const existingAsset = mcMedian != null ? mcMedian : currentAssetImplied * Math.pow(1 + ia, yr)
     const savingsAccum = savAt(yr)
     projectionRows.push({
       age: p.currentAge + yr,
@@ -505,14 +508,15 @@ function PersonPanel({ data, onChange, color, isSelf }: {
   }, [clientProfile])
 
   const projectedAsset = useProjectedAssetAtRetirement(data.retirementAge, isSelf)
-  const portReturn = usePortfolioReturn(isSelf)   // อัตราผลตอบแทนพอร์ต (จากหน้าสินทรัพย์ลงทุน)
+  const portReturn = usePortfolioReturn(isSelf)   // อัตราผลตอบแทนพอร์ต (fallback เมื่อไม่มีข้อมูล Monte Carlo)
+  const medianByAge = useInvestmentMedianByAge(isSelf)   // ค่ากลาง Monte Carlo ราย "อายุ" (จากหน้ามูลค่าสินทรัพย์ลงทุน)
   const [manualAsset] = useState<number | null>(null)
   const assetAtRetirement = manualAsset ?? projectedAsset ?? 0
 
   const extraAssets = ssoPV + pvdAtRetire + sevNet
   const totalAssets = assetAtRetirement + extraAssets
-  // คอลัมน์ "สินทรัพย์เดิม" โตด้วยผลตอบแทนพอร์ต (ถ้าไม่มีข้อมูล → 0% แสดงมูลค่าที่มีจริง)
-  const result = useMemo(() => calcPerson(data, assetAtRetirement, extraAssets, portReturn ?? 0), [data, assetAtRetirement, extraAssets, portReturn])
+  // คอลัมน์ "สินทรัพย์เดิม" = ค่ากลาง Monte Carlo ราย "อายุ" (ถ้าไม่มี → โตด้วยผลตอบแทนพอร์ต)
+  const result = useMemo(() => calcPerson(data, assetAtRetirement, extraAssets, portReturn ?? 0, medianByAge), [data, assetAtRetirement, extraAssets, portReturn, medianByAge])
 
   // Graduated savings: solve first-year payment of a growing annuity whose FV == gap
   const gradSavings = useMemo(() => {
