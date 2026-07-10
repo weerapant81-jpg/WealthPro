@@ -7,6 +7,7 @@ import { Target, GraduationCap, HeartPulse, TrendingUp, Shield, Briefcase, Scale
 import RetirementPlanPage from './RetirementPlanPage'
 import EstatePlanPage from './EstatePlanPage'
 import { PageHeader } from '../components/ui'
+import { WizardNav } from '../components/WizardNav'
 import EducationPlanPage from './EducationPlanPage'
 import InsurancePlanPage from './InsurancePlanPage'
 import ProjectionInvestmentTab from './projection/ProjectionInvestmentTab'
@@ -30,8 +31,9 @@ const TABS = [
 const TAB_KEYS = TABS.map(t => t.key) as string[]
 
 export default function FinancialPlanPage() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const urlTab = searchParams.get('tab')
+  const goTab = (key: string) => { setSearchParams({ tab: key }); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   const [tab, setTab] = useState<string>(urlTab && TAB_KEYS.includes(urlTab) ? urlTab : 'investment')
   const [person, setPerson] = useState<Person>('self')
   // ขับแท็บจาก URL (?tab=) — เมนูย่อยใน sidebar ลิงก์มาที่นี่
@@ -72,6 +74,9 @@ export default function FinancialPlanPage() {
         : active.hasPerson
           ? <Active person={person} />
           : <Active />}
+
+      {/* นำทางวางแผนทีละหน้า — ก่อนหน้า / ถัดไป */}
+      <WizardNav steps={TABS.map(t => ({ key: t.key, label: t.label }))} current={tab} onGo={goTab} />
     </div>
   )
 }

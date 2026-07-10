@@ -7,6 +7,7 @@ import { CheckCircle, User, Users, Plus, Trash2, Loader, AlertCircle, Clock, Tre
 import { PageHeader } from '../components/ui'
 import { card, inp, sel, btn } from '../styles/dark'
 import { TableExcelButton } from '../components/exportable'
+import { WizardNav } from '../components/WizardNav'
 import { MoneyInputStr as CommaInput } from '../components/MoneyInput'
 import InsuranceTab from './InsuranceTab'
 import InvestmentProfileTab from './InvestmentProfileTab'
@@ -271,7 +272,17 @@ export default function ClientProfilePage() {
   const qc = useQueryClient()
   type TabKey = 'personal' | 'family' | 'insurance' | 'investment' | 'goals' | 'finance' | 'risk'
   const TAB_KEYS: TabKey[] = ['personal', 'family', 'insurance', 'investment', 'goals', 'finance', 'risk']
-  const [searchParams] = useSearchParams()
+  const TAB_STEPS: { key: TabKey; label: string }[] = [
+    { key: 'personal', label: 'ข้อมูลส่วนบุคคล' },
+    { key: 'family', label: 'ข้อมูลครอบครัว' },
+    { key: 'insurance', label: 'ข้อมูลการประกัน' },
+    { key: 'investment', label: 'ข้อมูลสินทรัพย์-หนี้สิน' },
+    { key: 'goals', label: 'เป้าหมายทางการเงิน' },
+    { key: 'finance', label: 'งบการเงินส่วนบุคคล' },
+    { key: 'risk', label: 'ประเมินความเสี่ยง' },
+  ]
+  const [searchParams, setSearchParams] = useSearchParams()
+  const goTab = (key: string) => { setSearchParams({ tab: key }); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   const urlTab = searchParams.get('tab') as TabKey | null
   const [tab, setTab] = useState<TabKey>(urlTab && TAB_KEYS.includes(urlTab) ? urlTab : 'personal')
   // ขับแท็บจาก URL (?tab=) — เมนูย่อยใน sidebar ลิงก์มาที่นี่
@@ -1604,6 +1615,10 @@ export default function ClientProfilePage() {
           </span>
         )}
       </div>
+
+      {/* นำทางกรอกข้อมูลทีละหน้า — ก่อนหน้า / ถัดไป */}
+      <WizardNav steps={TAB_STEPS} current={tab} onGo={goTab} />
+
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   )
