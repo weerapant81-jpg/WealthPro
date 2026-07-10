@@ -7,13 +7,16 @@ export const card: React.CSSProperties = {
 
 export const inp: React.CSSProperties = {
   width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '9px 12px', borderRadius: 8,
-  border: '1px solid rgba(255,255,255,0.1)',
-  background: 'rgba(255,255,255,0.05)',
+  border: '1px solid var(--input-border)',
+  background: 'var(--input-bg)',
   color: 'var(--text-primary)', fontSize: 13, outline: 'none',
 }
 
 export const sel: React.CSSProperties = {
-  ...{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '9px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: '#111f35', color: 'var(--text-primary)', fontSize: 13, outline: 'none' }
+  width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '9px 12px', borderRadius: 8,
+  border: '1px solid var(--input-border)',
+  background: 'var(--input-bg)',
+  color: 'var(--text-primary)', fontSize: 13, outline: 'none',
 }
 
 export const btn = (color = '#0ea5e9'): React.CSSProperties => ({
@@ -24,7 +27,7 @@ export const btn = (color = '#0ea5e9'): React.CSSProperties => ({
 
 export const btnGhost: React.CSSProperties = {
   padding: '8px 18px', borderRadius: 8,
-  border: '1px solid rgba(255,255,255,0.1)',
+  border: '1px solid var(--input-border)',
   background: 'transparent', color: 'var(--text-secondary)',
   fontSize: 13, cursor: 'pointer',
 }
