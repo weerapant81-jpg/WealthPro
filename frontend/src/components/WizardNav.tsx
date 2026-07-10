@@ -15,18 +15,15 @@ export function WizardNav({ steps, current, onGo }: {
   const btn = (dir: 'prev' | 'next', step: { key: string; label: string }) => (
     <button onClick={() => onGo(step.key)}
       style={{
-        display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 10,
-        cursor: 'pointer', fontSize: 13.5, fontWeight: 600, maxWidth: '46%',
+        display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', borderRadius: 10,
+        cursor: 'pointer', fontSize: 13.5, fontWeight: 700, whiteSpace: 'nowrap',
         background: dir === 'next' ? 'var(--cyan)' : 'var(--card-bg)',
         color: dir === 'next' ? '#00201d' : 'var(--text-secondary)',
         border: dir === 'next' ? 'none' : '1px solid var(--card-border)',
         flexDirection: dir === 'prev' ? 'row' : 'row-reverse',
       }}>
       {dir === 'prev' ? <ChevronLeft size={17} /> : <ChevronRight size={17} />}
-      <span style={{ display: 'flex', flexDirection: 'column', alignItems: dir === 'prev' ? 'flex-start' : 'flex-end', lineHeight: 1.25, minWidth: 0 }}>
-        <span style={{ fontSize: 10.5, fontWeight: 500, opacity: 0.75 }}>{dir === 'prev' ? 'ก่อนหน้า' : 'ถัดไป'}</span>
-        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{step.label}</span>
-      </span>
+      {dir === 'prev' ? 'ก่อนหน้า' : 'ถัดไป'}
     </button>
   )
 
@@ -34,6 +31,8 @@ export function WizardNav({ steps, current, onGo }: {
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
       marginTop: 24, paddingTop: 18, borderTop: '1px solid var(--card-border)',
+      // เว้นระยะล่าง + ขวา ให้พ้นปุ่มลอย AI (fixed right:22 bottom:22 · 56px) ไม่ทับปุ่มถัดไป
+      marginBottom: 20, paddingBottom: 66, paddingRight: 4,
     }}>
       <div style={{ flex: '0 0 auto', minWidth: 0 }}>{prev ? btn('prev', prev) : <span />}</div>
       <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>
