@@ -423,6 +423,11 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
               <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)' }}>รวมค่าใช้จ่ายที่ต้องการ/ปี</span>
               <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 800, color: '#fbbf24' }}>{fmt(familyExpense)} บาท</span>
             </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>ระยะเวลาที่ต้องการความคุ้มครอง</span>
+              <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: '#fbbf24' }}>{coverageYears} <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>ปี</span></span>
+            </div>
+            <ResultRow label="มูลค่าปัจจุบันของรายจ่ายที่ต้องการ" value={familyIncomePV} color="var(--cyan-light)" />
           </div>
         </Section>
 
