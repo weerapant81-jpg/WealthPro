@@ -310,6 +310,11 @@ export default function ClientProfilePage() {
     { label: 'รายได้จากการลงทุน', source: '', amount: '' },
     { label: 'อื่นๆ', source: '', amount: '' },
   ])
+  // refs ให้ auto-save อ่านค่ารายได้ "ล่าสุด" ตอน debounce ยิง (กัน stale closure — effect ที่คำนวณ incomeSources จากเงินเดือนทำงานหลังเรียก triggerAutoSave)
+  const incomeSourcesRef = useRef(incomeSources)
+  useEffect(() => { incomeSourcesRef.current = incomeSources }, [incomeSources])
+  const spouseIncomeSourcesRef = useRef(spouseIncomeSources)
+  useEffect(() => { spouseIncomeSourcesRef.current = spouseIncomeSources }, [spouseIncomeSources])
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [person, setPerson] = useState<'client' | 'spouse'>('client')
   const [spouseProfile, setSpouseProfile] = useState<typeof defaultSpouseProfile>(defaultSpouseProfile)
@@ -466,7 +471,7 @@ export default function ClientProfilePage() {
     },
   })
 
-  const triggerAutoSave = useCallback((newForm: typeof defaultForm, newChildren: Child[], newJobs: Job[], newSpouseJobs: Job[], newIncomeSources: IncomeSource[] = incomeSources, newSpouseIncomeSources: IncomeSource[] = spouseIncomeSources) => {
+  const triggerAutoSave = useCallback((newForm: typeof defaultForm, newChildren: Child[], newJobs: Job[], newSpouseJobs: Job[], newIncomeSources?: IncomeSource[], newSpouseIncomeSources?: IncomeSource[]) => {
     if (isFirstLoad.current) {
       isFirstLoad.current = false
       return
@@ -480,7 +485,12 @@ export default function ClientProfilePage() {
     if (debounceTimer.current) clearTimeout(debounceTimer.current)
     debounceTimer.current = setTimeout(() => {
       setSaveStatus('saving')
-      save.mutate({ form: newForm, children: newChildren, additionalJobs: newJobs, spouseJobs: newSpouseJobs, incomeSources: newIncomeSources, spouseIncomeSources: newSpouseIncomeSources })
+      // ถ้าไม่ได้ส่งมาชัดเจน → อ่านค่า "ล่าสุด" จาก ref ตอนยิงจริง (ไม่ใช่ค่าที่ capture ตอนเรียก)
+      save.mutate({
+        form: newForm, children: newChildren, additionalJobs: newJobs, spouseJobs: newSpouseJobs,
+        incomeSources: newIncomeSources ?? incomeSourcesRef.current,
+        spouseIncomeSources: newSpouseIncomeSources ?? spouseIncomeSourcesRef.current,
+      })
     }, 1500)
   }, [save])
 
