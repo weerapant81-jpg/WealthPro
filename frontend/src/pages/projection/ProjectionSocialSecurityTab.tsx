@@ -105,7 +105,7 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
   const [empRate, setEmpRate] = useState(3)
   const [employerRate, setEmployerRate] = useState(3)
   const [govRate, setGovRate] = useState(1)
-  const [returnRate, setReturnRate] = useState(3.19)
+  const [returnRate, setReturnRate] = useState(2.29)   // default = อัตราผลตอบแทนเฉลี่ย 5 ปี (หน้าสมมติฐาน) · auto-fill ทับด้วย profile.ssoReturnRate
   const [openingBalance, setOpeningBalance] = useState(0)
   const [currentAge, setCurrentAge] = useState(45)
   const [retirementAge, setRetirementAge] = useState(60)
@@ -331,11 +331,9 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
           <Field label="นายจ้างสมทบ"><NumIn value={employerRate} onChange={setEmployerRate} suffix="%" width={70} /></Field>
           <Field label="รัฐบาลสมทบ"><NumIn value={govRate} onChange={setGovRate} suffix="%" width={70} /></Field>
           <Field label="อัตราผลตอบแทน"><NumIn value={returnRate} onChange={setReturnRate} suffix="% ต่อปี" width={70} /></Field>
-          {profile?.ssoReturnAsOf && (
-            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', padding: '0 0 4px', lineHeight: 1.5 }}>
-              {profile.ssoReturnAsOf} · ตั้งค่าได้ที่หน้า "ตั้งค่า → กองทุนประกันสังคม"
-            </div>
-          )}
+          <div style={{ fontSize: 10.5, color: 'var(--text-muted)', padding: '0 0 4px', lineHeight: 1.5 }}>
+            ดึงจาก "อัตราผลตอบแทนเฉลี่ย 5 ปี" ของกองทุนประกันสังคม{profile?.ssoReturnAsOf ? ` (${profile.ssoReturnAsOf})` : ''} · แก้ที่หน้าสมมติฐาน · พิมพ์ทับเพื่อปรับได้
+          </div>
           <div style={{ borderTop: '1px solid var(--card-border)', margin: '8px 0' }} />
           <Field label="ยอดยกมา"><NumIn value={openingBalance} onChange={setOpeningBalance} suffix="บาท" money /></Field>
           {ssoAssetValue > 0 && (
