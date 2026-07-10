@@ -130,9 +130,11 @@ const defaultForm = (): Form => ({
 
 export default function SettingsPage() {
   const qc = useQueryClient()
-  const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: () => api.get('/profile').then(r => r.data) })
+  const { data: profile, isFetched } = useQuery({ queryKey: ['profile'], queryFn: () => api.get('/profile').then(r => r.data) })
   const [form, setForm] = useState<Form>(defaultForm())
   const initRef = useRef(false)
+  const skipFirstSave = useRef(true)
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [saved, setSaved] = useState(false)
   const [searchParams] = useSearchParams()
   const [tab, setTab] = useState<'assumptions' | 'portfolio'>(searchParams.get('tab') === 'portfolio' ? 'portfolio' : 'assumptions')
@@ -154,9 +156,9 @@ export default function SettingsPage() {
 
 
   useEffect(() => {
-    if (!profile || initRef.current) return   // init form ครั้งเดียว — กัน refetch (focus/invalidate) มา reset ค่าที่ผู้ใช้กำลังแก้อยู่
+    if (!isFetched || initRef.current) return   // init form ครั้งเดียว — กัน refetch (focus/invalidate) มา reset ค่าที่ผู้ใช้กำลังแก้อยู่
     initRef.current = true
-    const p = profile
+    const p = profile ?? {}
     setForm({
       retirementAgeSelf:    p.retirementAgeSelf    ?? '',
       retirementAgeSpouse:  p.retirementAgeSpouse  ?? '',
@@ -192,7 +194,7 @@ export default function SettingsPage() {
     setForm(f => ({ ...f, educationCosts: { ...f.educationCosts, [level]: { ...f.educationCosts[level], [type]: val } } }))
 
   const save = useMutation({
-    mutationFn: () => api.put('/profile', form),
+    mutationFn: (data: Form) => api.put('/profile', data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['profile'] })
       qc.invalidateQueries({ queryKey: ['projection'] })
@@ -203,6 +205,15 @@ export default function SettingsPage() {
       console.error('[Settings save error]', err?.response?.data ?? err?.message)
     },
   })
+
+  // autosave — บันทึกอัตโนมัติเมื่อค่าเปลี่ยน (debounce) เหมือนหน้าอื่นของแอป · คงปุ่มบันทึกไว้ด้วย
+  useEffect(() => {
+    if (!initRef.current) return
+    if (skipFirstSave.current) { skipFirstSave.current = false; return }   // ข้ามการ populate ครั้งแรกตอนโหลด
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => save.mutate(form), 800)
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
+  }, [form])
 
   if (tab === 'portfolio') {
     return (
@@ -227,7 +238,7 @@ export default function SettingsPage() {
             </span>
           )}
           <button
-            onClick={() => save.mutate()}
+            onClick={() => save.mutate(form)}
             disabled={save.isPending}
             style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px', background: 'var(--cyan)', border: 'none', borderRadius: 10, color: '#000', fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: save.isPending ? 0.6 : 1 }}>
             <Save size={15} />
