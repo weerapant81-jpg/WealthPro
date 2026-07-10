@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
@@ -132,6 +132,7 @@ export default function SettingsPage() {
   const qc = useQueryClient()
   const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: () => api.get('/profile').then(r => r.data) })
   const [form, setForm] = useState<Form>(defaultForm())
+  const initRef = useRef(false)
   const [saved, setSaved] = useState(false)
   const [searchParams] = useSearchParams()
   const [tab, setTab] = useState<'assumptions' | 'portfolio'>(searchParams.get('tab') === 'portfolio' ? 'portfolio' : 'assumptions')
@@ -153,7 +154,8 @@ export default function SettingsPage() {
 
 
   useEffect(() => {
-    if (!profile) return
+    if (!profile || initRef.current) return   // init form ครั้งเดียว — กัน refetch (focus/invalidate) มา reset ค่าที่ผู้ใช้กำลังแก้อยู่
+    initRef.current = true
     const p = profile
     setForm({
       retirementAgeSelf:    p.retirementAgeSelf    ?? '',
