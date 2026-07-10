@@ -439,7 +439,7 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
           </div>
         </Section>
 
-        <Section no={2} title="สมมติฐานความคุ้มครอง">
+        <Section no={2} title="สมมติฐาน">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>อัตราผลตอบแทนจากการลงทุน (i)</span>
@@ -448,8 +448,9 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
             <div style={{ fontSize: 10.5, color: 'var(--text-muted)', lineHeight: 1.5, marginTop: -2 }}>
               ดึงจาก "อัตราผลตอบแทนจากการลงทุนก่อนเกษียณ" หน้าตั้งค่าสมมติฐาน
             </div>
+            <AssumpRow label="อัตราการเพิ่มของรายได้ (g)" value={plan.incomeGrowth} onChange={v => set('incomeGrowth', v)} unit="%" />
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6, borderTop: '1px solid var(--card-border)' }}>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Real Rate = (1+i)/(1+g) − 1 · g จากส่วนที่ 1</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Real Rate = (1+i)/(1+g) − 1</span>
               <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: '#fbbf24' }}>{(realRate * 100).toFixed(2)}%</span>
             </div>
           </div>
