@@ -443,9 +443,14 @@ function PersonPanel({ data, onChange, color, isSelf }: {
       const age = new Date().getFullYear() - new Date(clientProfile.birthDate).getFullYear()
       if (age > 0) patch.currentAge = age
     }
-    // ชื่อลูกค้า/คู่สมรส (เติมเฉพาะถ้ายังเป็นค่าเริ่มต้น ไม่ทับที่ที่ปรึกษาแก้เอง)
-    const fn = isSelf ? clientProfile.firstName : clientProfile.spouseProfile?.firstName
-    if (fn && (data.name === 'คุณ' || data.name === 'คู่สมรส' || !data.name.trim())) patch.name = `คุณ${fn}`
+    // ชื่อเต็ม (ชื่อ + นามสกุล) ของลูกค้า/คู่สมรส — เติมเฉพาะถ้ายังเป็นค่าเริ่มต้น ไม่ทับที่ที่ปรึกษาแก้เอง
+    const first = (isSelf ? clientProfile.firstName : clientProfile.spouseProfile?.firstName) || ''
+    const last = (isSelf ? clientProfile.lastName : clientProfile.spouseProfile?.lastName) || ''
+    let full = `${first} ${last}`.trim()
+    if (!isSelf && !full) full = (clientProfile.spouseName || '').trim()   // fallback: ชื่อคู่สมรสแบบข้อความ
+    // ถือว่า "ยังเป็นค่าเริ่มต้น" รวมถึงชื่อที่เคยเติมแบบเก่า (คุณ<ชื่อจริง> ไม่มีนามสกุล)
+    const isDefaultName = !data.name.trim() || data.name === 'คุณ' || data.name === 'คู่สมรส' || data.name === `คุณ${first}`
+    if (full && isDefaultName) patch.name = `คุณ${full}`
     if (Object.keys(patch).length) {
       onChange({ ...data, ...patch })
       filledAge.current = true
