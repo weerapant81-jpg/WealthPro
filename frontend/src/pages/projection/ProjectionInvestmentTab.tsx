@@ -86,7 +86,9 @@ export default function ProjectionInvestmentTab({ person = 'self' }: { person?: 
   // อายุขัย = ตามสมมุติฐานแผนเกษียณเป็นหลัก → settings → ค่าเริ่มต้น 85 (จบที่อายุขัย ไม่เกินไป)
   const expectedLifespan = retPlan?.[planKey]?.lifeExpectancy ?? (isSelf ? profile?.lifeExpectancySelf : profile?.lifeExpectancySpouse) ?? 85
 
-  const investmentAssets: any[] = invProfile?.investmentAssets ?? []
+  // เลือกแหล่งข้อมูลตามคน: ลูกค้า = ฟิลด์หลัก, คู่สมรส = spouseData (เหมือนหน้างบดุล)
+  const invSrc: any = isSelf ? (invProfile ?? {}) : (invProfile?.spouseData ?? {})
+  const investmentAssets: any[] = invSrc?.investmentAssets ?? []
 
   // ผลตอบแทนต่อรายการ (CAGR; ถ้าคำนวณไม่ได้ใช้ค่าที่กรอกมือแทน)
   const assetReturn = (a: any): number | null => {
