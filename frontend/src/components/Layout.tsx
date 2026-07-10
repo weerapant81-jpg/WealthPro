@@ -353,7 +353,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             <div id="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }} />
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <button onClick={() => setProfileOpen(o => !o)} title="โปรไฟล์"
-                style={{ width: 32, height: 32, minWidth: 32, flexShrink: 0, borderRadius: '50%', overflow: 'hidden', background: 'var(--cyan-dim)', border: '1.5px solid var(--cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, color: 'var(--cyan)', cursor: 'pointer', padding: 0 }}>
+                style={{ width: 32, height: 32, minWidth: 32, minHeight: 32, flexShrink: 0, borderRadius: '50%', overflow: 'hidden', background: 'var(--cyan-dim)', border: '1.5px solid var(--cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, color: 'var(--cyan)', cursor: 'pointer', padding: 0 }}>
                 {avatarInner}
               </button>
               {profileOpen && (
