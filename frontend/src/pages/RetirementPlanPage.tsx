@@ -123,7 +123,7 @@ function pvGoal(g: Goal, yearsToRet: number, yearsAfter: number, infRate: number
   return pv
 }
 
-export function calcPerson(p: Person, assetAtRetirement: number, extraAssets = 0): CalcResult {
+export function calcPerson(p: Person, assetAtRetirement: number, extraAssets = 0, assetReturnPct?: number): CalcResult {
   const yearsTo = Math.max(0, p.retirementAge - p.currentAge)
   // ปีสุดท้ายที่ออมได้คืออายุ (เกษียณ − 1) — พอถึงปีเกษียณไม่มีรายได้ออมแล้ว
   const saveYears = Math.max(0, yearsTo - 1)
@@ -132,6 +132,8 @@ export function calcPerson(p: Person, assetAtRetirement: number, extraAssets = 0
   const retYears = yearsAfter + 1
   const g = p.inflationRate / 100
   const i = p.preRetirementReturn / 100
+  // อัตราโตของ "สินทรัพย์เดิม" (สินทรัพย์ลงทุนที่มี) = ผลตอบแทนพอร์ตจริง ถ้าส่งมา, ไม่งั้นใช้ผลตอบแทนก่อนเกษียณ
+  const ia = (assetReturnPct != null ? assetReturnPct : p.preRetirementReturn) / 100
   const r = p.postRetirementReturn / 100
   const realRate = (1 + r) / (1 + g) - 1
 
@@ -160,9 +162,9 @@ export function calcPerson(p: Person, assetAtRetirement: number, extraAssets = 0
   const projectionRows: ProjectionRow[] = []
 
   // Accumulation phase — ออม/สะสม ถึงอายุ (เกษียณ − 1) เท่านั้น (ปีสุดท้ายที่ออม = retireAge − 1)
-  const currentAssetImplied = yearsTo > 0 ? assetAtRetirement / Math.pow(1 + i, yearsTo) : assetAtRetirement
+  const currentAssetImplied = yearsTo > 0 ? assetAtRetirement / Math.pow(1 + ia, yearsTo) : assetAtRetirement
   for (let yr = 0; yr < yearsTo; yr++) {
-    const existingAsset = currentAssetImplied * Math.pow(1 + i, yr)
+    const existingAsset = currentAssetImplied * Math.pow(1 + ia, yr)
     const savingsAccum = savAt(yr)
     projectionRows.push({
       age: p.currentAge + yr,
@@ -338,6 +340,22 @@ export function useProjectedAssetAtRetirement(retirementAge: number, isSelf: boo
   }, [invProfile, clientProfile, retirementAge, isSelf])
 }
 
+/** ผลตอบแทนพอร์ต (weighted avg %) จากสินทรัพย์ลงทุนที่มี — ใช้โตคอลัมน์ "สินทรัพย์เดิม" · null = ไม่มีข้อมูลผลตอบแทน */
+export function usePortfolioReturn(isSelf: boolean): number | null {
+  const { data: invProfile } = useQuery({
+    queryKey: ['investment-profile'],
+    queryFn: () => api.get('/investment-profile').then(r => r.data),
+    retry: false,
+  })
+  return useMemo(() => {
+    const invSrc: any = isSelf ? invProfile : (invProfile?.spouseData ?? {})
+    const assets: any[] = invSrc?.investmentAssets ?? []
+    let w = 0, c = 0
+    assets.forEach((a: any) => { const v = toNum(a.currentValue); const rr = parseFloat(a.annualReturn); if (!isNaN(rr) && v > 0) { c += v; w += rr * v } })
+    return c > 0 ? w / c : null
+  }, [invProfile, isSelf])
+}
+
 /* ─── คำนวณสำรองค่าจากแท็บ projection (ใช้เมื่อยังไม่มีค่าที่บันทึก) ─── */
 const RP_TIERS = [
   { min: 120 / 365, max: 1, days: 30 }, { min: 1, max: 3, days: 90 },
@@ -487,12 +505,14 @@ function PersonPanel({ data, onChange, color, isSelf }: {
   }, [clientProfile])
 
   const projectedAsset = useProjectedAssetAtRetirement(data.retirementAge, isSelf)
+  const portReturn = usePortfolioReturn(isSelf)   // อัตราผลตอบแทนพอร์ต (จากหน้าสินทรัพย์ลงทุน)
   const [manualAsset] = useState<number | null>(null)
   const assetAtRetirement = manualAsset ?? projectedAsset ?? 0
 
   const extraAssets = ssoPV + pvdAtRetire + sevNet
   const totalAssets = assetAtRetirement + extraAssets
-  const result = useMemo(() => calcPerson(data, assetAtRetirement, extraAssets), [data, assetAtRetirement, extraAssets])
+  // คอลัมน์ "สินทรัพย์เดิม" โตด้วยผลตอบแทนพอร์ต (ถ้าไม่มีข้อมูล → 0% แสดงมูลค่าที่มีจริง)
+  const result = useMemo(() => calcPerson(data, assetAtRetirement, extraAssets, portReturn ?? 0), [data, assetAtRetirement, extraAssets, portReturn])
 
   // Graduated savings: solve first-year payment of a growing annuity whose FV == gap
   const gradSavings = useMemo(() => {
