@@ -196,7 +196,7 @@ function ResultCard({ label, value, accent, note }: { label: string; value: numb
 }
 
 /* ── per-person panel: HLV | Needs-Based ── */
-function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoAssets, autoTPD, autoDeduct, autoYears, youngestAge }: { plan: PersonPlan; onChange: (p: PersonPlan) => void; color: string; autoIncome: number; workingYears: number; autoDebt: number; autoAssets: { investment: number; deposit: number; insurance: number; severance: number }; autoTPD: number; autoDeduct: { ss: number; pvd: number; savings: number; insurance: number; tax: number }; autoYears: number; youngestAge: number | null }) {
+function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoAssets, autoTPD, autoDeduct, autoYears, youngestAge, preRetReturn }: { plan: PersonPlan; onChange: (p: PersonPlan) => void; color: string; autoIncome: number; workingYears: number; autoDebt: number; autoAssets: { investment: number; deposit: number; insurance: number; severance: number }; autoTPD: number; autoDeduct: { ss: number; pvd: number; savings: number; insurance: number; tax: number }; autoYears: number; youngestAge: number | null; preRetReturn: number }) {
   const set = <K extends keyof PersonPlan>(k: K, v: PersonPlan[K]) => onChange({ ...plan, [k]: v })
   const income = plan.income || autoIncome
   const coverageYears = plan.years || autoYears   // 0 = ใช้ค่าจากอายุบุตรคนเล็ก
@@ -210,20 +210,20 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
   const hlvAuto = autoDeduct.ss + autoDeduct.pvd + autoDeduct.savings + autoDeduct.insurance + autoDeduct.tax
   const hlvSelf = hlvAuto + manualSum(plan.hlvDeduct)
   const hlvNetIncome = Math.max(0, income - hlvSelf)
-  const hlvReal = (1 + plan.hlvReturn / 100) / (1 + plan.hlvGrowth / 100) - 1
+  const hlvReal = (1 + preRetReturn / 100) / (1 + plan.hlvGrowth / 100) - 1   // อัตราผลตอบแทนก่อนเกษียณ (i) กับ อัตราการเพิ่มของรายได้ (g)
   const hlv = pvAnnuity(hlvReal, workingYears, hlvNetIncome)
 
   // ── Needs-Based ส่วนที่ 1 ── รวมค่าใช้จ่ายที่ครอบครัวต้องการต่อปี (กรอกเอง) → คิดมูลค่าปัจจุบันด้วย real rate × จำนวนปีคุ้มครอง
   const needOthersSum = (plan.needOthers ?? []).reduce((s, it) => s + toNum(it.amount), 0)
   const familyExpense = toNum(plan.needFamilyExpense) + toNum(plan.needParentCare) + toNum(plan.needChildCare) + needOthersSum
-  const realRate = (1 + plan.returnRate / 100) / (1 + plan.incomeGrowth / 100) - 1   // อัตราผลตอบแทนปรับด้วยเงินเฟ้อ
+  const realRate = (1 + preRetReturn / 100) / (1 + plan.incomeGrowth / 100) - 1   // อัตราผลตอบแทนก่อนเกษียณ (i) ปรับด้วยอัตราการเพิ่มของรายได้ (g)
   const familyIncomePV = pvAnnuity(realRate, coverageYears, familyExpense)
   const manualDebt = plan.debts.reduce((s, it) => s + toNum(it.amount), 0)
   const sumDebt = manualDebt + autoDebt
   const coverageNeed = familyIncomePV + sumDebt   // การศึกษา/ค่าใช้จ่ายสุดท้าย กรอกเป็น "ค่าใช้จ่ายอื่นๆ" ในส่วนที่ 1 ได้
   const manualAssets = plan.assets.reduce((s, it) => s + toNum(it.amount), 0)
   // เงินชดเชยฯ = มูลค่า ณ วันเกษียณ (FV) → คิดลดกลับเป็นมูลค่าปัจจุบันด้วยอัตราผลตอบแทน i (ลงทุน/ประกันเป็นมูลค่าปัจจุบันอยู่แล้ว)
-  const severancePV = workingYears > 0 ? autoAssets.severance / Math.pow(1 + plan.returnRate / 100, workingYears) : autoAssets.severance
+  const severancePV = workingYears > 0 ? autoAssets.severance / Math.pow(1 + preRetReturn / 100, workingYears) : autoAssets.severance
   const autoAssetTotal = autoAssets.investment + autoAssets.deposit + autoAssets.insurance + severancePV
   const sumAssets = manualAssets + autoAssetTotal
   const hlvCoverage = hlv + sumDebt   // ทุนที่ควรมี (HLV) = มูลค่าปัจจุบันของรายได้ + หนี้สินคงค้าง (ชุดเดียวกับ Needs-Based)
@@ -353,7 +353,13 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
 
         <Section no={2} title="สมมติฐาน">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <AssumpRow label="อัตราคิดลด (i)" value={plan.hlvReturn} onChange={v => set('hlvReturn', v)} unit="%" />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>อัตราผลตอบแทนจากการลงทุน (i)</span>
+              <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: '#22d3ee' }}>{preRetReturn.toFixed(2)} <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>%</span></span>
+            </div>
+            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', lineHeight: 1.5, marginTop: -2 }}>
+              ดึงจาก "อัตราผลตอบแทนจากการลงทุนก่อนเกษียณ" หน้าตั้งค่าสมมติฐาน
+            </div>
             <AssumpRow label="อัตราการเพิ่มของรายได้ (g)" value={plan.hlvGrowth} onChange={v => set('hlvGrowth', v)} unit="%" />
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6, borderTop: '1px solid var(--card-border)' }}>
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Real Rate = (1+i)/(1+g) − 1</span>
@@ -435,7 +441,13 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
 
         <Section no={2} title="สมมติฐานความคุ้มครอง">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <AssumpRow label="อัตราผลตอบแทนจากการลงทุน (i)" value={plan.returnRate} onChange={v => set('returnRate', v)} unit="%" />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>อัตราผลตอบแทนจากการลงทุน (i)</span>
+              <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: '#fbbf24' }}>{preRetReturn.toFixed(2)} <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>%</span></span>
+            </div>
+            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', lineHeight: 1.5, marginTop: -2 }}>
+              ดึงจาก "อัตราผลตอบแทนจากการลงทุนก่อนเกษียณ" หน้าตั้งค่าสมมติฐาน
+            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6, borderTop: '1px solid var(--card-border)' }}>
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Real Rate = (1+i)/(1+g) − 1 · g จากส่วนที่ 1</span>
               <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: '#fbbf24' }}>{(realRate * 100).toFixed(2)}%</span>
@@ -602,6 +614,8 @@ export default function InsurancePlanPage({ person = 'self' }: { person?: 'self'
   const currentAge = person === 'self' ? selfAge : (clientProfile?.spouseAge ?? null)
   const retAge = (person === 'self' ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? 60
   const workingYears = currentAge != null ? Math.max(0, retAge - currentAge) : 25
+  // อัตราผลตอบแทนจากการลงทุน (i) สำหรับ HLV + Needs-Based — ดึงจากหน้าตั้งค่าสมมติฐาน
+  const preRetReturn = profile?.preRetirementReturn ?? 4
 
   // ── ค่าดึงอัตโนมัติ (Needs-Based) — แยกตามคน (client = ฟิลด์หลัก, spouse = spouseData) ──
   const invSrc: any = person === 'self' ? invProfile : (invProfile?.spouseData ?? {})
@@ -673,8 +687,8 @@ export default function InsurancePlanPage({ person = 'self' }: { person?: 'self'
       </div>
 
       {person === 'self'
-        ? <PersonPanel plan={self} onChange={setSelf} color={color} autoIncome={autoIncomeSelf} workingYears={workingYears} autoDebt={autoDebt} autoAssets={autoAssets} autoTPD={autoTPD} autoDeduct={autoDeduct} autoYears={autoYears} youngestAge={youngestAge} />
-        : <PersonPanel plan={spouse} onChange={setSpouse} color={color} autoIncome={autoIncomeSpouse} workingYears={workingYears} autoDebt={autoDebt} autoAssets={autoAssets} autoTPD={autoTPD} autoDeduct={autoDeduct} autoYears={autoYears} youngestAge={youngestAge} />}
+        ? <PersonPanel plan={self} onChange={setSelf} color={color} autoIncome={autoIncomeSelf} workingYears={workingYears} autoDebt={autoDebt} autoAssets={autoAssets} autoTPD={autoTPD} autoDeduct={autoDeduct} autoYears={autoYears} youngestAge={youngestAge} preRetReturn={preRetReturn} />
+        : <PersonPanel plan={spouse} onChange={setSpouse} color={color} autoIncome={autoIncomeSpouse} workingYears={workingYears} autoDebt={autoDebt} autoAssets={autoAssets} autoTPD={autoTPD} autoDeduct={autoDeduct} autoYears={autoYears} youngestAge={youngestAge} preRetReturn={preRetReturn} />}
     </div>
   )
 }
