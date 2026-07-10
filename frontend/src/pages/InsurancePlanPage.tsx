@@ -226,7 +226,8 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
   const severancePV = workingYears > 0 ? autoAssets.severance / Math.pow(1 + plan.returnRate / 100, workingYears) : autoAssets.severance
   const autoAssetTotal = autoAssets.investment + autoAssets.deposit + autoAssets.insurance + severancePV
   const sumAssets = manualAssets + autoAssetTotal
-  const hlvNet = Math.max(0, hlv - sumAssets)   // HLV สุทธิ = ทุนที่ต้องการ (HLV) − สินทรัพย์ที่มี (ชุดเดียวกับ Needs-Based)
+  const hlvCoverage = hlv + sumDebt   // ทุนที่ควรมี (HLV) = มูลค่าปัจจุบันของรายได้ + หนี้สินคงค้าง (ชุดเดียวกับ Needs-Based)
+  const hlvNet = Math.max(0, hlvCoverage - sumAssets)   // HLV สุทธิ = ทุนที่ต้องการ − สินทรัพย์ที่มี
   const netNeed = Math.max(0, coverageNeed - sumAssets)
 
   // ── กรณีทุพพลภาพ ── หักเฉพาะค่าใช้จ่ายจากการทำงาน (เหมือน HLV) แต่ไม่หักค่าใช้จ่ายส่วนตัว
@@ -273,7 +274,7 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
               <tr style={{ borderBottom: '1px solid var(--divider)', background: selectedMethod === 'hlv' ? '#22d3ee14' : 'transparent' }}>
                 <td style={{ textAlign: 'center', padding: '9px 10px' }}><input type="checkbox" checked={selectedMethod === 'hlv'} onChange={() => set('selectedMethod', 'hlv')} style={{ width: 16, height: 16, accentColor: '#22d3ee', cursor: 'pointer' }} /></td>
                 <td style={{ padding: '9px 10px', fontSize: 13, color: 'var(--text-primary)' }}>ทุนประกันที่ควรมี · <span style={{ color: '#22d3ee', fontWeight: 700 }}>Human Life Value</span></td>
-                <td style={td}>{fmt(hlv)}</td>
+                <td style={td}>{fmt(hlvCoverage)}</td>
                 <td style={{ ...td, color: '#10b981' }}>{fmt(sumAssets)}</td>
                 <td style={{ ...td, fontWeight: 800, color: '#f59e0b' }}>{fmt(hlvNet)}</td>
               </tr>
@@ -361,7 +362,14 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
           </div>
         </Section>
 
-        <Section no={3} title="สินทรัพย์ที่มี + เงินชดเชย (หักออก)">
+        <Section no={3} title="หนี้สินคงค้าง (D + M)">
+          <AutoRow label="หนี้สินจากงบการเงิน" value={autoDebt} color="#f87171" />
+          <div style={{ borderTop: '1px dashed var(--card-border)', margin: '6px 0' }} />
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>หนี้เพิ่มเติม (กรอกเอง)</span>
+          <EditableList items={plan.debts} onChange={v => set('debts', v)} color="#f87171" total={sumDebt} />
+        </Section>
+
+        <Section no={4} title="สินทรัพย์ที่มี + เงินชดเชย (หักออก)">
           <AutoRow label="สินทรัพย์ลงทุน" value={autoAssets.investment} color="#4ade80" />
           <AutoRow label="เงินฝาก" value={autoAssets.deposit} color="#4ade80" />
           <AutoRow label="ทุนประกันชีวิตเดิม" value={autoAssets.insurance} color="#4ade80" />
@@ -371,12 +379,13 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
           <EditableList items={plan.assets} onChange={v => set('assets', v)} color="#4ade80" total={sumAssets} />
         </Section>
 
-        <Section no={4} title="สรุปการคำนวณ">
+        <Section no={5} title="สรุปการคำนวณ">
           <ResultRow label={`มูลค่าปัจจุบันของรายได้ (${workingYears} ปี)`} value={hlv} color="var(--cyan-light)" />
+          <ResultRow label="(+) หนี้สินคงค้าง" value={sumDebt} color="#f87171" />
           <ResultRow label="(−) สินทรัพย์ที่มี + เงินชดเชย" value={sumAssets} color="#4ade80" />
         </Section>
 
-        <ResultCard label="ทุนประกันแบบ Human Life Value (สุทธิ)" value={hlvNet} accent="#22d3ee" note={`= มูลค่าปัจจุบันของรายได้ ${fmt(hlv)} − สินทรัพย์ที่มี ${fmt(sumAssets)}`} />
+        <ResultCard label="ทุนประกันแบบ Human Life Value (สุทธิ)" value={hlvNet} accent="#22d3ee" note={`= PV รายได้ ${fmt(hlv)} + หนี้สิน ${fmt(sumDebt)} − สินทรัพย์ที่มี ${fmt(sumAssets)}`} />
       </div>
 
       {/* ══ Column 2: Needs-Based ══ */}
