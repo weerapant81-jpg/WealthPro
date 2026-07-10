@@ -241,7 +241,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
       {/* ── Fixed sidebar (จอ ≥ 600px) ── */}
       {!isMobile && (
-        <aside style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: sidebarW, background: 'var(--navy-950)', borderRight: '1px solid var(--card-border)', display: 'flex', flexDirection: 'column', zIndex: 50, transition: 'width 0.2s' }}>
+        <aside style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: sidebarW, background: 'var(--navy-950)', borderRight: '1px solid var(--card-border)', display: 'flex', flexDirection: 'column', zIndex: 50, transition: 'width 0.2s', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
           {Sidebar({ asRail: rail })}
         </aside>
       )}
@@ -272,7 +272,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       {isMobile && drawerOpen && (
         <>
           <div onClick={() => setDrawerOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 90 }} />
-          <aside style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: 236, background: 'var(--navy-950)', borderRight: '1px solid var(--card-border)', display: 'flex', flexDirection: 'column', zIndex: 100 }}>
+          <aside style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: 236, background: 'var(--navy-950)', borderRight: '1px solid var(--card-border)', display: 'flex', flexDirection: 'column', zIndex: 100, paddingTop: 'env(safe-area-inset-top, 0px)' }}>
             {Sidebar({ asRail: false })}
           </aside>
         </>
@@ -282,7 +282,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       <div style={{ minWidth: 0, marginLeft: isMobile ? 0 : sidebarW, width: isMobile ? '100%' : `calc(100% - ${sidebarW}px)`, transition: 'margin-left 0.2s, width 0.2s' }}>
 
         {/* Topbar */}
-        <header style={{ position: 'sticky', top: 0, zIndex: 40, background: 'var(--navy-950)', borderBottom: '1px solid var(--card-border)', height: 56, display: 'flex', alignItems: 'center', gap: 10, padding: '0 16px' }}>
+        <header style={{ position: 'sticky', top: 0, zIndex: 40, background: 'var(--navy-950)', borderBottom: '1px solid var(--card-border)', height: 'calc(56px + env(safe-area-inset-top, 0px))', paddingTop: 'env(safe-area-inset-top, 0px)', display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 16, paddingRight: 16, boxSizing: 'border-box' }}>
           {isMobile && (
             <button onClick={() => setDrawerOpen(true)} title="เมนู" aria-label="เมนู" style={iconBtn}>
               <Menu size={20} />
