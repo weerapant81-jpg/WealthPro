@@ -9,6 +9,7 @@ import { card, inp, sel, btn } from '../styles/dark'
 import { TableExcelButton } from '../components/exportable'
 import { WizardNav } from '../components/WizardNav'
 import { ThaiDateInput } from '../components/ThaiDateInput'
+import { fixThaiMojibake } from '../lib/fixThaiMojibake'
 import { MoneyInputStr as CommaInput } from '../components/MoneyInput'
 import InsuranceTab from './InsuranceTab'
 import InvestmentProfileTab from './InvestmentProfileTab'
@@ -349,7 +350,7 @@ export default function ClientProfilePage() {
         birthDate: profile.birthDate ? profile.birthDate.split('T')[0] : '',
         nationalId: profile.nationalId || '',
         maritalStatus: profile.maritalStatus || 'โสด',
-        nationality: profile.nationality || 'ไทย',
+        nationality: fixThaiMojibake(profile.nationality) || 'ไทย',
         education: profile.education || '',
         educationField: profile.educationField || '',
         occupation: profile.occupation || '',
@@ -410,6 +411,7 @@ export default function ClientProfilePage() {
         ...sp,
         firstName: sp.firstName || migratedName[0] || '',
         lastName: sp.lastName || migratedName.slice(1).join(' ') || '',
+        nationality: fixThaiMojibake(sp.nationality) || 'ไทย',
         healthInfo: { ...defaultHealth(), ...(sp.healthInfo || {}) },
         parentsInfo: { ...defaultSpouseProfile.parentsInfo, ...(sp.parentsInfo || {}) },
       }
