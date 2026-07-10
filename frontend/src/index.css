@@ -30,31 +30,31 @@
   --shadow: 0 10px 30px -16px rgba(0,0,0,0.7);
 }
 
-/* ── Light theme (soft, low-glare) ── */
+/* ── Light theme — "Horizon Advisory" (Corporate Modern / Tonal Layering) ── */
 :root[data-theme="light"] {
-  --navy-950: #dbe0e7;   /* topbar/sidebar/input — เข้มกว่าการ์ดเล็กน้อย */
-  --navy-900: #e3e8ee;
-  --navy-800: #d6dce4;
-  --navy-700: #c7cfda;
-  --navy-600: #b3bdca;   /* scrollbar thumb */
-  --navy-500: #9aa7b6;
-  --card-bg: #f1f4f8;    /* การ์ดออฟไวท์ (ไม่ขาวจ้า) */
-  --card-border: rgba(15,23,42,0.12);
-  --cyan: #00a99d;       /* teal เข้มพอสำหรับพื้นสว่าง */
-  --cyan-light: #00c2b4;
-  --cyan-dim: rgba(0,169,157,0.14);
-  --text-primary: #1a2430;
-  --text-secondary: #47566a;
-  --text-muted: #78899a;
-  --gold: #c78a00;
+  --navy-950: #e8e8e9;   /* topbar/sidebar/input container — surface-container-high */
+  --navy-900: #eeeeef;   /* surface-container */
+  --navy-800: #e2e2e3;   /* surface-variant */
+  --navy-700: #d5d5d7;
+  --navy-600: #c6c5d2;   /* outline-variant / scrollbar thumb */
+  --navy-500: #767681;   /* outline */
+  --card-bg: #ffffff;    /* Level 1 — การ์ดขาวบน canvas */
+  --card-border: #e2e8f0;/* เส้นกรอบ 1px แทนเงา (crisp) */
+  --cyan: #1d6ae5;       /* Electric Blue — สี action หลัก */
+  --cyan-light: #256fea;
+  --cyan-dim: rgba(29,106,229,0.12);
+  --text-primary: #1a1c1d;    /* on-surface */
+  --text-secondary: #454650;  /* on-surface-variant */
+  --text-muted: #767681;      /* outline */
+  --gold: #b98900;            /* warning / pending (อ่านออกบนพื้นสว่าง) */
   /* semantic */
-  --page-bg: #e6eaf0;    /* พื้นหลังเทาอ่อนนวล */
-  --grid: rgba(15,23,42,0.09);
-  --divider: rgba(15,23,42,0.07);
-  --hover: rgba(15,23,42,0.035);
-  --input-bg: #ffffff;                     /* ช่องกรอกขาว ตัดกับการ์ดออฟไวท์ */
-  --input-border: rgba(15,23,42,0.24);     /* เส้นกรอบเข้มพอ เห็นชัดบนพื้นสว่าง */
-  --shadow: 0 8px 24px -14px rgba(15,23,42,0.20);
+  --page-bg: #f9f9fa;    /* Level 0 canvas — neutral-50 */
+  --grid: rgba(16,7,43,0.08);
+  --divider: rgba(16,7,43,0.06);
+  --hover: rgba(16,7,43,0.035);
+  --input-bg: #ffffff;                  /* ช่องกรอกขาว */
+  --input-border: #c6c5d2;              /* outline-variant — เส้นกรอบเห็นชัด */
+  --shadow: 0 4px 20px rgba(0,11,80,0.08); /* Level 2 — soft precision shadow */
 }
 
 body {
