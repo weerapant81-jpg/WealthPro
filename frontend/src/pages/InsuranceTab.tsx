@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, Check, X, ChevronDown, ChevronUp, ShieldCheck, Ca
 import { card, inp, sel, btn } from '../styles/dark'
 import { MoneyInputStr } from '../components/MoneyInput'
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts'
+import { ChartFrame, TableExcelButton } from '../components/exportable'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -524,6 +525,9 @@ function PropertyInsuranceSection() {
       )}
 
       <div style={{ overflowX: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+          <TableExcelButton filename="ประกันวินาศภัย" title="ประกันวินาศภัย" />
+        </div>
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
           <thead>
             <tr style={{ background: 'var(--hover)' }}>
@@ -679,7 +683,8 @@ function InsuranceRadarChart() {
         </p>
       </div>
 
-      <ResponsiveContainer width="100%" height={380}>
+      <ChartFrame title="ความคุ้มครองประกัน" filename="insurance-radar" height={380}>
+      <ResponsiveContainer width="100%" height="100%">
         <RadarChart data={radarData} outerRadius="100%" margin={{ top: 40, right: 50, bottom: 40, left: 50 }}>
           <PolarGrid stroke="rgba(255,255,255,0.1)" />
           <PolarAngleAxis dataKey="subject" tick={<CustomRadarTick />} />
@@ -689,6 +694,7 @@ function InsuranceRadarChart() {
           <Tooltip formatter={(v: any, name: any) => [`${v} / 100`, name]} contentStyle={{ background: 'var(--navy-950)', border: '1px solid var(--card-border)', borderRadius: 8, fontSize: 11 }} />
         </RadarChart>
       </ResponsiveContainer>
+      </ChartFrame>
 
       {/* Score list */}
       <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 7 }}>

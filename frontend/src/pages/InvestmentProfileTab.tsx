@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import { card, inp, sel, btn } from '../styles/dark'
 import { MoneyInputStr as NumInput } from '../components/MoneyInput'
 import { Plus, Trash2, Clock, CheckCircle, Loader, TrendingUp, Home, Briefcase, AlertTriangle, PiggyBank, CreditCard } from 'lucide-react'
+import { TableExcelButton } from '../components/exportable'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -443,6 +444,7 @@ export default function InvestmentProfileTab({ person = 'client' }: { person?: '
       </datalist>
       <div style={card}>
         <SectionHeader icon={PiggyBank} title="บัญชีเงินฝาก" />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}><TableExcelButton filename="บัญชีเงินฝาก" title="เงินฝาก" /></div>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--card-border)' }}>
@@ -525,6 +527,7 @@ export default function InvestmentProfileTab({ person = 'client' }: { person?: '
       {/* ── 1. Personal Assets ── */}
       <div style={card}>
         <SectionHeader icon={Home} title="สินทรัพย์ส่วนตัว" sub="มูลค่าปัจจุบัน" />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}><TableExcelButton filename="สินทรัพย์ส่วนตัว" title="สินทรัพย์ส่วนตัว" /></div>
         <div style={{ overflowX: 'auto' }}>
           <table className="dense-table" style={{ width: '100%', minWidth: 1040, borderCollapse: 'collapse', fontSize: 11 }}>
             <thead>
@@ -600,6 +603,7 @@ export default function InvestmentProfileTab({ person = 'client' }: { person?: '
       {/* ── 2. Investment Assets ── */}
       <div style={card}>
         <SectionHeader icon={TrendingUp} title="สินทรัพย์การลงทุน" sub="มูลค่าพอร์ตปัจจุบัน" />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}><TableExcelButton filename="สินทรัพย์การลงทุน" title="สินทรัพย์การลงทุน" /></div>
         <div style={{ overflowX: 'auto' }}>
           <table className="dense-table" style={{ width: '100%', minWidth: 1040, borderCollapse: 'collapse', fontSize: 11 }}>
             <thead>
@@ -745,6 +749,7 @@ export default function InvestmentProfileTab({ person = 'client' }: { person?: '
       {/* ── 2.5 Liabilities (หนี้สินคงค้าง) ── */}
       <div style={card}>
         <SectionHeader icon={CreditCard} title="หนี้สินคงค้าง" sub="ภาระหนี้สินที่ยังค้างชำระ" />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}><TableExcelButton filename="หนี้สินคงค้าง" title="หนี้สินคงค้าง" /></div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>

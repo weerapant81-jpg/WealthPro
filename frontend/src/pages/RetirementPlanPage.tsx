@@ -6,6 +6,7 @@ import {
   ReferenceLine, ResponsiveContainer, Area, ComposedChart, Bar,
 } from 'recharts'
 import { Calculator, Plus, Trash2, TrendingUp, Check, Loader2 } from 'lucide-react'
+import { ChartFrame, TableExcelButton } from '../components/exportable'
 import { MoneyInput } from '../components/MoneyInput'
 import { useIsCompact } from '../hooks/useViewport'
 
@@ -705,7 +706,8 @@ function PersonPanel({ data, onChange, color, isSelf }: {
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 14 }}>
             สะสม (อายุ {data.currentAge}–{data.retirementAge - 1}) → ใช้เงิน (อายุ {data.retirementAge}–{data.lifeExpectancy})
           </div>
-          <ResponsiveContainer width="100%" height={260}>
+          <ChartFrame title="การคาดการณ์มูลค่าเงินในอนาคต" filename="retirement-projection" height={260}>
+          <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 4, right: 16, bottom: 0, left: 16 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--divider)" vertical={false} />
               <XAxis dataKey="age" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={{ stroke: 'var(--card-border)' }} tickLine={false}
@@ -724,11 +726,15 @@ function PersonPanel({ data, onChange, color, isSelf }: {
               <Line type="monotone" dataKey="retBalance" name="เงินคงเหลือ (หลังเกษียณ)" stroke="#10b981" strokeWidth={2.5} dot={false} connectNulls={false} activeDot={{ r: 4, strokeWidth: 0 }} />
             </ComposedChart>
           </ResponsiveContainer>
+          </ChartFrame>
         </div>
 
         {/* Table */}
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 10 }}>ตารางคำนวณปีต่อปี</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>ตารางคำนวณปีต่อปี</div>
+            <TableExcelButton filename="ตารางเกษียณปีต่อปี" title="เกษียณปีต่อปี" />
+          </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>

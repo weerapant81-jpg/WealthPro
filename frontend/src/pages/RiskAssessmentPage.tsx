@@ -5,6 +5,7 @@ import { ShieldCheck, ChevronRight, RotateCcw, Save, User, Users } from 'lucide-
 import * as s from '../styles/dark'
 import { PageHeader } from '../components/ui'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
+import { ChartFrame } from '../components/exportable'
 
 // ─── Chart Q7 ─────────────────────────────────────────────────────────────────
 function ReturnChart() {
@@ -439,7 +440,8 @@ export default function RiskAssessmentPage() {
                     <div style={{ fontSize: 12, fontWeight: 600, color: isSelected ? investor.color : 'var(--text-primary)' }}>{pol.name}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{pol.subtitle}</div>
                   </div>
-                  <ResponsiveContainer width="100%" height={160}>
+                  <ChartFrame title={pol.name} filename={`allocation-${pol.name}`} height={160}>
+                  <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie data={pol.data} cx="50%" cy="50%" outerRadius={60} dataKey="value" labelLine={false}
                         label={({ cx, cy, midAngle = 0, outerRadius: or, value }) => {
@@ -452,6 +454,7 @@ export default function RiskAssessmentPage() {
                       </Pie>
                     </PieChart>
                   </ResponsiveContainer>
+                  </ChartFrame>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 4 }}>
                     {pol.data.map(d => (
                       <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10 }}>

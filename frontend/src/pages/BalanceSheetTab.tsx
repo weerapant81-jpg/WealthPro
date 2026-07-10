@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import { Plus, Trash2, Pencil, Check, X } from 'lucide-react'
 import { card, inp, sel, btn } from '../styles/dark'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { ChartFrame, ExcelButton, type ExcelSheet } from '../components/exportable'
 
 // ==================== Category Definitions ====================
 
@@ -264,20 +265,22 @@ function MiniPieChart({ title, data, colors }: {
         <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: 'var(--text-muted)', fontSize: 12 }}>ยังไม่มีข้อมูล</div>
       ) : (
-        <ResponsiveContainer width="100%" height={260}>
-          <PieChart>
-            <Pie data={filtered} cx="50%" cy="40%" outerRadius={85} dataKey="value"
-              labelLine={false} label={renderLabel}>
-              {filtered.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
-            </Pie>
-            <Tooltip
-              formatter={(v: any) => [fmt(v) + ' ฿', '']}
-              contentStyle={{ background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 8, fontSize: 12 }}
-              labelStyle={{ color: 'var(--text-primary)' }} />
-            <Legend iconType="circle" iconSize={8}
-              formatter={(v) => <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{v}</span>} />
-          </PieChart>
-        </ResponsiveContainer>
+        <ChartFrame title={title} filename={title} height={260}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={filtered} cx="50%" cy="40%" outerRadius={85} dataKey="value"
+                labelLine={false} label={renderLabel}>
+                {filtered.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
+              </Pie>
+              <Tooltip
+                formatter={(v: any) => [fmt(v) + ' ฿', '']}
+                contentStyle={{ background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 8, fontSize: 12 }}
+                labelStyle={{ color: 'var(--text-primary)' }} />
+              <Legend iconType="circle" iconSize={8}
+                formatter={(v) => <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{v}</span>} />
+            </PieChart>
+          </ResponsiveContainer>
+        </ChartFrame>
       )}
     </div>
   )
@@ -571,9 +574,33 @@ export default function BalanceSheetTab({ person = 'client' }: { person?: 'clien
 
         {/* ===== NET WORTH SUMMARY ===== */}
         <div style={{ ...card, padding: '20px 24px' }}>
-          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16 }}>
-            สรุปงบดุลส่วนบุคคล
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+            <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
+              สรุปงบดุลส่วนบุคคล
+            </p>
+            <ExcelButton filename={`งบดุล-${person === 'spouse' ? 'คู่สมรส' : 'ลูกค้า'}`} getSheets={(): ExcelSheet => {
+              const rows: (string | number)[][] = [['หมวด', 'รายการ', 'มูลค่า (บาท)', '% ของรวม']]
+              const push = (cat: string, name: string, val: number, base: number) =>
+                rows.push([cat, name, Math.round(val), base ? +((val / base) * 100).toFixed(2) : 0])
+              savingsAccounts.filter(a => toNum(a.currentValue) > 0).forEach((a, i) =>
+                push('สินทรัพย์สภาพคล่อง', a.depositType || `บัญชีที่ ${i + 1}`, toNum(a.currentValue), totals.totalAssets))
+              cashValuePolicies.forEach(p =>
+                push('สินทรัพย์เพื่อการลงทุน', `มูลค่าเวนคืน — ${p.insuranceType || 'ประกันชีวิต'}`, p.cashValue, totals.totalAssets))
+              investmentAssets.filter(a => toNum(a.currentValue) > 0).forEach((a, i) =>
+                push('สินทรัพย์เพื่อการลงทุน', a.assetName || `รายการที่ ${i + 1}`, toNum(a.currentValue), totals.totalAssets))
+              manualInvest.forEach(a => push('สินทรัพย์เพื่อการลงทุน', a.name, a.value, totals.totalAssets))
+              personalItems.filter(a => toNum(a.currentValue) > 0).forEach(a =>
+                push('สินทรัพย์ส่วนตัว', a.customLabel ? `${a.assetType} (${a.customLabel})` : a.assetType, toNum(a.currentValue), totals.totalAssets))
+              profShortDebt.forEach((l, i) => push('หนี้สินระยะสั้น', l.debtType || `หนี้สินที่ ${i + 1}`, toNum(l.currentBalance), totals.totalLiab))
+              shortDebt.forEach(l => push('หนี้สินระยะสั้น', l.name, l.balance, totals.totalLiab))
+              profLongDebt.forEach((l, i) => push('หนี้สินระยะยาว', l.debtType || `หนี้สินที่ ${i + 1}`, toNum(l.currentBalance), totals.totalLiab))
+              rows.push([])
+              rows.push(['สรุป', 'สินทรัพย์รวม', Math.round(totals.totalAssets), ''])
+              rows.push(['สรุป', 'หนี้สินรวม', Math.round(totals.totalLiab), ''])
+              rows.push(['สรุป', 'ความมั่งคั่งสุทธิ', Math.round(totals.netWorth), ''])
+              return { name: 'งบดุล', rows }
+            }} />
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {[
               { label: 'สินทรัพย์รวม (1)',      value: totals.totalAssets, color: '#22d3ee', sign: '' },

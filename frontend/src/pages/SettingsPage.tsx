@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import { Save, CheckCircle, User, TrendingUp, GraduationCap, Percent, Shield, Briefcase, SlidersHorizontal, ChartPie } from 'lucide-react'
 import { MoneyInput as MoneyInputBase } from '../components/MoneyInput'
 import { PageHeader } from '../components/ui'
+import { TableExcelButton } from '../components/exportable'
 import InvestmentAssumptionPage from './InvestmentAssumptionPage'
 
 const CURRENT_YEAR = new Date().getFullYear() + 543  // พ.ศ.
@@ -355,6 +356,7 @@ export default function SettingsPage() {
                 style={{ ...inp, width: 90, textAlign: 'center' }} />
             </div>
             <div style={{ overflowX: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}><TableExcelButton filename="ค่าใช้จ่ายการศึกษา" title="ค่าการศึกษา" /></div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr>

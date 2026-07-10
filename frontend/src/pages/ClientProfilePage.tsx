@@ -6,6 +6,7 @@ import { api } from '../lib/api'
 import { CheckCircle, User, Users, Plus, Trash2, Loader, AlertCircle, Clock, TrendingUp, IdCard, GraduationCap, Briefcase, HeartPulse, HeartHandshake, Dumbbell } from 'lucide-react'
 import { PageHeader } from '../components/ui'
 import { card, inp, sel, btn } from '../styles/dark'
+import { TableExcelButton } from '../components/exportable'
 import { MoneyInputStr as CommaInput } from '../components/MoneyInput'
 import InsuranceTab from './InsuranceTab'
 import InvestmentProfileTab from './InvestmentProfileTab'
@@ -927,7 +928,10 @@ export default function ClientProfilePage() {
                   <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>รายได้ทุกแหล่งต่อเดือน (บาท)</p>
                 </div>
               </div>
-              <button onClick={addIS} style={btn()}><Plus size={14} />เพิ่มรายได้</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <TableExcelButton filename="ที่มาของรายได้" title="รายได้" />
+                <button onClick={addIS} style={btn()}><Plus size={14} />เพิ่มรายได้</button>
+              </div>
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
@@ -1244,7 +1248,10 @@ export default function ClientProfilePage() {
                   <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>รายได้ทุกแหล่งต่อเดือน (บาท)</p>
                 </div>
               </div>
-              <button onClick={addSpouseIS} style={btn()}><Plus size={14} />เพิ่มรายได้</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <TableExcelButton filename="ที่มาของรายได้-คู่สมรส" title="รายได้คู่สมรส" />
+                <button onClick={addSpouseIS} style={btn()}><Plus size={14} />เพิ่มรายได้</button>
+              </div>
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>

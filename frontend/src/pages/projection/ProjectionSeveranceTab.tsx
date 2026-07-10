@@ -4,6 +4,7 @@ import { api } from '../../lib/api'
 import { Scale } from 'lucide-react'
 import { useIsCompact } from '../../hooks/useViewport'
 import { card } from '../../styles/dark'
+import { TableExcelButton } from '../../components/exportable'
 
 /* ── helpers ── */
 const fmt = (n: number, d = 2) =>
@@ -250,7 +251,10 @@ export default function ProjectionSeveranceTab({ person = 'self' }: { person?: '
 
           {/* Tier table */}
           <div style={{ ...card, overflowX: 'auto' }}>
-            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>อัตราค่าชดเชยตามอายุงาน</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>อัตราค่าชดเชยตามอายุงาน</p>
+              <TableExcelButton filename="ตารางค่าชดเชยเกษียณ" title="ค่าชดเชย" />
+            </div>
             <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 14 }}>พ.ร.บ. คุ้มครองแรงงาน มาตรา 118 (การเกษียณอายุถือเป็นการเลิกจ้าง — มาตรา 118/1)</p>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
               <thead>

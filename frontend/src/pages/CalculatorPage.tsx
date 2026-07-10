@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Calculator, Home, Car, Clock, CreditCard } from 'lucide-react'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
+import { ChartFrame, TableExcelButton } from '../components/exportable'
 import { useIsCompact } from '../hooks/useViewport'
 
 /* ── helpers ── */
@@ -168,7 +169,8 @@ function HomeLoanCalc() {
         <div style={{ ...card }}>
           <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>ยอดหนี้คงเหลือตามเวลา</p>
           <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>{hasExtra ? 'เส้นเขียว = จ่ายเพิ่ม ผ่อนจบเร็วกว่า' : 'ใส่ยอดจ่ายเพิ่มเพื่อเทียบเส้นที่ผ่อนจบเร็วขึ้น'}</p>
-          <ResponsiveContainer width="100%" height={220}>
+          <ChartFrame title="ยอดหนี้คงเหลือตามเวลา" filename="loan-balance" height={220}>
+          <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 8, right: 16, left: 6, bottom: 4 }}>
               {chartCommon.grid}
               <XAxis dataKey="year" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={{ stroke: 'var(--card-border)' }} tickLine={false} />
@@ -179,10 +181,14 @@ function HomeLoanCalc() {
               {hasExtra && <Line type="monotone" dataKey="extra" stroke="#10b981" strokeWidth={2.5} dot={false} name="จ่ายเพิ่ม" activeDot={{ r: 4, strokeWidth: 0 }} />}
             </LineChart>
           </ResponsiveContainer>
+          </ChartFrame>
         </div>
 
         <div style={{ ...card, overflowX: 'auto' }}>
-          <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>ตารางผ่อนรายปี {hasExtra ? '(กรณีจ่ายเพิ่ม)' : ''}</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
+            <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>ตารางผ่อนรายปี {hasExtra ? '(กรณีจ่ายเพิ่ม)' : ''}</p>
+            <TableExcelButton filename="ตารางผ่อนรายปี" title="ผ่อนรายปี" />
+          </div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead><tr style={{ borderBottom: '1px solid var(--card-border)' }}>
               <th style={th}>ปีที่</th><th style={thR}>เงินต้น</th><th style={thR}>ดอกเบี้ย</th><th style={thR}>คงเหลือ</th>
@@ -418,7 +424,8 @@ function DebtCalc() {
             {res.rows.length > 1 && (
               <div style={{ marginTop: 14 }}>
                 <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>ยอดหนี้คงเหลือจนปลดหนี้</p>
-                <ResponsiveContainer width="100%" height={180}>
+                <ChartFrame title="ยอดหนี้คงเหลือจนปลดหนี้" filename="debt-payoff" height={180}>
+                <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={res.rows} margin={{ top: 6, right: 12, left: 6, bottom: 4 }}>
                     {chartCommon.grid}
                     <XAxis dataKey="year" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={{ stroke: 'var(--card-border)' }} tickLine={false} />
@@ -427,9 +434,13 @@ function DebtCalc() {
                     <Line type="monotone" dataKey="balance" stroke="var(--cyan)" strokeWidth={2.5} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
                   </LineChart>
                 </ResponsiveContainer>
+                </ChartFrame>
               </div>
             )}
             <div style={{ overflowX: 'auto', marginTop: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+                <TableExcelButton filename="ตารางปลดหนี้" title="ปลดหนี้" />
+              </div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead><tr style={{ borderBottom: '1px solid var(--card-border)' }}>
                   <th style={th}>ปีที่</th><th style={thR}>ดอกเบี้ย</th><th style={thR}>ชำระ</th><th style={thR}>คงเหลือ</th>

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { ShieldCheck, Eye, Plus, Pencil, Trash2 } from 'lucide-react'
 import { PageHeader } from '../components/ui'
+import { TableExcelButton } from '../components/exportable'
 import { card } from '../styles/dark'
 
 type Log = {
@@ -34,7 +35,8 @@ export default function AuditLogPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <PageHeader icon={ShieldCheck} title="บันทึกการเข้าถึงข้อมูล" subtitle="PDPA · ใครเปิดดู/แก้ไข/ลบ ข้อมูลลูกค้าเมื่อไหร่" />
+      <PageHeader icon={ShieldCheck} title="บันทึกการเข้าถึงข้อมูล" subtitle="PDPA · ใครเปิดดู/แก้ไข/ลบ ข้อมูลลูกค้าเมื่อไหร่"
+        right={logs.length > 0 ? <TableExcelButton filename="บันทึกการเข้าถึงข้อมูล" title="Audit Log" /> : undefined} />
 
       <div style={{ ...card, padding: 0, overflowX: 'auto' }}>
         {isLoading ? (

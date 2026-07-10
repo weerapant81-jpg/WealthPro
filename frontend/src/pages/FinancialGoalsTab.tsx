@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { Plus, Trash2, CheckCircle, Loader2 } from 'lucide-react'
+import { TableExcelButton } from '../components/exportable'
 
 const inp: React.CSSProperties = {
   padding: '7px 10px', borderRadius: 6, border: '1px solid var(--card-border)',
@@ -149,6 +150,7 @@ export default function FinancialGoalsTab({ person = 'client' }: { person?: 'cli
 
           {/* Table */}
           <div style={{ overflowX: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}><TableExcelButton filename={`เป้าหมาย-${sec.label}`} title={sec.label} /></div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ background: 'var(--hover)' }}>

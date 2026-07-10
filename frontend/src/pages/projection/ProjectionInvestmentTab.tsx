@@ -5,6 +5,7 @@ import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend, ReferenceLine,
 } from 'recharts'
+import { ChartFrame, TableExcelButton } from '../../components/exportable'
 import { card } from '../../styles/dark'
 import { Trash2, RotateCcw, TrendingUp } from 'lucide-react'
 
@@ -302,7 +303,8 @@ export default function ProjectionInvestmentTab({ person = 'self' }: { person?: 
                 <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 20 }}>
                   จากอายุ {currentAge} ถึง {expectedLifespan} ปี · แถบทึบ = ช่วงผลลัพธ์ 80% (P10–P90) · เส้นกลาง = ค่ากลาง (median) · เส้นประส้ม = เกษียณ ({retirementAge} ปี)
                 </p>
-                <ResponsiveContainer width="100%" height={380}>
+                <ChartFrame title="มูลค่าสินทรัพย์ลงทุนในอนาคต (Monte Carlo)" filename="investment-monte-carlo" height={380}>
+                <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={rows} margin={{ top: 8, right: 24, left: 10, bottom: 8 }}>
                     <defs>
                       <linearGradient id="mcBand" x1="0" y1="0" x2="0" y2="1">
@@ -331,13 +333,17 @@ export default function ProjectionInvestmentTab({ person = 'self' }: { person?: 
                     <Line type="monotone" dataKey="p10" stroke={C_LOW}  dot={false} strokeWidth={1.5} strokeDasharray="4 3" name="แย่ (P10)" />
                   </ComposedChart>
                 </ResponsiveContainer>
+                </ChartFrame>
               </div>
             )
           })()}
 
           {/* ── Table every 5 years ── */}
           <div style={{ ...card, overflowX: 'auto' }}>
-            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16 }}>ตารางสรุปทุก 5 ปี (Monte Carlo)</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 16 }}>
+              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>ตารางสรุปทุก 5 ปี (Monte Carlo)</p>
+              <TableExcelButton filename="ตารางลงทุน-MonteCarlo" title="Monte Carlo" />
+            </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--card-border)' }}>

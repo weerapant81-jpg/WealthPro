@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { Check, X, Users, Clock, UserCheck } from 'lucide-react'
 import * as s from '../styles/dark'
+import { TableExcelButton } from '../components/exportable'
 
 interface AdminUser {
   id: string
@@ -73,6 +74,9 @@ export default function AdminPage() {
           <p style={{ ...s.muted, textAlign: 'center', padding: 40 }}>ไม่มีรายการ</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+              <TableExcelButton filename="รายชื่อผู้ใช้งาน" title="ผู้ใช้งาน" />
+            </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--card-border)' }}>

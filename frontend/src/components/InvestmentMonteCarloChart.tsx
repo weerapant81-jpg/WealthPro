@@ -5,6 +5,7 @@ import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend, ReferenceLine,
 } from 'recharts'
+import { ChartFrame } from './exportable'
 
 /* กราฟจำลองมูลค่าสินทรัพย์ลงทุนในอนาคต (Monte Carlo) — ใช้ตรรกะเดียวกับแท็บ "มูลค่าสินทรัพย์ลงทุน"
    (นับทุกรายการ ไม่มีปุ่มตัดออก) เพื่อนำไปแสดงในแดชบอร์ด/หน้าอื่นได้ */
@@ -106,7 +107,8 @@ export default function InvestmentMonteCarloChart({ person = 'self', height = 30
   const showRetire = retirementAge >= currentAge && retirementAge <= expectedLifespan
 
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ChartFrame title="จำลองมูลค่าสินทรัพย์ลงทุน (Monte Carlo)" filename="monte-carlo" height={height}>
+    <ResponsiveContainer width="100%" height="100%">
       <ComposedChart data={rows} margin={{ top: 16, right: 16, left: 4, bottom: 4 }}>
         <defs>
           <linearGradient id="dashMcBand" x1="0" y1="0" x2="0" y2="1">
@@ -130,5 +132,6 @@ export default function InvestmentMonteCarloChart({ person = 'self', height = 30
         <Line type="monotone" dataKey="p10" stroke={C_LOW} dot={false} strokeWidth={1.5} strokeDasharray="4 3" name="แย่ (P10)" />
       </ComposedChart>
     </ResponsiveContainer>
+    </ChartFrame>
   )
 }

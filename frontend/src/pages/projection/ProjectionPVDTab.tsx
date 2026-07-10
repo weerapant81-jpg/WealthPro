@@ -5,6 +5,7 @@ import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend, ReferenceLine,
 } from 'recharts'
+import { ChartFrame, TableExcelButton } from '../../components/exportable'
 import { Briefcase, Check, Loader2 } from 'lucide-react'
 import { useIsCompact } from '../../hooks/useViewport'
 import { card } from '../../styles/dark'
@@ -284,7 +285,7 @@ export default function ProjectionPVDTab({ person = 'self' }: { person?: 'self' 
           <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 14 }}>
             มูลค่ากองทุนสำรองเลี้ยงชีพสะสม (บาท)
           </p>
-          <div style={{ flex: 1, minHeight: 320 }}>
+          <ChartFrame title="มูลค่ากองทุนสำรองเลี้ยงชีพสะสม" filename="pvd-fund" height={320}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 8, right: 20, left: 10, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--grid)" />
@@ -303,13 +304,16 @@ export default function ProjectionPVDTab({ person = 'self' }: { person?: 'self' 
               <Line type="monotone" dataKey="total" name="รวมสิ้นปี" stroke="#fff" strokeWidth={2} dot={false} />
             </ComposedChart>
           </ResponsiveContainer>
-          </div>
+          </ChartFrame>
         </div>
       </div>
 
       {/* Table */}
       <div style={{ ...card, overflowX: 'auto' }}>
-        <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16 }}>ตารางการคำนวณปีต่อปี</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 16 }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>ตารางการคำนวณปีต่อปี</p>
+          <TableExcelButton filename="ตารางกองทุนสำรองเลี้ยงชีพ" title="PVD" />
+        </div>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, whiteSpace: 'nowrap' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--card-border)' }}>

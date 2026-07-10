@@ -3,6 +3,7 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { GraduationCap, Check, Loader2, LineChart as LineChartIcon, ChevronDown } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { ChartFrame, TableExcelButton } from '../components/exportable'
 import { usePortfolioReturns, type PortfolioReturn } from '../lib/portfolioReturns'
 
 /* ── helpers ── */
@@ -215,6 +216,9 @@ function ChildCard({ name, age, setting, onChange, eduCosts, inflation, fundRetu
         </p>
       ) : (
         <div style={{ overflowX: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+            <TableExcelButton filename="ค่าเล่าเรียนรายระดับ" title="ค่าเล่าเรียน" />
+          </div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, whiteSpace: 'nowrap', tableLayout: 'fixed' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--card-border)' }}>
@@ -333,7 +337,7 @@ function EduSavingsChart({ name, age, setting, eduCosts, inflation, fundReturn, 
             ))}
           </div>
 
-          <div style={{ height: 280 }}>
+          <ChartFrame title="มูลค่ากองทุนการศึกษา" filename="education-fund" height={280}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--divider)" vertical={false} />
@@ -350,13 +354,16 @@ function EduSavingsChart({ name, age, setting, eduCosts, inflation, fundReturn, 
                 ))}
               </LineChart>
             </ResponsiveContainer>
-          </div>
+          </ChartFrame>
           <p style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 8 }}>
             * ผลตอบแทน {selPort?.label ?? 'กองทุน'} {ratePct.toFixed(1)}%/ปี (จากหน้าสมมติฐานการลงทุน) · ออมเพิ่มขึ้นปีละ {incomeGrowth}% ตามอัตราการเพิ่มของรายได้ · เฉพาะระดับที่เลือกในตารางด้านบน
           </p>
 
           {/* ตารางค่าของกราฟแต่ละเส้น */}
           <div style={{ overflowX: 'auto', marginTop: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+              <TableExcelButton filename="มูลค่ากองทุนการศึกษารายปี" title="กองทุนการศึกษา" />
+            </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, whiteSpace: 'nowrap' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--card-border)' }}>
@@ -427,7 +434,10 @@ function FamilyEduView({ children, plans, getSetting, setChild }: {
     <>
       {/* สรุปต่อคน */}
       <div style={card}>
-        <p style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12 }}>สรุปทุนการศึกษาบุตร <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: 12.5 }}>({children.length} คน · หน่วย: บาท)</span></p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
+          <p style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text-primary)' }}>สรุปทุนการศึกษาบุตร <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: 12.5 }}>({children.length} คน · หน่วย: บาท)</span></p>
+          <TableExcelButton filename="สรุปทุนการศึกษาบุตร" title="สรุปทุนการศึกษา" />
+        </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, whiteSpace: 'nowrap' }}>
             <thead>
@@ -478,6 +488,9 @@ function FamilyEduView({ children, plans, getSetting, setChild }: {
       <div style={card}>
         <p style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 2 }}>ไทม์ไลน์ค่าเล่าเรียนรวมรายปี</p>
         <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>ปรับเงินเฟ้อแล้ว · ปีที่จ่ายหนักสุด (พีค) ไฮไลต์ไว้ · หน่วย: บาท</p>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+          <TableExcelButton filename="ไทม์ไลน์ค่าเล่าเรียนรวมรายปี" title="ไทม์ไลน์การศึกษา" />
+        </div>
         <div style={{ overflowX: 'auto', maxHeight: 420, overflowY: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, whiteSpace: 'nowrap' }}>
             <thead style={{ position: 'sticky', top: 0, background: 'var(--card-bg)', zIndex: 1 }}>

@@ -5,6 +5,7 @@ import { Plus, Trash2, Pencil, Check, X, Wallet } from 'lucide-react'
 import { PageHeader } from '../components/ui'
 import { card, inp, sel, btn } from '../styles/dark'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { ChartFrame } from '../components/exportable'
 import BalanceSheetTab from './BalanceSheetTab'
 import FinancialRatioTab from './FinancialRatioTab'
 
@@ -384,25 +385,27 @@ function MiniPieChart({ title, data }: { title: string; data: { name: string; va
         <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: 'var(--text-muted)', fontSize: 12 }}>ยังไม่มีข้อมูล</div>
       ) : (
-        <ResponsiveContainer width="100%" height={280}>
-          <PieChart>
-            <Pie data={filtered} cx="50%" cy="40%" outerRadius={90} dataKey="value"
-              labelLine={false} label={renderLabel}>
-              {filtered.map((_, i) => (
-                <Cell key={i}
-                  fill={title.includes('รายได้')
-                    ? PIE_COLORS_INCOME[i % PIE_COLORS_INCOME.length]
-                    : PIE_COLORS_EXPENSE[i % PIE_COLORS_EXPENSE.length]} />
-              ))}
-            </Pie>
-            <Tooltip
-              formatter={(v: any) => [fmt(v) + ' ฿', '']}
-              contentStyle={{ background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 8, fontSize: 12 }}
-              labelStyle={{ color: 'var(--text-primary)' }} />
-            <Legend iconType="circle" iconSize={8}
-              formatter={(v) => <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{v}</span>} />
-          </PieChart>
-        </ResponsiveContainer>
+        <ChartFrame title={title} filename={title} height={280}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={filtered} cx="50%" cy="40%" outerRadius={90} dataKey="value"
+                labelLine={false} label={renderLabel}>
+                {filtered.map((_, i) => (
+                  <Cell key={i}
+                    fill={title.includes('รายได้')
+                      ? PIE_COLORS_INCOME[i % PIE_COLORS_INCOME.length]
+                      : PIE_COLORS_EXPENSE[i % PIE_COLORS_EXPENSE.length]} />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(v: any) => [fmt(v) + ' ฿', '']}
+                contentStyle={{ background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 8, fontSize: 12 }}
+                labelStyle={{ color: 'var(--text-primary)' }} />
+              <Legend iconType="circle" iconSize={8}
+                formatter={(v) => <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{v}</span>} />
+            </PieChart>
+          </ResponsiveContainer>
+        </ChartFrame>
       )}
     </div>
   )

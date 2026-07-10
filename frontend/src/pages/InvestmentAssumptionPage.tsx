@@ -4,6 +4,7 @@ import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer,
 } from 'recharts'
+import { ChartFrame, TableExcelButton } from '../components/exportable'
 import { TrendingUp, Info, Star, RefreshCw, Wifi, WifiOff } from 'lucide-react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { api } from '../lib/api'
@@ -314,7 +315,8 @@ function EfficientFrontierChart({ assets, corr, allWeights }: { assets: Asset[];
         <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>Efficient Frontier</p>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>ผลตอบแทนคาดหวัง vs ความเสี่ยง — จุดที่ไฮไลท์คือพอร์ตแนะนำ (Sharpe สูงสุด)</p>
       </div>
-      <ResponsiveContainer width="100%" height={320}>
+      <ChartFrame title="Efficient Frontier" filename="efficient-frontier" height={320}>
+      <ResponsiveContainer width="100%" height="100%">
         <ScatterChart margin={{ top: 10, right: 20, bottom: 20, left: 0 }}>
           <CartesianGrid stroke="var(--grid)" />
           <XAxis dataKey="x" name="ความเสี่ยง (σ)" unit="%" type="number" domain={['auto','auto']}
@@ -325,6 +327,7 @@ function EfficientFrontierChart({ assets, corr, allWeights }: { assets: Asset[];
           <Scatter data={points} shape={<CustomDot />} />
         </ScatterChart>
       </ResponsiveContainer>
+      </ChartFrame>
       <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginTop: 8 }}>
         {PORTFOLIO_SETS.map(s => (
           <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-muted)' }}>
@@ -506,6 +509,7 @@ export default function InvestmentAssumptionPage() {
               <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>สมมติฐานผลตอบแทนและความเสี่ยง</p>
               <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>ย้อนหลัง 10 ปี (2016–2026) — คลิกตัวเลขเพื่อแก้ไข</p>
             </div>
+            <span style={{ marginLeft: 'auto' }}><TableExcelButton filename="สมมติฐานผลตอบแทน" title="สมมติฐาน" /></span>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
@@ -583,6 +587,9 @@ export default function InvestmentAssumptionPage() {
             {corrLive && <p style={{ fontSize: 10, color: '#f59e0b', marginTop: 4 }}>⚠ ตราสารหนี้ใช้ AGG ETF เป็น proxy เนื่องจาก ThaiBMA ไม่มี free API</p>}
           </div>
           <div style={{ overflowX: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+              <TableExcelButton filename="เมทริกซ์สหสัมพันธ์" title="Correlation" />
+            </div>
             <table style={{ borderCollapse: 'collapse', width: '100%' }}>
               <thead>
                 <tr>

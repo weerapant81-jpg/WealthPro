@@ -5,6 +5,7 @@ import { calc, defaultState, type TaxState } from '../lib/tax'
 import { createPortal } from 'react-dom'
 import { Plus, Trash2, Check, Loader2, RefreshCw, X, Maximize2 } from 'lucide-react'
 import { ResponsiveContainer, ComposedChart, Bar, Line as RLine, XAxis, YAxis, Tooltip, CartesianGrid, Legend, Cell, ReferenceLine } from 'recharts'
+import { ChartFrame, TableExcelButton } from '../components/exportable'
 import { useRetirementBalances } from '../hooks/useRetirementBalances'
 
 /* ── helpers ── */
@@ -310,7 +311,8 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
     { key: 'post', title: 'หลังเกษียณ', sub: `อายุ ${retireAge}–${lifeExp}`, data: postData },
   ]
   const chartEl = (dataset: any[], height: number) => (
-    <ResponsiveContainer width="100%" height={height}>
+    <ChartFrame title="กระแสเงินสดล่วงหน้า" filename="forward-cashflow" height={height}>
+    <ResponsiveContainer width="100%" height="100%">
       <ComposedChart data={dataset}>
         <CartesianGrid stroke="var(--grid)" />
         <XAxis dataKey="age" tick={{ fontSize: 10, fill: '#94a3b8' }} />
@@ -325,6 +327,7 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
           dot={(p: any) => p?.cx == null ? <g key={p?.index} /> : <circle key={p.index} cx={p.cx} cy={p.cy} r={height > 300 ? 3 : 2.5} fill={(p?.payload?.remain ?? 0) < 0 ? '#ef4444' : '#22c55e'} />} />
       </ComposedChart>
     </ResponsiveContainer>
+    </ChartFrame>
   )
 
   // ── UI ──
@@ -455,6 +458,7 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--card-border)', fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'baseline', gap: 8 }}>
           ประมาณการงบประมาณล่วงหน้า <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>แก้ช่องปีแรก / %เติบโต / ปีครบกำหนดชำระ (ช่อง "ปี") ได้โดยตรง</span>
+          <span style={{ marginLeft: 'auto' }}><TableExcelButton filename="ประมาณการงบประมาณล่วงหน้า" title="งบประมาณ" /></span>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table className="dense-table" style={{ borderCollapse: 'collapse', minWidth: '100%' }}>
@@ -507,7 +511,7 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
 
       {/* Tax projection C */}
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--card-border)', fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>ประมาณการภาษีเงินได้ล่วงหน้า (ถึงปีก่อนเกษียณ)</div>
+        <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--card-border)', fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>ประมาณการภาษีเงินได้ล่วงหน้า (ถึงปีก่อนเกษียณ)<TableExcelButton filename="ประมาณการภาษีล่วงหน้า" title="ภาษี" /></div>
         <div style={{ overflowX: 'auto' }}>
           <table className="dense-table" style={{ borderCollapse: 'collapse', minWidth: '100%' }}>
             <thead>

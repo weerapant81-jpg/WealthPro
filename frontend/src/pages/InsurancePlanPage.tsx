@@ -5,6 +5,7 @@ import { Plus, Trash2, Check, Loader2, TrendingUp, ShieldCheck, HeartPulse } fro
 import { calc as calcTaxPlan, defaultState as defaultTaxState } from '../lib/tax'
 import { useIsCompact } from '../hooks/useViewport'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, LabelList } from 'recharts'
+import { ChartFrame } from '../components/exportable'
 
 /* ── helpers ── */
 const fmt = (n: number, d = 0) =>
@@ -299,7 +300,7 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
       <div style={{ ...card, display: 'flex', flexDirection: 'column' }}>
         <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>เปรียบเทียบทุนประกัน</p>
         <p style={{ fontSize: 10.5, color: 'var(--text-muted)', marginBottom: 8 }}>ความสูงแท่ง = ทุนที่ต้องการ · ตัวเลขบนแท่ง = ส่วนที่ขาด</p>
-        <div style={{ flex: 1, minHeight: 220 }}>
+        <ChartFrame title="เปรียบเทียบทุนประกัน" filename="insurance-coverage" height={240}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 20, right: 8, left: 4, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--divider)" vertical={false} />
@@ -314,7 +315,7 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </ChartFrame>
       </div>
       </div>
 
