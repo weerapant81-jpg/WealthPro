@@ -423,9 +423,11 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
               <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)' }}>รวมค่าใช้จ่ายที่ต้องการ/ปี</span>
               <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 800, color: '#fbbf24' }}>{fmt(familyExpense)} บาท</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>ระยะเวลาที่ต้องการความคุ้มครอง</span>
-              <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: '#fbbf24' }}>{coverageYears} <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>ปี</span></span>
+            <AssumpRow label="ระยะเวลาที่ต้องการความคุ้มครอง" value={coverageYears} onChange={v => set('years', v)} unit="ปี" step={1} />
+            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', lineHeight: 1.5, marginTop: -2 }}>
+              {youngestAge != null
+                ? `auto: จนบุตรคนเล็ก (อายุ ${youngestAge} ปี) พึ่งตัวเองได้ = 22 − ${youngestAge} · พิมพ์ทับได้`
+                : 'auto: ไม่มีข้อมูลบุตร → ใช้จำนวนปีทำงานถึงเกษียณ · พิมพ์ทับได้'}
             </div>
             <ResultRow label="มูลค่าปัจจุบันของรายจ่ายที่ต้องการ" value={familyIncomePV} color="var(--cyan-light)" />
           </div>
@@ -433,12 +435,6 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
 
         <Section no={2} title="สมมติฐานความคุ้มครอง">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <AssumpRow label="ระยะเวลาที่ต้องการความคุ้มครอง" value={coverageYears} onChange={v => set('years', v)} unit="ปี" step={1} />
-            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', lineHeight: 1.5, marginTop: -2 }}>
-              {youngestAge != null
-                ? `auto: จนบุตรคนเล็ก (อายุ ${youngestAge} ปี) พึ่งตัวเองได้ = 22 − ${youngestAge} · พิมพ์ทับได้`
-                : 'auto: ไม่มีข้อมูลบุตร → ใช้จำนวนปีทำงานถึงเกษียณ · พิมพ์ทับได้'}
-            </div>
             <AssumpRow label="อัตราผลตอบแทนจากการลงทุน (i)" value={plan.returnRate} onChange={v => set('returnRate', v)} unit="%" />
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6, borderTop: '1px solid var(--card-border)' }}>
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Real Rate = (1+i)/(1+g) − 1 · g จากส่วนที่ 1</span>
