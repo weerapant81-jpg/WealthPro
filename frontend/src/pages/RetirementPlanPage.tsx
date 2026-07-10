@@ -317,7 +317,9 @@ export function useProjectedAssetAtRetirement(retirementAge: number, isSelf: boo
     const currentAge = isSelf
       ? (birthDate ? new Date().getFullYear() - birthDate.getFullYear() : null)
       : (clientProfile?.spouseAge ?? null)
-    const investmentAssets: any[] = invProfile?.investmentAssets ?? []
+    // เลือกแหล่งตามคน: ลูกค้า = ฟิลด์หลัก, คู่สมรส = spouseData
+    const invSrc: any = isSelf ? invProfile : (invProfile?.spouseData ?? {})
+    const investmentAssets: any[] = invSrc?.investmentAssets ?? []
     const totalValue = investmentAssets.reduce((s: number, a: any) => s + toNum(a.currentValue), 0)
     let weightedReturn = 0, coveredVal = 0
     investmentAssets.forEach((a: any) => {
@@ -325,9 +327,10 @@ export function useProjectedAssetAtRetirement(retirementAge: number, isSelf: boo
       const r = parseFloat(a.annualReturn)
       if (!isNaN(r) && val > 0) { coveredVal += val; weightedReturn += r * val }
     })
-    const portfolioReturn = coveredVal > 0 ? weightedReturn / coveredVal : null
+    // ไม่มีอัตราผลตอบแทนในรายการ → ใช้ 0% (ยังแสดงสินทรัพย์ลงทุนที่มีจริง ไม่ให้เป็น 0)
+    const portfolioReturn = coveredVal > 0 ? weightedReturn / coveredVal : 0
 
-    if (currentAge === null || portfolioReturn === null || totalValue === 0) return null
+    if (currentAge === null || totalValue === 0) return null
     const rMid = portfolioReturn / 100
     const yearsTo = retirementAge - currentAge
     if (yearsTo <= 0) return totalValue
