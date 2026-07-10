@@ -324,7 +324,6 @@ export default function ClientProfilePage() {
   useEffect(() => { spouseProfileRef.current = spouseProfile }, [spouseProfile])
   const [showConsent, setShowConsent] = useState(false)
   const consentAutoOpened = useRef(false)
-  const isFirstLoad = useRef(true)
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const { data: profile } = useQuery({
@@ -417,7 +416,6 @@ export default function ClientProfilePage() {
       }
       setSpouseProfile(next)
       spouseProfileRef.current = next
-      isFirstLoad.current = true
     }
   }, [profile])
 
@@ -475,10 +473,6 @@ export default function ClientProfilePage() {
   })
 
   const triggerAutoSave = useCallback((newForm: typeof defaultForm, newChildren: Child[], newJobs: Job[], newSpouseJobs: Job[], newIncomeSources?: IncomeSource[], newSpouseIncomeSources?: IncomeSource[]) => {
-    if (isFirstLoad.current) {
-      isFirstLoad.current = false
-      return
-    }
     if (!newForm.phone.trim() || !newForm.contactEmail.trim()) {
       if (debounceTimer.current) clearTimeout(debounceTimer.current)
       setSaveStatus('invalid')
