@@ -1403,6 +1403,13 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                         return <td key={t.key} style={{ padding: '5px 6px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: t.color }}>{fmt(tot)}</td>
                       })}
                     </tr>
+                    <tr style={{ borderTop: `1px solid ${HAIR}`, background: PAPER }}>
+                      <td style={{ padding: '5px 6px', fontWeight: 700, color: SUB }}>เงินออมต่อปี (เพื่อให้ครบทุน)</td>
+                      {eduChart.types.map(t => {
+                        const annual = eduChart.plans.find((p: any) => p.key === t.key)?.annual ?? 0
+                        return <td key={t.key} style={{ padding: '5px 6px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: t.color }}>{fmt(annual)}<span style={{ fontSize: 9.5, color: MUTED, fontWeight: 500 }}> /ปี</span></td>
+                      })}
+                    </tr>
                   </tbody>
                 </table>
               )}
