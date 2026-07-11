@@ -157,18 +157,44 @@ export async function listUsers(req: AuthRequest, res: Response): Promise<void> 
   const status = req.query.status as string | undefined
   // เฉพาะบัญชีนักวางแผน (FA = ADMIN) — ไม่รวมลูกค้า (USER) และผู้ให้บริการ (SUPER_ADMIN)
   const where: any = { role: 'ADMIN' }
-  if (status === 'pending') where.isApproved = false
-  else if (status === 'approved') where.isApproved = true
+  if (status === 'archived') where.archivedAt = { not: null }   // นักวางแผนที่ถูกนำออกจากรายการ
+  else {
+    where.archivedAt = null   // รายการปกติไม่รวมคนที่นำออกแล้ว
+    if (status === 'pending') where.isApproved = false
+    else if (status === 'approved') where.isApproved = true
+  }
 
   const users = await prisma.user.findMany({
     where,
     select: {
       id: true, email: true, name: true, phone: true, birthDate: true,
-      role: true, isEmailVerified: true, isApproved: true, createdAt: true,
+      role: true, isEmailVerified: true, isApproved: true, archivedAt: true, createdAt: true,
     },
     orderBy: { createdAt: 'desc' },
   })
   res.json(users)
+}
+
+// นำนักวางแผนออกจากรายการ (ลาออก/ไม่ชำระเงิน) — บล็อกล็อกอินแต่ยังเก็บข้อมูลไว้
+export async function archiveUser(req: AuthRequest, res: Response): Promise<void> {
+  const id = req.params.id as string
+  const user = await prisma.user.update({
+    where: { id },
+    data: { archivedAt: new Date() },
+    select: { id: true, email: true, name: true, archivedAt: true },
+  })
+  res.json(user)
+}
+
+// กู้คืนนักวางแผนกลับเข้ารายการ
+export async function unarchiveUser(req: AuthRequest, res: Response): Promise<void> {
+  const id = req.params.id as string
+  const user = await prisma.user.update({
+    where: { id },
+    data: { archivedAt: null },
+    select: { id: true, email: true, name: true, archivedAt: true },
+  })
+  res.json(user)
 }
 
 // FA/Admin: list approved clients for client-switching

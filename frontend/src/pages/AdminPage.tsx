@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { Check, X, Users, Clock, UserCheck } from 'lucide-react'
+import { Check, X, Users, Clock, UserCheck, UserMinus, Undo2, Archive } from 'lucide-react'
 import * as s from '../styles/dark'
 import { TableExcelButton } from '../components/exportable'
 
@@ -14,11 +14,12 @@ interface AdminUser {
   role: string
   isEmailVerified: boolean
   isApproved: boolean
+  archivedAt: string | null
   createdAt: string
 }
 
 export default function AdminPage() {
-  const [tab, setTab] = useState<'pending' | 'approved' | 'all'>('pending')
+  const [tab, setTab] = useState<'pending' | 'approved' | 'all' | 'archived'>('pending')
   const qc = useQueryClient()
 
   const { data: users = [], isLoading } = useQuery<AdminUser[]>({
@@ -39,10 +40,21 @@ export default function AdminPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
   })
 
+  // นำออกจากรายการ (soft) — บล็อกล็อกอินแต่ยังเก็บข้อมูลไว้
+  const archive = useMutation({
+    mutationFn: (id: string) => api.put(`/admin/users/${id}/archive`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
+  })
+  const unarchive = useMutation({
+    mutationFn: (id: string) => api.put(`/admin/users/${id}/unarchive`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
+  })
+
   const tabs = [
     { key: 'pending', label: 'รอการอนุมัติ', icon: Clock },
     { key: 'approved', label: 'อนุมัติแล้ว', icon: UserCheck },
     { key: 'all', label: 'ทั้งหมด', icon: Users },
+    { key: 'archived', label: 'นำออกแล้ว', icon: Archive },
   ] as const
 
   return (
@@ -108,21 +120,39 @@ export default function AdminPage() {
                       {new Date(u.createdAt).toLocaleDateString('th-TH')}
                     </td>
                     <td style={{ padding: '12px 12px' }}>
-                      {!u.isApproved && (
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button onClick={() => approve.mutate(u.id)}
-                            title="อนุมัติ"
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {/* นำออกแล้ว → กู้คืน */}
+                        {u.archivedAt ? (
+                          <button onClick={() => unarchive.mutate(u.id)}
+                            title="กู้คืนเข้ารายการ"
                             style={{ padding: '5px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: 'rgba(34,197,94,0.15)', color: '#22c55e', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
-                            <Check size={13} /> อนุมัติ
+                            <Undo2 size={13} /> กู้คืน
                           </button>
-                          <button onClick={() => { if (confirm(`ลบผู้ใช้ ${u.email} ?`)) reject.mutate(u.id) }}
-                            title="ปฏิเสธ"
-                            style={{ padding: '5px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: 'rgba(239,68,68,0.1)', color: '#ef4444', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
-                            <X size={13} /> ปฏิเสธ
-                          </button>
-                        </div>
-                      )}
-                      {u.isApproved && <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>-</span>}
+                        ) : (
+                          <>
+                            {!u.isApproved && (
+                              <button onClick={() => approve.mutate(u.id)}
+                                title="อนุมัติ"
+                                style={{ padding: '5px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: 'rgba(34,197,94,0.15)', color: '#22c55e', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+                                <Check size={13} /> อนุมัติ
+                              </button>
+                            )}
+                            {/* นำออกจากรายการ (ลาออก/ไม่ชำระเงิน) — ไม่ลบข้อมูล */}
+                            <button onClick={() => { if (confirm(`นำ ${u.name || u.email} ออกจากรายการ?\nบัญชีจะเข้าใช้งานไม่ได้ แต่ข้อมูลยังถูกเก็บไว้ (กู้คืนได้ในแท็บ "นำออกแล้ว")`)) archive.mutate(u.id) }}
+                              title="นำออกจากรายการ (ไม่ลบข้อมูล)"
+                              style={{ padding: '5px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: 'rgba(245,158,11,0.12)', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+                              <UserMinus size={13} /> นำออก
+                            </button>
+                            {!u.isApproved && (
+                              <button onClick={() => { if (confirm(`ลบผู้ใช้ ${u.email} ออกจากระบบถาวร?\n(ข้อมูลทั้งหมดจะถูกลบ — ใช้เมื่อต้องการปฏิเสธการสมัคร)`)) reject.mutate(u.id) }}
+                                title="ปฏิเสธและลบถาวร"
+                                style={{ padding: '5px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: 'rgba(239,68,68,0.1)', color: '#ef4444', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+                                <X size={13} /> ปฏิเสธ
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

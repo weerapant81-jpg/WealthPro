@@ -23,8 +23,8 @@ function generateTokens(userId: string) {
 
 export async function register(req: Request, res: Response): Promise<void> {
   const { email, password, name, phone, birthDate } = req.body
-  if (!email || !password || !name) {
-    res.status(400).json({ error: 'email, password, name are required' })
+  if (!email || !password || !name || !String(phone ?? '').trim()) {
+    res.status(400).json({ error: 'email, password, name, phone are required' })
     return
   }
   const existing = await prisma.user.findUnique({ where: { email } })
@@ -152,6 +152,11 @@ export async function login(req: Request, res: Response): Promise<void> {
     res.status(403).json({ error: 'กรุณายืนยันอีเมลของคุณก่อนเข้าใช้งาน (ตรวจสอบกล่องอีเมล)', needVerify: true })
     return
   }
+  // บัญชีถูกนำออกจากรายการ (ลาออก/ไม่ชำระเงิน) — ข้อมูลยังอยู่ แต่เข้าใช้งานไม่ได้
+  if (user.archivedAt) {
+    res.status(403).json({ error: 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ให้บริการ' })
+    return
+  }
   // ต้องได้รับอนุมัติจากผู้ให้บริการก่อน
   if (!user.isApproved) {
     res.status(403).json({ error: 'บัญชีของคุณอยู่ระหว่างรอการอนุมัติจากผู้ให้บริการ' })
@@ -216,6 +221,11 @@ export async function googleAuth(req: Request, res: Response): Promise<void> {
       data: { email, googleId, name, role: 'ADMIN', isEmailVerified: true, isApproved: false },
     })
   }
+  // บัญชีถูกนำออกจากรายการ (ลาออก/ไม่ชำระเงิน)
+  if (user.archivedAt) {
+    res.status(403).json({ error: 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ให้บริการ' })
+    return
+  }
   // ต้องได้รับอนุมัติจากผู้ให้บริการก่อน (เหมือนสมัครด้วยอีเมล)
   if (!user.isApproved) {
     res.status(403).json({ error: 'บัญชีของคุณอยู่ระหว่างรอการอนุมัติจากผู้ให้บริการ', pending: true })
@@ -272,6 +282,10 @@ export async function appleAuth(req: Request, res: Response): Promise<void> {
     user = await prisma.user.create({
       data: { email, appleId, name: displayName, role: 'ADMIN', isEmailVerified: true, isApproved: false },
     })
+  }
+  if (user.archivedAt) {
+    res.status(403).json({ error: 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ให้บริการ' })
+    return
   }
   if (!user.isApproved) {
     res.status(403).json({ error: 'บัญชีของคุณอยู่ระหว่างรอการอนุมัติจากผู้ให้บริการ', pending: true })

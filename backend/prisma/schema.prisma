@@ -29,6 +29,7 @@ model User {
   resetPasswordToken   String?
   resetPasswordExpires DateTime?
   isApproved         Boolean   @default(false)
+  archivedAt         DateTime? // นำนักวางแผนออกจากรายการ (ลาออก/ไม่ชำระเงิน) — บล็อกล็อกอินแต่ยังเก็บข้อมูลไว้
   advisorProfile     Json?
   createdById        String?   // FA (ADMIN/SUPER_ADMIN) ที่สร้างลูกค้ารายนี้
   // ── 2FA (TOTP) — เฉพาะบัญชี FA ──

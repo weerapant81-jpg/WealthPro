@@ -21,7 +21,8 @@ const AppleIcon = () => (
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login')
-  const [name, setName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -151,7 +152,8 @@ export default function LoginPage() {
         const msg = await forgotPassword(email)
         setInfo(msg)
       } else {
-        const result = await registerUser(name, email, password, phone)
+        const fullName = `${firstName.trim()} ${lastName.trim()}`.trim()
+        const result = await registerUser(fullName, email, password, phone.trim())
         if (result.pending || !result.access) {
           setMode('login')
           setInfo('สมัครสำเร็จ! เราได้ส่งลิงก์ยืนยันไปที่อีเมลของคุณ — กรุณายืนยันอีเมล จากนั้นรอผู้ให้บริการอนุมัติบัญชี')
@@ -242,8 +244,11 @@ export default function LoginPage() {
           <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: isForgot ? 24 : 0 }}>
             {isReg && (
               <>
-                <Wrap icon={<User size={16} />}><input value={name} onChange={e => setName(e.target.value)} placeholder="ชื่อ-นามสกุล" required style={field} /></Wrap>
-                <Wrap icon={<Phone size={16} />}><input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="เบอร์โทรศัพท์ (ไม่บังคับ)" style={field} /></Wrap>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <Wrap icon={<User size={16} />}><input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="ชื่อ" required style={field} /></Wrap>
+                  <Wrap icon={<User size={16} />}><input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="นามสกุล" required style={field} /></Wrap>
+                </div>
+                <Wrap icon={<Phone size={16} />}><input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="เบอร์โทรศัพท์" required style={field} /></Wrap>
               </>
             )}
             <div>

@@ -1,7 +1,7 @@
 ﻿import { Router } from 'express'
 import { register, login, googleAuth, appleAuth, refresh, me, verifyEmail, resendVerify, forgotPassword, resetPassword, getAdvisorProfile, saveAdvisorProfile } from '../controllers/auth.controller'
 import { getClientProfile, upsertClientProfile } from '../controllers/client.controller'
-import { listUsers, approveUser, rejectUser, listClients, getAdvisorSummary, createClient, updateClient, deleteClient } from '../controllers/admin.controller'
+import { listUsers, approveUser, rejectUser, archiveUser, unarchiveUser, listClients, getAdvisorSummary, createClient, updateClient, deleteClient } from '../controllers/admin.controller'
 import {
   getAppointments, createAppointment, updateAppointment, deleteAppointment,
   getTasks, createTask, updateTask, deleteTask,
@@ -70,6 +70,8 @@ r.post('/auth/reset-password', resetPassword)
 // อนุมัติการสมัครนักวางแผน (FA) — เฉพาะผู้ให้บริการ (SUPER_ADMIN)
 r.get('/admin/users', authenticate, requireSuperAdmin, listUsers)
 r.put('/admin/users/:id/approve', authenticate, requireSuperAdmin, approveUser)
+r.put('/admin/users/:id/archive', authenticate, requireSuperAdmin, archiveUser)
+r.put('/admin/users/:id/unarchive', authenticate, requireSuperAdmin, unarchiveUser)
 r.get('/clients', authenticate, requireAdmin, listClients)
 r.post('/clients', authenticate, requireAdmin, createClient)
 r.put('/clients/:id', authenticate, requireAdmin, updateClient)
