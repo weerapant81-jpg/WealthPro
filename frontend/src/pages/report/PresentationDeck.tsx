@@ -1318,7 +1318,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               <div style={{ fontSize: 12, color: SUB, marginBottom: 8 }}>สะสมช่วงทำงาน → ใช้จ่ายหลังเกษียณ · เส้นประ = ไม่ออมเพิ่ม (ตัดที่จุดเงินหมด)</div>
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={retChart.data} margin={{ top: 8, right: 16, left: 6, bottom: 6 }}>
+                <ComposedChart data={retChart.data} margin={{ top: 26, right: 16, left: 6, bottom: 6 }}>
                   <defs><linearGradient id="pdRetSelf" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={CY} stopOpacity={0.22} /><stop offset="100%" stopColor={CY} stopOpacity={0.04} /></linearGradient></defs>
                   <CartesianGrid strokeDasharray="3 3" stroke={HAIR} vertical={false} />
                   <XAxis dataKey="age" tick={{ fontSize: 10, fill: MUTED }} interval={4} axisLine={{ stroke: LINE }} tickLine={false} />
