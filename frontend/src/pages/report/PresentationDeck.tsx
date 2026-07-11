@@ -131,7 +131,7 @@ function Slide({ children, footer, pad = 40, slideId, noFooter }: { children?: R
       {footer}
       {/* footer แบรนด์ + ที่ปรึกษา (ทุกสไลด์ ยกเว้นหน้าปก) */}
       {!noFooter && (
-        <div style={{ position: 'absolute', left: 56, right: 56, bottom: 9, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: `1px solid ${HAIR}`, paddingTop: 5, fontSize: 9.5, color: MUTED, letterSpacing: '0.01em' }}>
+        <div style={{ position: 'absolute', left: 56, right: 56, bottom: 11, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: `1px solid ${HAIR}`, paddingTop: 6, fontSize: 10, color: MUTED, letterSpacing: '0.01em' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 800, letterSpacing: '0.22em', color: INK }}>
             <span style={{ width: 5, height: 5, borderRadius: 999, background: CY }} />WEALTHPRO
           </span>
@@ -302,15 +302,15 @@ function ElementToolbar({ el, onChange, onRemove, onReorder }: { el: SlideEl; on
 
 function SlideHead({ icon: Icon, kicker, title, accent = CY }: { icon: any; kicker: string; title: string; accent?: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'stretch', gap: 15, marginBottom: 18, flexShrink: 0 }}>
+    <div style={{ display: 'flex', alignItems: 'stretch', gap: 16, marginBottom: 22, flexShrink: 0 }}>
       {/* แถบ accent แนวตั้ง (editorial) */}
-      <div style={{ width: 3, borderRadius: 3, background: accent, flexShrink: 0 }} />
+      <div style={{ width: 3.5, borderRadius: 3, background: accent, flexShrink: 0 }} />
       <div style={{ paddingTop: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <Icon size={15} style={{ color: accent }} />
-          <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.22em', color: accent, textTransform: 'uppercase' }}>{kicker}</span>
+          <Icon size={16} style={{ color: accent }} />
+          <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '0.22em', color: accent, textTransform: 'uppercase' }}>{kicker}</span>
         </div>
-        <h2 style={{ fontSize: 27, fontWeight: 800, color: INK, margin: '3px 0 0', lineHeight: 1.1, letterSpacing: '-0.015em' }}>{title}</h2>
+        <h2 style={{ fontSize: 28, fontWeight: 800, color: INK, margin: '4px 0 0', lineHeight: 1.12, letterSpacing: '-0.015em' }}>{title}</h2>
       </div>
     </div>
   )
@@ -318,11 +318,11 @@ function SlideHead({ icon: Icon, kicker, title, accent = CY }: { icon: any; kick
 
 function Stat({ label, value, sub, color = INK }: { label: string; value: string; sub?: string; color?: string }) {
   return (
-    <div style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '13px 16px', flex: 1, minWidth: 0, position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', left: 0, top: 12, bottom: 12, width: 2.5, borderRadius: 2, background: color, opacity: 0.9 }} />
-      <div style={{ fontSize: 12, color: SUB, marginBottom: 5, fontWeight: 500, letterSpacing: '0.01em', paddingLeft: 8 }}>{label}</div>
-      <div style={{ fontSize: 23, fontWeight: 800, color, fontFamily: 'monospace', lineHeight: 1.05, letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums', paddingLeft: 8 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11.5, color: MUTED, marginTop: 3, paddingLeft: 8 }}>{sub}</div>}
+    <div style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '15px 18px', flex: 1, minWidth: 0, position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', left: 0, top: 13, bottom: 13, width: 2.5, borderRadius: 2, background: color, opacity: 0.9 }} />
+      <div style={{ fontSize: 12.5, color: SUB, marginBottom: 6, fontWeight: 500, letterSpacing: '0.01em', paddingLeft: 9 }}>{label}</div>
+      <div style={{ fontSize: 25, fontWeight: 800, color, fontFamily: 'monospace', lineHeight: 1.05, letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums', paddingLeft: 9 }}>{value}</div>
+      {sub && <div style={{ fontSize: 12, color: MUTED, marginTop: 4, paddingLeft: 9 }}>{sub}</div>}
     </div>
   )
 }
@@ -330,9 +330,9 @@ function Stat({ label, value, sub, color = INK }: { label: string; value: string
 /* หัวคอลัมน์รายคน */
 function PersonHead({ name, tint = CY }: { name: string; tint?: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12, paddingBottom: 9, borderBottom: `1px solid ${HAIR}` }}>
-      <span style={{ width: 28, height: 28, borderRadius: 999, background: `${tint}16`, color: tint, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0, boxShadow: `inset 0 0 0 1px ${tint}33` }}>{name.replace(/^คุณ/, '').charAt(0)}</span>
-      <span style={{ fontSize: 16, fontWeight: 800, color: INK, letterSpacing: '-0.01em' }}>{name}</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, paddingBottom: 10, borderBottom: `1px solid ${HAIR}` }}>
+      <span style={{ width: 30, height: 30, borderRadius: 999, background: `${tint}16`, color: tint, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13.5, flexShrink: 0, boxShadow: `inset 0 0 0 1px ${tint}33` }}>{name.replace(/^คุณ/, '').charAt(0)}</span>
+      <span style={{ fontSize: 17, fontWeight: 800, color: INK, letterSpacing: '-0.01em' }}>{name}</span>
     </div>
   )
 }
@@ -350,27 +350,27 @@ function GoalTable({ title, rows, totalColor }: { title: string; rows: { name: s
   const total = rows.reduce((s, g) => s + g.amount, 0)
   const catColor: Record<string, string> = { retire: CY, edu: AM, ins: VI, manual: GR }
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14.5 }}>
       <thead>
         <tr style={{ borderBottom: `2px solid ${LINE}` }}>
-          <th style={{ textAlign: 'left', padding: '7px 6px', color: INK, fontWeight: 800, fontSize: 15 }}>{title}</th>
-          <th style={{ textAlign: 'left', padding: '7px 6px', color: SUB, fontWeight: 700, width: 220 }}>ระยะเวลาที่ต้องการ</th>
-          <th style={{ textAlign: 'right', padding: '7px 6px', color: SUB, fontWeight: 700, width: 180 }}>จำนวนเงิน (บาท)</th>
+          <th style={{ textAlign: 'left', padding: '9px 7px', color: INK, fontWeight: 800, fontSize: 16 }}>{title}</th>
+          <th style={{ textAlign: 'left', padding: '9px 7px', color: SUB, fontWeight: 700, width: 220 }}>ระยะเวลาที่ต้องการ</th>
+          <th style={{ textAlign: 'right', padding: '9px 7px', color: SUB, fontWeight: 700, width: 180 }}>จำนวนเงิน (บาท)</th>
         </tr>
       </thead>
       <tbody>
         {rows.map((g, i) => (
           <tr key={i} style={{ borderBottom: `1px solid ${LINE}` }}>
-            <td style={{ padding: '8px 6px', color: INK }}><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 999, background: catColor[g.cat] ?? GR, marginRight: 8 }} />{g.name}</td>
-            <td style={{ padding: '8px 6px', color: SUB }}>{g.when}</td>
-            <td style={{ padding: '8px 6px', textAlign: 'right', fontFamily: 'monospace', color: INK, fontWeight: 700 }}>{fmt(g.amount)}</td>
+            <td style={{ padding: '9px 7px', color: INK }}><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 999, background: catColor[g.cat] ?? GR, marginRight: 8 }} />{g.name}</td>
+            <td style={{ padding: '9px 7px', color: SUB }}>{g.when}</td>
+            <td style={{ padding: '9px 7px', textAlign: 'right', fontFamily: 'monospace', color: INK, fontWeight: 700 }}>{fmt(g.amount)}</td>
           </tr>
         ))}
       </tbody>
       <tfoot>
         <tr style={{ borderTop: `2px solid ${LINE}` }}>
-          <td colSpan={2} style={{ padding: '9px 6px', fontWeight: 800, color: INK }}>รวม</td>
-          <td style={{ padding: '9px 6px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: totalColor }}>{fmt(total)}</td>
+          <td colSpan={2} style={{ padding: '10px 7px', fontWeight: 800, color: INK }}>รวม</td>
+          <td style={{ padding: '10px 7px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: totalColor }}>{fmt(total)}</td>
         </tr>
       </tfoot>
     </table>
