@@ -1369,6 +1369,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
           {eduChart && eduChart.hasData ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               <div style={{ fontSize: 12, color: SUB, marginBottom: 8 }}>{eduChart.childName} · ออม {eduChart.savingYears} ปี · มูลค่ากองทุนสะสมรายปี แยกตามประเภทสถาบัน{eduChart.childCount > 1 ? ` (แสดงบุตรคนที่ 1 จาก ${eduChart.childCount})` : ''}</div>
+              <div style={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={eduChart.chartData} margin={{ top: 8, right: 16, left: 6, bottom: 6 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={HAIR} vertical={false} />
@@ -1379,6 +1380,32 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                   {eduChart.types.map(t => <Line key={t.key} type="monotone" dataKey={t.key} name={`สถาบัน${t.label}`} stroke={t.color} strokeWidth={2.2} dot={false} connectNulls />)}
                 </ComposedChart>
               </ResponsiveContainer>
+              </div>
+              {eduChart.byLevel.length > 0 && (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5, marginTop: 10, flexShrink: 0 }}>
+                  <thead>
+                    <tr style={{ borderBottom: `1px solid ${LINE}` }}>
+                      <th style={{ textAlign: 'left', padding: '5px 6px', color: SUB, fontWeight: 700 }}>ค่าใช้จ่ายต่อระดับชั้น (มูลค่าอนาคต)</th>
+                      {eduChart.types.map(t => <th key={t.key} style={{ textAlign: 'right', padding: '5px 6px', color: t.color, fontWeight: 700 }}>{`สถาบัน${t.label}`}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {eduChart.byLevel.map((lv: any) => (
+                      <tr key={lv.key} style={{ borderBottom: `1px solid ${HAIR}` }}>
+                        <td style={{ padding: '4px 6px', color: INK }}>{lv.label}</td>
+                        {eduChart.types.map(t => <td key={t.key} style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'monospace', color: lv[t.key] > 0 ? INK : MUTED }}>{lv[t.key] > 0 ? fmt(lv[t.key]) : '—'}</td>)}
+                      </tr>
+                    ))}
+                    <tr style={{ borderTop: `2px solid ${LINE}` }}>
+                      <td style={{ padding: '5px 6px', fontWeight: 800, color: INK }}>รวมทั้งหมด</td>
+                      {eduChart.types.map(t => {
+                        const tot = eduChart.byLevel.reduce((s: number, lv: any) => s + (lv[t.key] || 0), 0)
+                        return <td key={t.key} style={{ padding: '5px 6px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: t.color }}>{fmt(tot)}</td>
+                      })}
+                    </tr>
+                  </tbody>
+                </table>
+              )}
             </div>
           ) : <Empty text="ยังไม่มีข้อมูลบุตร/ค่าเล่าเรียน — กรอกที่หน้าทุนการศึกษา" />}
         </Slide>

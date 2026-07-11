@@ -89,7 +89,27 @@ export function buildEduChart({ age, setting, eduCosts, inflationPct, ratePct, i
     })
     chartData.push(row)
   }
-  return { chartData, types: EDU_CHART_TYPES, plans, m, hasData: plans.some(p => p.annual > 0) }
+  // ค่าใช้จ่ายรวมต่อระดับชั้น (อนาคต ปรับเงินเฟ้อ) แยกตามประเภทสถาบัน — เฉพาะระดับที่มีค่าใช้จ่าย
+  const byLevel = LEVELS.map(lvl => {
+    if (lvl.key === 'master' && !setting.includeMaster) return null
+    if (excluded.includes(lvl.key)) return null
+    const row: any = { key: lvl.key, label: lvl.label }
+    let any = false
+    EDU_CHART_TYPES.forEach(t => {
+      let sum = 0
+      lvl.ages.forEach(a => {
+        if (a < Math.max(age, 3)) return
+        const base = toNum(eduCosts?.[lvl.key]?.[t.key])
+        if (base <= 0) return
+        sum += base * Math.pow(1 + inf, a - age)
+      })
+      row[t.key] = Math.round(sum)
+      if (sum > 0) any = true
+    })
+    return any ? row : null
+  }).filter(Boolean) as { key: string; label: string; public: number; private: number; international: number }[]
+
+  return { chartData, types: EDU_CHART_TYPES, plans, m, byLevel, hasData: plans.some(p => p.annual > 0) }
 }
 
 /* คำนวณแผนต่อบุตร (ค่าเล่าเรียนรายปีปรับเงินเฟ้อ + ยอดรวม/PV/ออม) — pure, ใช้ในตารางสรุป+ไทม์ไลน์รวม
