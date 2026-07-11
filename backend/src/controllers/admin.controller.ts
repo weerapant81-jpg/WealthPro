@@ -218,6 +218,18 @@ export async function listClients(req: AuthRequest, res: Response): Promise<void
 }
 
 // FA/Admin: practice overview — รวมยอดข้ามลูกค้าทุกราย (AUM/Net Worth/แผน active)
+// วันนัดทบทวนแผนของลูกค้าทุกคนในความดูแล (แสดงบนปฏิทินแดชบอร์ด + แจ้งเตือนล่วงหน้า)
+export async function getPlanReviews(req: AuthRequest, res: Response): Promise<void> {
+  const clients = await prisma.user.findMany({
+    where: { role: 'USER', isApproved: true, createdById: req.userId, profile: { planReviewDate: { not: null } } },
+    select: { id: true, name: true, profile: { select: { planReviewDate: true } } },
+  })
+  const reviews = clients
+    .filter(c => c.profile?.planReviewDate)
+    .map(c => ({ clientId: c.id, clientName: c.name, date: c.profile!.planReviewDate }))
+  res.json(reviews)
+}
+
 export async function getAdvisorSummary(req: AuthRequest, res: Response): Promise<void> {
   const toNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
   const clients = await prisma.user.findMany({

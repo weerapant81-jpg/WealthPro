@@ -1,7 +1,7 @@
 ﻿import { Router } from 'express'
 import { register, login, googleAuth, appleAuth, refresh, me, verifyEmail, resendVerify, forgotPassword, resetPassword, getAdvisorProfile, saveAdvisorProfile } from '../controllers/auth.controller'
 import { getClientProfile, upsertClientProfile } from '../controllers/client.controller'
-import { listUsers, approveUser, rejectUser, archiveUser, unarchiveUser, listClients, getAdvisorSummary, createClient, updateClient, deleteClient } from '../controllers/admin.controller'
+import { listUsers, approveUser, rejectUser, archiveUser, unarchiveUser, listClients, getAdvisorSummary, getPlanReviews, createClient, updateClient, deleteClient } from '../controllers/admin.controller'
 import {
   getAppointments, createAppointment, updateAppointment, deleteAppointment,
   getTasks, createTask, updateTask, deleteTask,
@@ -82,6 +82,7 @@ r.get('/clients/:id/consent', authenticate, requireAdmin, getConsent)
 r.post('/clients/:id/consent', authenticate, requireAdmin, grantConsent)
 r.post('/clients/:id/consent/revoke', authenticate, requireAdmin, revokeConsent)
 r.get('/advisor/summary', authenticate, requireAdmin, getAdvisorSummary)
+r.get('/advisor/plan-reviews', authenticate, requireAdmin, getPlanReviews)
 
 // PDPA audit log — FA เห็นของตัวเอง · SUPER_ADMIN เห็นทั้งหมด
 r.get('/audit-logs', authenticate, requireAdmin, listAuditLogs)

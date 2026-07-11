@@ -1,13 +1,16 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
-import { CalendarClock, ListTodo, Plus, Trash2, ChevronLeft, ChevronRight, Check, X, Newspaper, Pin } from 'lucide-react'
+import { useClient } from '../context/ClientContext'
+import { CalendarClock, ListTodo, Plus, Trash2, ChevronLeft, ChevronRight, Check, X, Newspaper, Pin, BellRing, ClipboardCheck } from 'lucide-react'
 
 const card: React.CSSProperties = { background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 16, padding: '18px 20px' }
 const inp: React.CSSProperties = { padding: '8px 10px', background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 16, outline: 'none', boxSizing: 'border-box' }
 
 type Appt = { id: string; title: string; clientName?: string | null; date: string; note?: string | null }
+type Review = { clientId: string; clientName: string; date: string }
 type Task = { id: string; title: string; done: boolean; dueDate?: string | null }
 type News = { id: string; title: string; body: string; pinned: boolean; createdAt: string }
 
@@ -18,7 +21,11 @@ const TH_DOW = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
 /* ══ นัดหมาย + ปฏิทิน ══ */
 export function AppointmentsWidget() {
   const qc = useQueryClient()
+  const navigate = useNavigate()
+  const { setSelectedClient } = useClient()
   const { data: appts = [] } = useQuery<Appt[]>({ queryKey: ['appointments'], queryFn: () => api.get('/appointments').then(r => r.data), retry: false })
+  // วันนัดทบทวนแผนของลูกค้าทุกคน (ตั้งที่หน้าแผนปฏิบัติการ) — read-only บนปฏิทิน
+  const { data: reviews = [] } = useQuery<Review[]>({ queryKey: ['plan-reviews'], queryFn: () => api.get('/advisor/plan-reviews').then(r => r.data), retry: false })
 
   const [cursor, setCursor] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
   const [sel, setSel] = useState<string | null>(null)   // YYYY-MM-DD
@@ -26,6 +33,25 @@ export function AppointmentsWidget() {
 
   const byDay = new Map<string, Appt[]>()
   for (const a of appts) { const k = ymd(new Date(a.date)); const arr = byDay.get(k) ?? []; arr.push(a); byDay.set(k, arr) }
+  const reviewByDay = new Map<string, Review[]>()
+  for (const rv of reviews) { const k = ymd(new Date(rv.date)); const arr = reviewByDay.get(k) ?? []; arr.push(rv); reviewByDay.set(k, arr) }
+
+  // ไปหน้าแผนปฏิบัติการของลูกค้าที่คลิก
+  const goClientPlan = (clientId: string, clientName: string) => {
+    setSelectedClient({ id: clientId, name: clientName, email: '' } as any)
+    sessionStorage.setItem('selected_client_id', clientId)
+    sessionStorage.setItem('selected_client_name', clientName)
+    sessionStorage.setItem('selected_client_email', '')
+    navigate('/action-plan')
+  }
+
+  // แจ้งเตือนล่วงหน้า: นัดทบทวนที่จะถึงภายใน 15 วัน
+  const startToday = new Date(new Date().toDateString())
+  const in15 = new Date(startToday); in15.setDate(in15.getDate() + 15)
+  const daysLeft = (d: string) => Math.round((+new Date(new Date(d).toDateString()) - +startToday) / 86400000)
+  const soonReviews = reviews
+    .filter(r => { const d = new Date(new Date(r.date).toDateString()); return d >= startToday && d <= in15 })
+    .sort((a, b) => +new Date(a.date) - +new Date(b.date))
 
   const add = useMutation({
     mutationFn: () => api.post('/appointments', { title: form.title.trim(), clientName: form.clientName.trim() || undefined, date: `${sel}T${form.time}:00`, note: form.note.trim() || undefined }),
@@ -41,11 +67,39 @@ export function AppointmentsWidget() {
   const cells: (number | null)[] = [...Array(firstDow).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
   const todayKey = ymd(new Date())
 
-  const upcoming = [...appts].filter(a => new Date(a.date) >= new Date(new Date().toDateString())).sort((a, b) => +new Date(a.date) - +new Date(b.date)).slice(0, 6)
+  type UpItem = { kind: 'appt'; a: Appt } | { kind: 'review'; r: Review }
+  const upItemDate = (u: UpItem) => u.kind === 'appt' ? u.a.date : u.r.date
+  const upcoming: UpItem[] = [
+    ...appts.filter(a => new Date(a.date) >= startToday).map(a => ({ kind: 'appt' as const, a })),
+    ...reviews.filter(r => new Date(new Date(r.date).toDateString()) >= startToday).map(r => ({ kind: 'review' as const, r })),
+  ].sort((x, y) => +new Date(upItemDate(x)) - +new Date(upItemDate(y))).slice(0, 6)
   const selAppts = sel ? (byDay.get(sel) ?? []) : []
+  const selReviews = sel ? (reviewByDay.get(sel) ?? []) : []
 
   return (
     <>
+      {soonReviews.length > 0 && (
+        <div style={{ ...card, marginBottom: 16, background: 'linear-gradient(150deg, rgba(245,158,11,0.14), var(--card-bg) 60%)', border: '1px solid #f59e0b', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <BellRing size={17} color="#f59e0b" />
+            <span style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text-primary)' }}>ใกล้ถึงนัดทบทวนแผน (ภายใน 15 วัน)</span>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {soonReviews.map(r => {
+              const dl = daysLeft(r.date)
+              return (
+                <button key={r.clientId} onClick={() => goClientPlan(r.clientId, r.clientName)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', background: 'var(--navy-900)', border: '1px solid #f59e0b55', borderRadius: 10, cursor: 'pointer', color: 'var(--text-primary)' }}>
+                  <ClipboardCheck size={14} color="#f59e0b" />
+                  <span style={{ fontSize: 12.5, fontWeight: 700 }}>{r.clientName}</span>
+                  <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{new Date(r.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}</span>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: '#f59e0b', background: 'rgba(245,158,11,0.14)', borderRadius: 6, padding: '1px 7px' }}>{dl <= 0 ? 'วันนี้' : `อีก ${dl} วัน`}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, alignItems: 'stretch' }}>
         {/* ── การ์ด 1: ปฏิทิน ── */}
         <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -62,6 +116,7 @@ export function AppointmentsWidget() {
               if (day == null) return <div key={i} />
               const key = ymd(new Date(y, m, day))
               const has = byDay.has(key)
+              const hasReview = reviewByDay.has(key)
               const isToday = key === todayKey
               const isSel = key === sel
               return (
@@ -70,7 +125,12 @@ export function AppointmentsWidget() {
                     background: isSel ? 'var(--cyan)' : isToday ? 'var(--cyan-dim)' : 'transparent',
                     color: isSel ? '#00201d' : isToday ? 'var(--cyan)' : 'var(--text-secondary)', fontWeight: isToday || isSel ? 700 : 400 }}>
                   {day}
-                  {has && <span style={{ position: 'absolute', bottom: 3, left: '50%', transform: 'translateX(-50%)', width: 4, height: 4, borderRadius: 999, background: isSel ? '#00201d' : 'var(--cyan)' }} />}
+                  {(has || hasReview) && (
+                    <span style={{ position: 'absolute', bottom: 3, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 2 }}>
+                      {has && <span style={{ width: 4, height: 4, borderRadius: 999, background: isSel ? '#00201d' : 'var(--cyan)' }} />}
+                      {hasReview && <span style={{ width: 4, height: 4, borderRadius: 999, background: '#f59e0b' }} />}
+                    </span>
+                  )}
                 </button>
               )
             })}
@@ -84,19 +144,36 @@ export function AppointmentsWidget() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {upcoming.length === 0
             ? <p style={{ fontSize: 16, color: 'var(--text-muted)' }}>ยังไม่มีนัดหมาย — คลิกวันในปฏิทินเพื่อเพิ่ม</p>
-            : upcoming.map(a => (
-              <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--navy-900)', borderRadius: 8, border: '1px solid var(--divider)' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 40 }}>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 700 }}>{TH_MONTH[new Date(a.date).getMonth()]}</span>
-                  <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--cyan)' }}>{new Date(a.date).getDate()}</span>
+            : upcoming.map(u => {
+              const d = upItemDate(u)
+              const accent = u.kind === 'review' ? '#f59e0b' : 'var(--cyan)'
+              return (
+                <div key={u.kind === 'appt' ? u.a.id : `rv-${u.r.clientId}`}
+                  onClick={u.kind === 'review' ? () => goClientPlan(u.r.clientId, u.r.clientName) : undefined}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--navy-900)', borderRadius: 8, border: `1px solid ${u.kind === 'review' ? '#f59e0b55' : 'var(--divider)'}`, cursor: u.kind === 'review' ? 'pointer' : 'default' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 40 }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 700 }}>{TH_MONTH[new Date(d).getMonth()]}</span>
+                    <span style={{ fontSize: 20, fontWeight: 700, color: accent }}>{new Date(d).getDate()}</span>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {u.kind === 'appt' ? (
+                      <>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>{u.a.title}</div>
+                        <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>{new Date(u.a.date).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}{u.a.clientName ? ` · ${u.a.clientName}` : ''}</div>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}><ClipboardCheck size={14} color="#f59e0b" />ทบทวนแผน · {u.r.clientName}</div>
+                        <div style={{ fontSize: 13, color: '#f59e0b' }}>นัดทบทวนแผนการเงิน</div>
+                      </>
+                    )}
+                  </div>
+                  {u.kind === 'appt'
+                    ? <button onClick={() => del.mutate(u.a.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><Trash2 size={13} /></button>
+                    : <ChevronRight size={15} color="#f59e0b" />}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>{a.title}</div>
-                  <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>{new Date(a.date).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}{a.clientName ? ` · ${a.clientName}` : ''}</div>
-                </div>
-                <button onClick={() => del.mutate(a.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><Trash2 size={13} /></button>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>
@@ -121,6 +198,20 @@ export function AppointmentsWidget() {
                     <span style={{ flex: 1, fontSize: 12.5, color: 'var(--text-primary)' }}>{a.title}{a.clientName ? ` · ${a.clientName}` : ''}</span>
                     <button onClick={() => del.mutate(a.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><Trash2 size={13} /></button>
                   </div>
+                ))}
+                <div style={{ borderTop: '1px solid var(--divider)', margin: '2px 0' }} />
+              </div>
+            )}
+
+            {selReviews.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {selReviews.map(r => (
+                  <button key={r.clientId} onClick={() => goClientPlan(r.clientId, r.clientName)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 9px', background: 'rgba(245,158,11,0.1)', border: '1px solid #f59e0b55', borderRadius: 8, cursor: 'pointer', color: 'var(--text-primary)' }}>
+                    <ClipboardCheck size={14} color="#f59e0b" />
+                    <span style={{ flex: 1, fontSize: 12.5, textAlign: 'left' }}>ทบทวนแผน · {r.clientName}</span>
+                    <ChevronRight size={14} color="#f59e0b" />
+                  </button>
                 ))}
                 <div style={{ borderTop: '1px solid var(--divider)', margin: '2px 0' }} />
               </div>
