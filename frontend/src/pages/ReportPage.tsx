@@ -388,7 +388,7 @@ export default function ReportPage() {
     setExporting(true)
     try {
       const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([import('jspdf'), import('html2canvas')])
-      const fmtPage: [number, number] = isPres ? [297, 167] : [210, 297]   // mm
+      const fmtPage: [number, number] = isPres ? [297, 210] : [210, 297]   // mm (pres = A4 แนวนอน)
       const pdf = new jsPDF({ orientation: isPres ? 'landscape' : 'portrait', unit: 'mm', format: fmtPage })
       for (let i = 0; i < els.length; i++) {
         const el = els[i]
@@ -429,12 +429,12 @@ export default function ReportPage() {
           /* คงสีพื้นหลัง/การ์ด/กราฟตอนพิมพ์ (เบราว์เซอร์ตัด background โดยดีฟอลต์) */
           #report-paper, #report-paper * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           ${mode === 'pres' ? `
-            /* A4 แนวนอน (ขนาดมาตรฐาน — iPad Safari ไม่รองรับ @page custom size จึงเพี้ยน) · สไลด์ 16:9 ขนาด mm จริง */
+            /* A4 แนวนอนเต็มหน้า (297×210mm) · สไลด์เต็มหน้าไม่มีแถบขาว */
             @page { size: A4 landscape; margin: 0; }
             html, body { height: auto !important; }
             #report-paper { gap: 0 !important; }
             .pd-slide {
-              width: 297mm !important; height: 167mm !important; max-width: none !important; aspect-ratio: auto !important;
+              width: 297mm !important; height: 210mm !important; max-width: none !important; aspect-ratio: auto !important;
               box-shadow: none !important; border-radius: 0 !important; margin: 0 auto !important;
               page-break-after: always; break-after: page; break-inside: avoid; overflow: hidden !important;
             }

@@ -21,7 +21,7 @@ import {
 
 /* ══════════════════════════════════════════════════════════════════════════
    PresentationDeck — เด็คนำเสนอ CFP ฉบับครอบครัว (ลูกค้า + คู่สมรส คู่กัน)
-   สไลด์ 16:9 ธีมสว่าง · ดึงตัวเลข/กราฟจาก hook/endpoint เดิม (กัน drift)
+   สไลด์ A4 แนวนอน ธีมสว่าง · ดึงตัวเลข/กราฟจาก hook/endpoint เดิม (กัน drift)
    ══════════════════════════════════════════════════════════════════════════ */
 
 const toNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
@@ -122,7 +122,7 @@ function Slide({ children, footer, pad = 40, slideId, noFooter }: { children?: R
   const { advisorName, advisorPhone } = useContext(SlideEditor)
   return (
     <div className="pd-slide" style={{
-      width: '100%', maxWidth: 1120, aspectRatio: '16 / 9', background: '#fff', color: INK,
+      width: '100%', maxWidth: 1120, aspectRatio: '297 / 210', background: '#fff', color: INK,
       boxShadow: '0 1px 2px rgba(12,32,53,0.04), 0 18px 50px -12px rgba(12,32,53,0.22)', borderRadius: 14,
       padding: `${pad}px 56px ${pad - 12}px`,
       display: 'flex', flexDirection: 'column', fontFamily: "'Sarabun', sans-serif", position: 'relative', overflow: 'hidden',
@@ -1593,7 +1593,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         {/* ปุ่มเพิ่มหน้า (edit mode) */}
         {editMode && (
           <button className="no-print" onClick={onAddSlide}
-            style={{ width: '100%', maxWidth: 1120, aspectRatio: '16 / 9', border: `2px dashed ${MUTED}`, borderRadius: 10, background: '#fff', color: SUB, fontSize: 18, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+            style={{ width: '100%', maxWidth: 1120, aspectRatio: '297 / 210', border: `2px dashed ${MUTED}`, borderRadius: 10, background: '#fff', color: SUB, fontSize: 18, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
             <FilePlus2 size={26} /> เพิ่มหน้าใหม่
           </button>
         )}
