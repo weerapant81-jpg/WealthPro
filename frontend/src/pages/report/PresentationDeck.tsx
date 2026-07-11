@@ -419,17 +419,27 @@ function AdvisorComment({ slideKey, label, comment, hidden, onEdit, onToggleHide
 function CommentDialog({ title, value, onSave, onClose }: { title: string; value: string; onSave: (v: string) => void; onClose: () => void }) {
   const [text, setText] = useState(value)
   const [pos, setPos] = useState({ x: 0, y: 0 })
-  const drag = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null)
-  const onDragStart = (e: React.MouseEvent) => {
-    drag.current = { sx: e.clientX, sy: e.clientY, ox: pos.x, oy: pos.y }
-    const move = (ev: MouseEvent) => { if (!drag.current) return; setPos({ x: drag.current.ox + (ev.clientX - drag.current.sx), y: drag.current.oy + (ev.clientY - drag.current.sy) }) }
-    const up = () => { drag.current = null; window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up) }
-    window.addEventListener('mousemove', move); window.addEventListener('mouseup', up)
+  const draggingRef = useRef(false)   // true ระหว่าง/ทันทีหลังลาก — กัน backdrop onClick ปิดกล่องหลังลาก
+  const onDragStart = (e: React.PointerEvent) => {
+    e.preventDefault()
+    const start = { sx: e.clientX, sy: e.clientY, ox: pos.x, oy: pos.y }
+    draggingRef.current = false
+    const move = (ev: PointerEvent) => {
+      draggingRef.current = true
+      setPos({ x: start.ox + (ev.clientX - start.sx), y: start.oy + (ev.clientY - start.sy) })
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      setTimeout(() => { draggingRef.current = false }, 0)   // เคลียร์หลัง click event ผ่านไปแล้ว
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
   }
   return (
-    <div className="no-print" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 20 }}>
+    <div className="no-print" onClick={() => { if (!draggingRef.current) onClose() }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 20 }}>
       <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 784, background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', gap: 12, transform: `translate(${pos.x}px, ${pos.y}px)`, boxShadow: 'var(--shadow)' }}>
-        <div onMouseDown={onDragStart} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'move', userSelect: 'none' }}>
+        <div onPointerDown={onDragStart} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'move', userSelect: 'none', touchAction: 'none' }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><GripVertical size={16} style={{ color: 'var(--text-muted)' }} />คำแนะนำ · {title}</h3>
           <button onClick={onClose} onMouseDown={e => e.stopPropagation()} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
         </div>
