@@ -621,6 +621,50 @@ export async function getProfile(req: AuthRequest, res: Response): Promise<void>
   const data = await prisma.profile.findUnique({ where: { userId: req.effectiveUserId! } })
   res.json(data)
 }
+// ── ฟิลด์สมมติฐาน (ใช้ทั้ง upsertProfile และค่ากลางของ Super Admin) ──
+const ASSUMPTION_INT = ['retirementAgeSelf', 'retirementAgeSpouse', 'lifeExpectancySelf', 'lifeExpectancySpouse', 'educationCostYear']
+const ASSUMPTION_FLOAT = ['inflationRate', 'educationInflation', 'rentInflation', 'medicalInflation', 'creditCardRate', 'cashAdvanceRate', 'personalLoanRate', 'homeLoanRate', 'carLoanRate', 'educationFundReturn', 'educationReturnDuring', 'preRetirementReturn', 'postRetirementReturn', 'expectedReturn', 'taxRate', 'pvdReturnRate', 'ssoReturnRate']
+const ASSUMPTION_RAW = ['educationCosts', 'pvdReturnAsOf', 'ssoReturnAsOf']
+const ASSUMPTION_SELECT = Object.fromEntries([...ASSUMPTION_INT, ...ASSUMPTION_FLOAT, ...ASSUMPTION_RAW].map(k => [k, true]))
+
+// Super Admin หลัก (สร้างเร็วสุด) = เจ้าของ "ค่าสมมติฐานกลาง" ที่ FA ทุกคนใช้เป็น default
+async function canonicalSuperAdminId(): Promise<string | null> {
+  const sa = await prisma.user.findFirst({ where: { role: 'SUPER_ADMIN' }, orderBy: { createdAt: 'asc' }, select: { id: true } })
+  return sa?.id ?? null
+}
+
+// อ่านค่าสมมติฐานกลาง (ADMIN/SUPER_ADMIN อ่านได้ — FA ใช้เป็น default ตั้งต้น)
+export async function getAssumptionDefaults(_req: AuthRequest, res: Response): Promise<void> {
+  const saId = await canonicalSuperAdminId()
+  if (!saId) { res.json({}); return }
+  const profile = await prisma.profile.findUnique({ where: { userId: saId }, select: ASSUMPTION_SELECT })
+  res.json(profile ?? {})
+}
+
+// ตั้งค่าสมมติฐานกลาง (SUPER_ADMIN เท่านั้น) → เก็บที่โปรไฟล์ของ SA หลัก
+export async function setAssumptionDefaults(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const saId = await canonicalSuperAdminId()
+    if (!saId) { res.status(400).json({ error: 'ไม่พบบัญชีผู้ให้บริการ' }); return }
+    const b = req.body
+    const has = (k: string) => Object.prototype.hasOwnProperty.call(b, k)
+    const num = (v: any) => (v === '' || v == null) ? null : Number(v)
+    const payload: any = {}
+    for (const k of ASSUMPTION_INT) if (has(k)) payload[k] = num(b[k])
+    for (const k of ASSUMPTION_FLOAT) if (has(k)) payload[k] = num(b[k])
+    for (const k of ASSUMPTION_RAW) if (has(k)) payload[k] = b[k] ?? null
+    const data = await prisma.profile.upsert({
+      where: { userId: saId },
+      update: payload,
+      create: { ...payload, userId: saId },
+      select: ASSUMPTION_SELECT,
+    })
+    res.json(data)
+  } catch (err) {
+    next(err)
+  }
+}
+
 export async function upsertProfile(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const b = req.body
@@ -628,9 +672,9 @@ export async function upsertProfile(req: AuthRequest, res: Response, next: NextF
     const num = (v: any) => (v === '' || v == null) ? null : Number(v)
 
     // อัปเดตเฉพาะฟิลด์ที่ส่งมาจริง (กันการบันทึกข้ามฟีเจอร์ทับกัน เช่น risk vs สมมติฐาน)
-    const INT_FIELDS = ['retirementAgeSelf', 'retirementAgeSpouse', 'lifeExpectancySelf', 'lifeExpectancySpouse', 'educationCostYear', 'riskScore', 'riskLevel']
-    const FLOAT_FIELDS = ['inflationRate', 'educationInflation', 'rentInflation', 'medicalInflation', 'creditCardRate', 'cashAdvanceRate', 'personalLoanRate', 'homeLoanRate', 'carLoanRate', 'educationFundReturn', 'educationReturnDuring', 'preRetirementReturn', 'postRetirementReturn', 'expectedReturn', 'taxRate', 'pvdReturnRate', 'ssoReturnRate']
-    const RAW_FIELDS = ['educationCosts', 'pvdReturnAsOf', 'ssoReturnAsOf', 'riskLabel', 'riskAnswers', 'riskAssessedAt', 'spouseRisk']
+    const INT_FIELDS = [...ASSUMPTION_INT, 'riskScore', 'riskLevel']
+    const FLOAT_FIELDS = ASSUMPTION_FLOAT
+    const RAW_FIELDS = [...ASSUMPTION_RAW, 'riskLabel', 'riskAnswers', 'riskAssessedAt', 'spouseRisk']
 
     const payload: any = {}
     for (const k of INT_FIELDS) if (has(k)) payload[k] = num(b[k])

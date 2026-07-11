@@ -6,6 +6,7 @@ import { Save, CheckCircle, User, TrendingUp, GraduationCap, Percent, Shield, Br
 import { MoneyInput as MoneyInputBase } from '../components/MoneyInput'
 import { PageHeader } from '../components/ui'
 import { TableExcelButton } from '../components/exportable'
+import { useAuth } from '../context/AuthContext'
 import InvestmentAssumptionPage from './InvestmentAssumptionPage'
 
 const CURRENT_YEAR = new Date().getFullYear() + 543  // พ.ศ.
@@ -130,7 +131,11 @@ const defaultForm = (): Form => ({
 
 export default function SettingsPage() {
   const qc = useQueryClient()
+  const { user } = useAuth()
+  const isSuper = user?.role === 'SUPER_ADMIN'
   const { data: profile, isFetched } = useQuery({ queryKey: ['profile'], queryFn: () => api.get('/profile').then(r => r.data) })
+  // ค่าสมมติฐานกลางที่ Super Admin ตั้งไว้ — SA แก้ที่นี่ · FA ใช้เป็น default ตั้งต้นของลูกค้า
+  const { data: defaults, isFetched: defFetched } = useQuery({ queryKey: ['assumption-defaults'], queryFn: () => api.get('/assumption-defaults').then(r => r.data), retry: false })
   const [form, setForm] = useState<Form>(defaultForm())
   const initRef = useRef(false)
   const skipFirstSave = useRef(true)
@@ -156,37 +161,43 @@ export default function SettingsPage() {
 
 
   useEffect(() => {
-    if (!isFetched || initRef.current) return   // init form ครั้งเดียว — กัน refetch (focus/invalidate) มา reset ค่าที่ผู้ใช้กำลังแก้อยู่
+    // SA แก้ค่ากลาง (ใช้ defaults) · FA แก้ค่าลูกค้า (ใช้ profile, fallback = defaults)
+    const ready = defFetched && (isSuper || isFetched)
+    if (!ready || initRef.current) return   // init ครั้งเดียว — กัน refetch มา reset ค่าที่กำลังแก้
     initRef.current = true
-    const p = profile ?? {}
+    const base: any = isSuper ? (defaults ?? {}) : (profile ?? {})
+    const fb: any = isSuper ? {} : (defaults ?? {})
+    const pick = (k: string, hard: any) => base[k] ?? fb[k] ?? hard
+    const ec = (base.educationCosts && typeof base.educationCosts === 'object') ? base.educationCosts
+      : (fb.educationCosts && typeof fb.educationCosts === 'object') ? fb.educationCosts : defaultEduCosts()
     setForm({
-      retirementAgeSelf:    p.retirementAgeSelf    ?? '',
-      retirementAgeSpouse:  p.retirementAgeSpouse  ?? '',
-      lifeExpectancySelf:   p.lifeExpectancySelf   ?? '',
-      lifeExpectancySpouse: p.lifeExpectancySpouse ?? '',
-      inflationRate:        p.inflationRate        ?? 3,
-      educationInflation:   p.educationInflation   ?? 5,
-      rentInflation:        p.rentInflation        ?? 4,
-      medicalInflation:     p.medicalInflation     ?? 5,
-      creditCardRate:       p.creditCardRate       ?? 16,
-      cashAdvanceRate:      p.cashAdvanceRate      ?? 16,
-      personalLoanRate:     p.personalLoanRate     ?? 16,
-      homeLoanRate:         p.homeLoanRate         ?? 6,
-      carLoanRate:          p.carLoanRate          ?? 5,
-      educationFundReturn:  p.educationFundReturn  ?? 4,
-      educationReturnDuring: p.educationReturnDuring ?? 4,
-      preRetirementReturn:  p.preRetirementReturn  ?? 4,
-      postRetirementReturn: p.postRetirementReturn ?? 4,
-      expectedReturn:       p.expectedReturn       ?? 7,
-      taxRate:              p.taxRate              ?? 10,
-      pvdReturnRate:        p.pvdReturnRate        ?? 4,
-      pvdReturnAsOf:        p.pvdReturnAsOf        ?? 'เฉลี่ย 5 ปี',
-      ssoReturnRate:        p.ssoReturnRate        ?? 2.29,
-      ssoReturnAsOf:        p.ssoReturnAsOf        ?? 'เฉลี่ย 5 ปี (ก.พ. 2568)',
-      educationCostYear:    p.educationCostYear    ?? CURRENT_YEAR,
-      educationCosts:       (p.educationCosts && typeof p.educationCosts === 'object') ? p.educationCosts : defaultEduCosts(),
+      retirementAgeSelf:    pick('retirementAgeSelf', ''),
+      retirementAgeSpouse:  pick('retirementAgeSpouse', ''),
+      lifeExpectancySelf:   pick('lifeExpectancySelf', ''),
+      lifeExpectancySpouse: pick('lifeExpectancySpouse', ''),
+      inflationRate:        pick('inflationRate', 3),
+      educationInflation:   pick('educationInflation', 5),
+      rentInflation:        pick('rentInflation', 4),
+      medicalInflation:     pick('medicalInflation', 5),
+      creditCardRate:       pick('creditCardRate', 16),
+      cashAdvanceRate:      pick('cashAdvanceRate', 16),
+      personalLoanRate:     pick('personalLoanRate', 16),
+      homeLoanRate:         pick('homeLoanRate', 6),
+      carLoanRate:          pick('carLoanRate', 5),
+      educationFundReturn:  pick('educationFundReturn', 4),
+      educationReturnDuring: pick('educationReturnDuring', 4),
+      preRetirementReturn:  pick('preRetirementReturn', 4),
+      postRetirementReturn: pick('postRetirementReturn', 4),
+      expectedReturn:       pick('expectedReturn', 7),
+      taxRate:              pick('taxRate', 10),
+      pvdReturnRate:        pick('pvdReturnRate', 4),
+      pvdReturnAsOf:        pick('pvdReturnAsOf', 'เฉลี่ย 5 ปี'),
+      ssoReturnRate:        pick('ssoReturnRate', 2.29),
+      ssoReturnAsOf:        pick('ssoReturnAsOf', 'เฉลี่ย 5 ปี (ก.พ. 2568)'),
+      educationCostYear:    pick('educationCostYear', CURRENT_YEAR),
+      educationCosts:       ec,
     })
-  }, [profile])
+  }, [profile, defaults, isFetched, defFetched, isSuper])
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm(f => ({ ...f, [k]: v }))
 
@@ -194,9 +205,9 @@ export default function SettingsPage() {
     setForm(f => ({ ...f, educationCosts: { ...f.educationCosts, [level]: { ...f.educationCosts[level], [type]: val } } }))
 
   const save = useMutation({
-    mutationFn: (data: Form) => api.put('/profile', data),
+    mutationFn: (data: Form) => api.put(isSuper ? '/assumption-defaults' : '/profile', data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['profile'] })
+      qc.invalidateQueries({ queryKey: isSuper ? ['assumption-defaults'] : ['profile'] })
       qc.invalidateQueries({ queryKey: ['projection'] })
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -227,9 +238,17 @@ export default function SettingsPage() {
   return (
     <div style={{ maxWidth: 1100 }}>
       {TabBar}
+      {/* แถบบอกบริบท: SA แก้ค่ากลาง · FA แก้ค่าลูกค้า (default มาจากค่ากลาง) */}
+      <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, fontSize: 12.5, lineHeight: 1.5,
+        background: isSuper ? 'rgba(245,158,11,0.12)' : 'var(--cyan-dim)',
+        border: `1px solid ${isSuper ? '#f59e0b' : 'var(--cyan)'}`, color: 'var(--text-secondary)' }}>
+        {isSuper
+          ? <><b style={{ color: 'var(--text-primary)' }}>คุณกำลังตั้งค่าสมมติฐานกลาง</b> — ค่านี้จะเป็น default ตั้งต้นให้นักวางแผน (FA) ทุกคนสำหรับลูกค้าใหม่ที่ยังไม่ปรับแก้</>
+          : <><b style={{ color: 'var(--text-primary)' }}>ค่าเริ่มต้นมาจากค่ากลางของผู้ให้บริการ</b> — คุณแก้ไขสำหรับลูกค้ารายนี้ได้ตามต้องการ (ค่าที่แก้จะใช้เฉพาะลูกค้าคนนี้)</>}
+      </div>
       {/* Header + Save bar */}
       <div style={{ marginBottom: 28 }}>
-        <PageHeader icon={SlidersHorizontal} title="ตั้งค่าสมมติฐาน" subtitle="สมมติฐานเหล่านี้ใช้คำนวณแผนการเงินส่วนบุคคล"
+        <PageHeader icon={SlidersHorizontal} title={isSuper ? 'ตั้งค่าสมมติฐานกลาง' : 'ตั้งค่าสมมติฐาน'} subtitle="สมมติฐานเหล่านี้ใช้คำนวณแผนการเงินส่วนบุคคล"
           right={
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
           {saved && (

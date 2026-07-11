@@ -14,7 +14,7 @@ import {
   getAssets, createAsset, updateAsset, deleteAsset,
   getLiabilities, createLiability, updateLiability, deleteLiability,
   getGoals, createGoal, updateGoal, deleteGoal,
-  getProfile, upsertProfile,
+  getProfile, upsertProfile, getAssumptionDefaults, setAssumptionDefaults,
   getRetirementPlan, saveRetirementPlan,
   getPvdPlan, savePvdPlan,
   getSsoPlan, saveSsoPlan,
@@ -132,6 +132,8 @@ r.delete('/goals/:id', authenticate, deleteGoal)
 
 r.get('/profile', authenticate, getProfile)
 r.put('/profile', authenticate, upsertProfile)
+r.get('/assumption-defaults', authenticate, requireAdmin, getAssumptionDefaults)
+r.put('/assumption-defaults', authenticate, requireSuperAdmin, setAssumptionDefaults)
 
 r.get('/retirement-plan', authenticate, getRetirementPlan)
 r.put('/retirement-plan', authenticate, saveRetirementPlan)
