@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { useClient } from '../context/ClientContext'
-import { CalendarClock, ListTodo, Plus, Trash2, ChevronLeft, ChevronRight, Check, X, Newspaper, Pin, BellRing, ClipboardCheck } from 'lucide-react'
+import { CalendarClock, ListTodo, Plus, Trash2, ChevronLeft, ChevronRight, Check, X, Newspaper, Pin, BellRing, ClipboardCheck, Maximize2 } from 'lucide-react'
 
 const card: React.CSSProperties = { background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 16, padding: '18px 20px' }
 const inp: React.CSSProperties = { padding: '8px 10px', background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 16, outline: 'none', boxSizing: 'border-box' }
@@ -18,6 +18,45 @@ const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 const TH_MONTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
 const TH_DOW = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
 
+/* ตารางเดือน (ใช้ซ้ำทั้งปฏิทินย่อและมุมมองทั้งปี) — คลิกวันเพื่อเพิ่ม/ดูนัดหมาย */
+function MonthGrid({ year, month, byDay, reviewByDay, sel, todayKey, onPick, small }: {
+  year: number; month: number; byDay: Map<string, Appt[]>; reviewByDay: Map<string, Review[]>
+  sel: string | null; todayKey: string; onPick: (key: string) => void; small?: boolean
+}) {
+  const firstDow = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const cells: (number | null)[] = [...Array(firstDow).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
+  const df = small ? 11 : 16
+  const dot = small ? 3 : 4
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 2, textAlign: 'center' }}>
+      {TH_DOW.map(d => <div key={d} style={{ fontSize: small ? 9.5 : 14, color: 'var(--text-muted)', fontWeight: 700, padding: '2px 0' }}>{d}</div>)}
+      {cells.map((day, i) => {
+        if (day == null) return <div key={i} />
+        const key = ymd(new Date(year, month, day))
+        const has = byDay.has(key)
+        const hasReview = reviewByDay.has(key)
+        const isToday = key === todayKey
+        const isSel = key === sel
+        return (
+          <button key={i} onClick={() => onPick(key)}
+            style={{ position: 'relative', aspectRatio: '1', minWidth: 0, border: 'none', borderRadius: small ? 6 : 8, cursor: 'pointer', fontSize: df,
+              background: isSel ? 'var(--cyan)' : isToday ? 'var(--cyan-dim)' : 'transparent',
+              color: isSel ? '#00201d' : isToday ? 'var(--cyan)' : 'var(--text-secondary)', fontWeight: isToday || isSel ? 700 : 400 }}>
+            {day}
+            {(has || hasReview) && (
+              <span style={{ position: 'absolute', bottom: small ? 1 : 3, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 2 }}>
+                {has && <span style={{ width: dot, height: dot, borderRadius: 999, background: isSel ? '#00201d' : 'var(--cyan)' }} />}
+                {hasReview && <span style={{ width: dot, height: dot, borderRadius: 999, background: '#f59e0b' }} />}
+              </span>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 /* ══ นัดหมาย + ปฏิทิน ══ */
 export function AppointmentsWidget() {
   const qc = useQueryClient()
@@ -29,6 +68,8 @@ export function AppointmentsWidget() {
 
   const [cursor, setCursor] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
   const [sel, setSel] = useState<string | null>(null)   // YYYY-MM-DD
+  const [yearOpen, setYearOpen] = useState(false)       // มุมมองปฏิทินทั้งปี
+  const [yearCursor, setYearCursor] = useState(() => new Date().getFullYear())
   const [form, setForm] = useState({ title: '', clientName: '', time: '09:00', note: '' })
 
   const byDay = new Map<string, Appt[]>()
@@ -60,11 +101,7 @@ export function AppointmentsWidget() {
   const closeDialog = () => { setSel(null); setForm({ title: '', clientName: '', time: '09:00', note: '' }) }
   const del = useMutation({ mutationFn: (id: string) => api.delete(`/appointments/${id}`), onSuccess: () => qc.invalidateQueries({ queryKey: ['appointments'] }) })
 
-  // month grid
   const y = cursor.getFullYear(), m = cursor.getMonth()
-  const firstDow = new Date(y, m, 1).getDay()
-  const daysInMonth = new Date(y, m + 1, 0).getDate()
-  const cells: (number | null)[] = [...Array(firstDow).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
   const todayKey = ymd(new Date())
 
   type UpItem = { kind: 'appt'; a: Appt } | { kind: 'review'; r: Review }
@@ -103,38 +140,18 @@ export function AppointmentsWidget() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, alignItems: 'stretch' }}>
         {/* ── การ์ด 1: ปฏิทิน ── */}
         <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><CalendarClock size={18} color="var(--cyan)" /><p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>ปฏิทิน</p></div>
+          <button onClick={() => { setYearCursor(y); setYearOpen(true) }} title="ดูทั้งปี"
+            style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: '100%' }}>
+            <CalendarClock size={18} color="var(--cyan)" /><p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>ปฏิทิน</p>
+            <Maximize2 size={14} color="var(--text-muted)" style={{ marginLeft: 'auto' }} />
+          </button>
           <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <button onClick={() => setCursor(new Date(y, m - 1, 1))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><ChevronLeft size={18} /></button>
             <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{TH_MONTH[m]} {y + 543}</span>
             <button onClick={() => setCursor(new Date(y, m + 1, 1))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><ChevronRight size={18} /></button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 2, textAlign: 'center' }}>
-            {TH_DOW.map(d => <div key={d} style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 700, padding: '2px 0' }}>{d}</div>)}
-            {cells.map((day, i) => {
-              if (day == null) return <div key={i} />
-              const key = ymd(new Date(y, m, day))
-              const has = byDay.has(key)
-              const hasReview = reviewByDay.has(key)
-              const isToday = key === todayKey
-              const isSel = key === sel
-              return (
-                <button key={i} onClick={() => setSel(key)}
-                  style={{ position: 'relative', aspectRatio: '1', minWidth: 0, border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 16,
-                    background: isSel ? 'var(--cyan)' : isToday ? 'var(--cyan-dim)' : 'transparent',
-                    color: isSel ? '#00201d' : isToday ? 'var(--cyan)' : 'var(--text-secondary)', fontWeight: isToday || isSel ? 700 : 400 }}>
-                  {day}
-                  {(has || hasReview) && (
-                    <span style={{ position: 'absolute', bottom: 3, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 2 }}>
-                      {has && <span style={{ width: 4, height: 4, borderRadius: 999, background: isSel ? '#00201d' : 'var(--cyan)' }} />}
-                      {hasReview && <span style={{ width: 4, height: 4, borderRadius: 999, background: '#f59e0b' }} />}
-                    </span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
+          <MonthGrid year={y} month={m} byDay={byDay} reviewByDay={reviewByDay} sel={sel} todayKey={todayKey} onPick={setSel} />
           </div>
         </div>
 
@@ -233,6 +250,31 @@ export function AppointmentsWidget() {
           </div>
         </div>
       )}
+
+      {/* ── มุมมองปฏิทินทั้งปี ── */}
+      {yearOpen && (
+        <div onClick={() => setYearOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 120, padding: 20, overflowY: 'auto' }}>
+          <div onClick={e => e.stopPropagation()} style={{ ...card, width: '100%', maxWidth: 1000, margin: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <CalendarClock size={18} color="var(--cyan)" />
+              <button onClick={() => setYearCursor(y2 => y2 - 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><ChevronLeft size={18} /></button>
+              <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)' }}>ปฏิทิน {yearCursor + 543}</span>
+              <button onClick={() => setYearCursor(y2 => y2 + 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><ChevronRight size={18} /></button>
+              <span style={{ fontSize: 11.5, color: 'var(--text-muted)', marginLeft: 8 }}>คลิกวันเพื่อเพิ่ม/ดูนัดหมาย</span>
+              <button onClick={() => setYearOpen(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={20} /></button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 14 }}>
+              {Array.from({ length: 12 }, (_, mo) => (
+                <div key={mo} style={{ border: '1px solid var(--divider)', borderRadius: 10, padding: 10 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', textAlign: 'center', marginBottom: 6 }}>{TH_MONTH[mo]}</div>
+                  <MonthGrid year={yearCursor} month={mo} byDay={byDay} reviewByDay={reviewByDay} sel={sel} todayKey={todayKey}
+                    onPick={key => { setYearOpen(false); setCursor(new Date(yearCursor, mo, 1)); setSel(key) }} small />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
@@ -243,42 +285,70 @@ export function TasksWidget() {
   const { data: tasks = [] } = useQuery<Task[]>({ queryKey: ['tasks'], queryFn: () => api.get('/tasks').then(r => r.data), retry: false })
   const [title, setTitle] = useState('')
   const [due, setDue] = useState('')
+  const [expanded, setExpanded] = useState(false)
   const inv = () => qc.invalidateQueries({ queryKey: ['tasks'] })
   const add = useMutation({ mutationFn: () => api.post('/tasks', { title: title.trim(), dueDate: due || undefined }), onSuccess: () => { inv(); setTitle(''); setDue('') } })
   const toggle = useMutation({ mutationFn: (t: Task) => api.put(`/tasks/${t.id}`, { done: !t.done }), onSuccess: inv })
   const del = useMutation({ mutationFn: (id: string) => api.delete(`/tasks/${id}`), onSuccess: inv })
   const pending = tasks.filter(t => !t.done).length
 
-  return (
-    <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><ListTodo size={18} color="var(--cyan)" /><p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>To do list</p></div>
-        {pending > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--cyan)', background: 'var(--cyan-dim)', borderRadius: 5, padding: '2px 8px' }}>ค้าง {pending}</span>}
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 240, overflowY: 'auto' }}>
-        {tasks.length === 0 && <p style={{ fontSize: 16, color: 'var(--text-muted)' }}>ยังไม่มีงาน</p>}
-        {tasks.map(t => (
-          <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 2px' }}>
-            <button onClick={() => toggle.mutate(t)}
-              style={{ width: 20, height: 20, flexShrink: 0, borderRadius: 5, border: `2px solid ${t.done ? 'var(--cyan)' : 'var(--outline, var(--card-border))'}`, background: t.done ? 'var(--cyan)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-              {t.done && <Check size={13} color="#00201d" />}
-            </button>
-            <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ fontSize: 16, color: t.done ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: t.done ? 'line-through' : 'none' }}>{t.title}</span>
-              {t.dueDate && <span style={{ marginLeft: 8, fontSize: 13, color: 'var(--cyan)', background: 'var(--cyan-dim)', borderRadius: 5, padding: '1px 7px', whiteSpace: 'nowrap' }}>{new Date(t.dueDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}</span>}
-            </span>
-            <button onClick={() => del.mutate(t.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', opacity: 0.7 }}><X size={14} /></button>
-          </div>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 6 }}>
-        <input value={title} onChange={e => setTitle(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && title.trim()) add.mutate() }}
-          placeholder="เพิ่มงานใหม่..." style={{ ...inp, flex: 1, minWidth: 0 }} />
-        <input type="date" value={due} onChange={e => setDue(e.target.value)} title="กำหนดการ" style={{ ...inp, width: 140, color: due ? 'var(--text-primary)' : 'var(--text-muted)' }} />
-        <button onClick={() => title.trim() && add.mutate()} disabled={!title.trim()}
-          style={{ padding: '8px 12px', background: 'var(--cyan)', border: 'none', borderRadius: 8, color: '#00201d', cursor: 'pointer', opacity: title.trim() ? 1 : 0.5, display: 'flex', alignItems: 'center' }}><Plus size={16} /></button>
-      </div>
+  const list = (maxH: number | string) => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: maxH, overflowY: 'auto' }}>
+      {tasks.length === 0 && <p style={{ fontSize: 16, color: 'var(--text-muted)' }}>ยังไม่มีงาน</p>}
+      {tasks.map(t => (
+        <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 2px' }}>
+          <button onClick={() => toggle.mutate(t)}
+            style={{ width: 20, height: 20, flexShrink: 0, borderRadius: 5, border: `2px solid ${t.done ? 'var(--cyan)' : 'var(--outline, var(--card-border))'}`, background: t.done ? 'var(--cyan)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            {t.done && <Check size={13} color="#00201d" />}
+          </button>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ fontSize: 16, color: t.done ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: t.done ? 'line-through' : 'none' }}>{t.title}</span>
+            {t.dueDate && <span style={{ marginLeft: 8, fontSize: 13, color: 'var(--cyan)', background: 'var(--cyan-dim)', borderRadius: 5, padding: '1px 7px', whiteSpace: 'nowrap' }}>{new Date(t.dueDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}</span>}
+          </span>
+          <button onClick={() => del.mutate(t.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', opacity: 0.7 }}><X size={14} /></button>
+        </div>
+      ))}
     </div>
+  )
+  const inputRow = (
+    <div style={{ display: 'flex', gap: 6 }}>
+      <input value={title} onChange={e => setTitle(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && title.trim()) add.mutate() }}
+        placeholder="เพิ่มงานใหม่..." style={{ ...inp, flex: 1, minWidth: 0 }} />
+      <input type="date" value={due} onChange={e => setDue(e.target.value)} title="กำหนดการ" style={{ ...inp, width: 140, color: due ? 'var(--text-primary)' : 'var(--text-muted)' }} />
+      <button onClick={() => title.trim() && add.mutate()} disabled={!title.trim()}
+        style={{ padding: '8px 12px', background: 'var(--cyan)', border: 'none', borderRadius: 8, color: '#00201d', cursor: 'pointer', opacity: title.trim() ? 1 : 0.5, display: 'flex', alignItems: 'center' }}><Plus size={16} /></button>
+    </div>
+  )
+  const headTitle = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><ListTodo size={18} color="var(--cyan)" /><p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>To do list</p>
+      {pending > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--cyan)', background: 'var(--cyan-dim)', borderRadius: 5, padding: '2px 8px' }}>ค้าง {pending}</span>}
+    </div>
+  )
+  return (
+    <>
+      <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <button onClick={() => setExpanded(true)} title="ขยายเพื่อจัดการงาน"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: '100%' }}>
+          {headTitle}
+          <Maximize2 size={14} color="var(--text-muted)" />
+        </button>
+        {list(240)}
+        {inputRow}
+      </div>
+
+      {expanded && (
+        <div onClick={() => setExpanded(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 120, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ ...card, width: '100%', maxWidth: 640, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              {headTitle}
+              <button onClick={() => setExpanded(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={20} /></button>
+            </div>
+            {inputRow}
+            {list('60vh')}
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
