@@ -777,10 +777,25 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
     const val = (r: any) => Math.round(r.phase === 'accumulation' ? (r.totalAccum ?? 0) : (r.closeBalance ?? 0))
     const map = new Map<number, any>()
     const add = (rows: any[] | undefined, key: string) => (rows ?? []).forEach((r: any) => { const o = map.get(r.age) || { age: r.age }; o[key] = val(r); map.set(r.age, o) })
+    // เส้นประ (ไม่ออมเพิ่ม): ตัดเส้นที่ 0 เมื่อเงินหมด แล้วคืน "อายุที่เงินหมด"
+    const addDeplete = (rows: any[] | undefined, key: string): number | null => {
+      let dep: number | null = null
+      ;(rows ?? []).forEach((r: any) => {
+        const o = map.get(r.age) || { age: r.age }
+        if (dep == null) {
+          const v = val(r)
+          if (r.phase === 'retirement' && v <= 0) { o[key] = 0; dep = r.age }   // จุดเงินหมด = 0 แล้วหยุด (ปีถัดไปเว้นว่าง)
+          else o[key] = Math.max(0, v)
+        }
+        map.set(r.age, o)
+      })
+      return dep
+    }
     add(retSelf?.projectionRows, 'self')
-    add(retSelf?.projectionRowsNoSave, 'selfNo')          // สถานการณ์ไม่ออมเพิ่ม
-    if (hasSpouse) { add(retSpouse?.projectionRows, 'spouse'); add(retSpouse?.projectionRowsNoSave, 'spouseNo') }
-    return [...map.values()].sort((a, b) => a.age - b.age)
+    const depSelf = addDeplete(retSelf?.projectionRowsNoSave, 'selfNo')
+    let depSpouse: number | null = null
+    if (hasSpouse) { add(retSpouse?.projectionRows, 'spouse'); depSpouse = addDeplete(retSpouse?.projectionRowsNoSave, 'spouseNo') }
+    return { data: [...map.values()].sort((a, b) => a.age - b.age), depSelf, depSpouse }
   }, [retSelf, retSpouse, hasSpouse])
 
   // กราฟเงินออมสะสมทุนการศึกษา 3 สถาบัน (บุตรคนแรก) — reuse buildEduChart
@@ -1299,11 +1314,11 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         {/* ── 13b. คาดการณ์มูลค่ากองทุนเกษียณ ── */}
         <Slide slideId="retire2" footer={commentFooter('retire2')}>
           <SlideHead icon={PiggyBank} kicker="Retirement Projection" title="คาดการณ์มูลค่ากองทุนเกษียณ" accent={CY} />
-          {retChart.length > 0 ? (
+          {retChart.data.length > 0 ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-              <div style={{ fontSize: 12, color: SUB, marginBottom: 8 }}>สะสมช่วงทำงาน → ใช้จ่ายหลังเกษียณ · มูลค่ากองทุนคงเหลือตามอายุ</div>
+              <div style={{ fontSize: 12, color: SUB, marginBottom: 8 }}>สะสมช่วงทำงาน → ใช้จ่ายหลังเกษียณ · เส้นประ = ไม่ออมเพิ่ม (ตัดที่จุดเงินหมด)</div>
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={retChart} margin={{ top: 8, right: 16, left: 6, bottom: 6 }}>
+                <ComposedChart data={retChart.data} margin={{ top: 8, right: 16, left: 6, bottom: 6 }}>
                   <defs><linearGradient id="pdRetSelf" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={CY} stopOpacity={0.22} /><stop offset="100%" stopColor={CY} stopOpacity={0.04} /></linearGradient></defs>
                   <CartesianGrid strokeDasharray="3 3" stroke={HAIR} vertical={false} />
                   <XAxis dataKey="age" tick={{ fontSize: 10, fill: MUTED }} interval={4} axisLine={{ stroke: LINE }} tickLine={false} />
@@ -1311,11 +1326,14 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                   <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} labelFormatter={a => `อายุ ${a} ปี`} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   {retSelf?.retireAge != null && <ReferenceLine x={retSelf.retireAge} stroke={AM} strokeDasharray="4 4" label={{ value: `เกษียณ ${retSelf.retireAge}`, position: 'insideTopRight', fill: AM, fontSize: 10 }} />}
+                  {/* เส้นบอก "อายุที่เงินหมด" (กรณีไม่ออมเพิ่ม) ต่อคน */}
+                  {retChart.depSelf != null && <ReferenceLine x={retChart.depSelf} stroke={CY} strokeDasharray="2 3" label={{ value: `เงินหมด ${retChart.depSelf}`, position: 'insideBottomRight', fill: CY, fontSize: 10, fontWeight: 700 }} />}
+                  {hasSpouse && retChart.depSpouse != null && <ReferenceLine x={retChart.depSpouse} stroke={VI} strokeDasharray="2 3" label={{ value: `เงินหมด ${retChart.depSpouse}`, position: 'insideBottom', fill: VI, fontSize: 10, fontWeight: 700 }} />}
                   <Area type="monotone" dataKey="self" name={selfName} stroke={CY} strokeWidth={2.4} fill="url(#pdRetSelf)" dot={false} />
                   {hasSpouse && <Line type="monotone" dataKey="spouse" name={spouseName} stroke={VI} strokeWidth={2.2} dot={false} />}
-                  {/* สถานการณ์ "ไม่ออมเพิ่ม" — เส้นประ (สินทรัพย์เดิม + เงินก้อน โตเอง) */}
-                  <Line type="monotone" dataKey="selfNo" name={`${selfName} (ไม่ออมเพิ่ม)`} stroke={CY} strokeWidth={1.8} strokeDasharray="5 4" dot={false} connectNulls />
-                  {hasSpouse && <Line type="monotone" dataKey="spouseNo" name={`${spouseName} (ไม่ออมเพิ่ม)`} stroke={VI} strokeWidth={1.8} strokeDasharray="5 4" dot={false} connectNulls />}
+                  {/* สถานการณ์ "ไม่ออมเพิ่ม" — เส้นประ ตัดที่จุดเงินหมด (ไม่ connectNulls เพื่อให้จบที่ 0) */}
+                  <Line type="monotone" dataKey="selfNo" name={`${selfName} (ไม่ออมเพิ่ม)`} stroke={CY} strokeWidth={1.8} strokeDasharray="5 4" dot={false} />
+                  {hasSpouse && <Line type="monotone" dataKey="spouseNo" name={`${spouseName} (ไม่ออมเพิ่ม)`} stroke={VI} strokeWidth={1.8} strokeDasharray="5 4" dot={false} />}
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
