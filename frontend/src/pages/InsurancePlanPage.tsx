@@ -79,6 +79,65 @@ export const defaultPlan = (): PersonPlan => ({
   selectedMethod: 'needs',
 })
 
+/* ══════════════════════════════════════════════════════════════════════════
+   สูตรคำนวณทุนประกันกลาง (HLV + Needs-Based) — source of truth เดียว
+   ใช้ร่วมทั้งหน้าวางแผนประกัน (PersonPanel) และ useInsuranceReadiness/สไลด์นำเสนอ
+   กัน drift · รับ "ค่าดึงอัตโนมัติ" ที่ resolve แล้วเป็น input
+   ══════════════════════════════════════════════════════════════════════════ */
+export interface InsuranceAutos {
+  autoIncome: number
+  workingYears: number
+  autoDebt: number
+  autoAssets: { investment: number; deposit: number; insurance: number; severance: number }
+  autoDeduct: { ss: number; pvd: number; savings: number; insurance: number; tax: number }
+  autoYears: number
+  preRetReturn: number
+}
+const INS_AUTO_LABELS = /ประกันสังคม|สำรองเลี้ยงชีพ|เงินออม|RMF|SSF|ThaiESG|เบี้ยประกัน|ภาษี/i
+
+export function computeInsurance(plan: PersonPlan, a: InsuranceAutos) {
+  const income = plan.income || a.autoIncome
+  const coverageYears = plan.years || a.autoYears
+  const manualSum = (items: Item[]) => (items ?? []).filter(it => !INS_AUTO_LABELS.test(it.label)).reduce((s, it) => s + toNum(it.amount), 0)
+
+  // Human Life Value
+  const hlvAuto = a.autoDeduct.ss + a.autoDeduct.pvd + a.autoDeduct.savings + a.autoDeduct.insurance + a.autoDeduct.tax
+  const hlvSelf = hlvAuto + manualSum(plan.hlvDeduct)
+  const hlvNetIncome = Math.max(0, income - hlvSelf)
+  const hlvReal = (1 + a.preRetReturn / 100) / (1 + plan.hlvGrowth / 100) - 1
+  const hlv = pvAnnuity(hlvReal, a.workingYears, hlvNetIncome)
+
+  // Needs-Based
+  const needOthersSum = (plan.needOthers ?? []).reduce((s, it) => s + toNum(it.amount), 0)
+  const familyExpense = toNum(plan.needFamilyExpense) + toNum(plan.needParentCare) + toNum(plan.needChildCare) + needOthersSum
+  const realRate = (1 + a.preRetReturn / 100) / (1 + plan.incomeGrowth / 100) - 1
+  const familyIncomePV = pvAnnuity(realRate, coverageYears, familyExpense)
+  const manualDebt = plan.debts.reduce((s, it) => s + toNum(it.amount), 0)
+  const sumDebt = manualDebt + a.autoDebt
+  const coverageNeed = familyIncomePV + sumDebt
+
+  // สินทรัพย์ที่มี (หักออก)
+  const manualAssets = plan.assets.reduce((s, it) => s + toNum(it.amount), 0)
+  const severancePV = a.workingYears > 0 ? a.autoAssets.severance / Math.pow(1 + a.preRetReturn / 100, a.workingYears) : a.autoAssets.severance
+  const autoAssetTotal = a.autoAssets.investment + a.autoAssets.deposit + a.autoAssets.insurance + severancePV
+  const sumAssets = manualAssets + autoAssetTotal
+
+  const hlvCoverage = hlv + sumDebt
+  const hlvNet = Math.max(0, hlvCoverage - sumAssets)
+  const netNeed = Math.max(0, coverageNeed - sumAssets)
+
+  const method: 'hlv' | 'needs' = plan.selectedMethod ?? 'needs'
+  const recommendedNeed = method === 'hlv' ? hlvCoverage : coverageNeed   // "ทุนที่ควรมี" ตามวิธีที่เลือก
+  const recommendedNet = method === 'hlv' ? hlvNet : netNeed
+
+  return {
+    income, coverageYears, hlvAuto, hlvSelf, hlvNetIncome, hlvReal, hlv,
+    familyExpense, realRate, familyIncomePV, manualDebt, sumDebt, coverageNeed,
+    manualAssets, severancePV, autoAssetTotal, sumAssets, hlvCoverage, hlvNet, netNeed,
+    method, recommendedNeed, recommendedNet,
+  }
+}
+
 /* ── small components ── */
 const card: React.CSSProperties = { background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 2px rgba(0,0,0,0.22)' }
 const numInp: React.CSSProperties = { width: 130, padding: '5px 8px', textAlign: 'right', background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 6, color: 'var(--cyan)', fontSize: 13, fontWeight: 500, outline: 'none', fontFamily: 'monospace' }
@@ -198,37 +257,14 @@ function ResultCard({ label, value, accent, note }: { label: string; value: numb
 /* ── per-person panel: HLV | Needs-Based ── */
 function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoAssets, autoTPD, autoDeduct, autoYears, youngestAge, preRetReturn }: { plan: PersonPlan; onChange: (p: PersonPlan) => void; color: string; autoIncome: number; workingYears: number; autoDebt: number; autoAssets: { investment: number; deposit: number; insurance: number; severance: number }; autoTPD: number; autoDeduct: { ss: number; pvd: number; savings: number; insurance: number; tax: number }; autoYears: number; youngestAge: number | null; preRetReturn: number }) {
   const set = <K extends keyof PersonPlan>(k: K, v: PersonPlan[K]) => onChange({ ...plan, [k]: v })
-  const income = plan.income || autoIncome
-  const coverageYears = plan.years || autoYears   // 0 = ใช้ค่าจากอายุบุตรคนเล็ก
 
-  // นับเฉพาะรายการที่กรอกเอง (ตัดรายการที่ดึงอัตโนมัติออก กันนับซ้ำกับ auto rows)
-  const AUTO_LABELS = /ประกันสังคม|สำรองเลี้ยงชีพ|เงินออม|RMF|SSF|ThaiESG|เบี้ยประกัน|ภาษี/i
-  const manualSum = (items: Item[]) => items.filter(it => !AUTO_LABELS.test(it.label)).reduce((s, it) => s + toNum(it.amount), 0)
-
-  // ── Human Life Value ── (หักค่าใช้จ่ายเฉพาะตัว + ค่าใช้จ่ายจากการทำงาน:
-  //   ปกส + PVD + กองทุนลดหย่อนภาษี + เบี้ยประกันตนเอง + ภาษี [auto] + ส่วนตัว/อื่นๆ [manual])
-  const hlvAuto = autoDeduct.ss + autoDeduct.pvd + autoDeduct.savings + autoDeduct.insurance + autoDeduct.tax
-  const hlvSelf = hlvAuto + manualSum(plan.hlvDeduct)
-  const hlvNetIncome = Math.max(0, income - hlvSelf)
-  const hlvReal = (1 + preRetReturn / 100) / (1 + plan.hlvGrowth / 100) - 1   // อัตราผลตอบแทนก่อนเกษียณ (i) กับ อัตราการเพิ่มของรายได้ (g)
-  const hlv = pvAnnuity(hlvReal, workingYears, hlvNetIncome)
-
-  // ── Needs-Based ส่วนที่ 1 ── รวมค่าใช้จ่ายที่ครอบครัวต้องการต่อปี (กรอกเอง) → คิดมูลค่าปัจจุบันด้วย real rate × จำนวนปีคุ้มครอง
-  const needOthersSum = (plan.needOthers ?? []).reduce((s, it) => s + toNum(it.amount), 0)
-  const familyExpense = toNum(plan.needFamilyExpense) + toNum(plan.needParentCare) + toNum(plan.needChildCare) + needOthersSum
-  const realRate = (1 + preRetReturn / 100) / (1 + plan.incomeGrowth / 100) - 1   // อัตราผลตอบแทนก่อนเกษียณ (i) ปรับด้วยอัตราการเพิ่มของรายได้ (g)
-  const familyIncomePV = pvAnnuity(realRate, coverageYears, familyExpense)
-  const manualDebt = plan.debts.reduce((s, it) => s + toNum(it.amount), 0)
-  const sumDebt = manualDebt + autoDebt
-  const coverageNeed = familyIncomePV + sumDebt   // การศึกษา/ค่าใช้จ่ายสุดท้าย กรอกเป็น "ค่าใช้จ่ายอื่นๆ" ในส่วนที่ 1 ได้
-  const manualAssets = plan.assets.reduce((s, it) => s + toNum(it.amount), 0)
-  // เงินชดเชยฯ = มูลค่า ณ วันเกษียณ (FV) → คิดลดกลับเป็นมูลค่าปัจจุบันด้วยอัตราผลตอบแทน i (ลงทุน/ประกันเป็นมูลค่าปัจจุบันอยู่แล้ว)
-  const severancePV = workingYears > 0 ? autoAssets.severance / Math.pow(1 + preRetReturn / 100, workingYears) : autoAssets.severance
-  const autoAssetTotal = autoAssets.investment + autoAssets.deposit + autoAssets.insurance + severancePV
-  const sumAssets = manualAssets + autoAssetTotal
-  const hlvCoverage = hlv + sumDebt   // ทุนที่ควรมี (HLV) = มูลค่าปัจจุบันของรายได้ + หนี้สินคงค้าง (ชุดเดียวกับ Needs-Based)
-  const hlvNet = Math.max(0, hlvCoverage - sumAssets)   // HLV สุทธิ = ทุนที่ต้องการ − สินทรัพย์ที่มี
-  const netNeed = Math.max(0, coverageNeed - sumAssets)
+  // สูตรคำนวณกลาง (ใช้ร่วมกับ useInsuranceReadiness/สไลด์นำเสนอ กัน drift)
+  const C = computeInsurance(plan, { autoIncome, workingYears, autoDebt, autoAssets, autoDeduct, autoYears, preRetReturn })
+  const {
+    income, coverageYears, hlvAuto, hlvNetIncome, hlvReal, hlv, hlvSelf,
+    familyExpense, realRate, familyIncomePV, sumDebt, coverageNeed,
+    severancePV, sumAssets, hlvCoverage, hlvNet, netNeed,
+  } = C
 
   // ── กรณีทุพพลภาพ ── หักเฉพาะค่าใช้จ่ายจากการทำงาน (เหมือน HLV) แต่ไม่หักค่าใช้จ่ายส่วนตัว
   //   (ทุพพลภาพยังมีชีวิต ยังต้องใช้จ่ายส่วนตัว → รายได้ที่สูญเสีย = รายได้ − ค่าใช้จ่ายจากการทำงานเท่านั้น)

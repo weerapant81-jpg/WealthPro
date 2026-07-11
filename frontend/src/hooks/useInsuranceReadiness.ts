@@ -1,55 +1,84 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { pvAnnuity, defaultPlan, type PersonPlan } from '../pages/InsurancePlanPage'
+import { computeInsurance, defaultPlan, type PersonPlan } from '../pages/InsurancePlanPage'
+import { calc as calcTaxPlan, defaultState as defaultTaxState } from '../lib/tax'
 
 const toNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
 
-/** ความคุ้มครองประกัน (Needs-based) — reuse calc + auto-pull เดียวกับหน้าวางแผนประกัน (กัน drift)
+/** ความคุ้มครองประกันชีวิต — reuse สูตรกลาง computeInsurance + auto-pull เดียวกับหน้าวางแผนประกัน (กัน drift)
+ *  "ทุนที่ควรมี" = ตามวิธีที่เลือก (selectedMethod: HLV หรือ Needs-Based)
  *  คืน { need, have, gap, coveragePct, existingInsurance } หรือ null ถ้ายังไม่มีข้อมูลพอ */
 export function useInsuranceReadiness(person: 'client' | 'spouse') {
-  const key = person === 'spouse' ? 'spouse' : 'self'
+  const key: 'self' | 'spouse' = person === 'spouse' ? 'spouse' : 'self'
   const { data: clientProfile } = useQuery({ queryKey: ['client-profile'], queryFn: () => api.get('/client-profile').then(r => r.data), retry: false })
+  const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: () => api.get('/profile').then(r => r.data), retry: false })
   const { data: saved } = useQuery({ queryKey: ['insurance-plan'], queryFn: () => api.get('/insurance-plan').then(r => r.data), retry: false })
-  const { data: liabilities } = useQuery({ queryKey: ['liabilities'], queryFn: () => api.get('/liabilities').then(r => r.data), retry: false })
+  const { data: liabilities } = useQuery({ queryKey: ['liabilities', key], queryFn: () => api.get('/liabilities', { params: { person: key } }).then(r => r.data), retry: false })
   const { data: invProfile } = useQuery({ queryKey: ['investment-profile'], queryFn: () => api.get('/investment-profile').then(r => r.data), retry: false })
   const { data: lifePolicies } = useQuery({ queryKey: ['life-insurances'], queryFn: () => api.get('/life-insurances').then(r => r.data), retry: false })
   const { data: sevPlan } = useQuery({ queryKey: ['severance-plan'], queryFn: () => api.get('/severance-plan').then(r => r.data), retry: false })
+  const { data: expenses } = useQuery({ queryKey: ['expenses', key], queryFn: () => api.get('/expenses', { params: { person: key } }).then(r => r.data), retry: false })
+  const { data: taxPlan } = useQuery({ queryKey: ['tax-plan'], queryFn: () => api.get('/tax-plan').then(r => r.data), retry: false })
 
-  // auto-pull (mirror InsurancePlanPage)
+  // ── auto-pull (mirror InsurancePlanPage main component) ──
   const spouseJob = Array.isArray(clientProfile?.spouseJobs) ? clientProfile.spouseJobs[0] : null
+  const annualIncomeFrom = (src: any): number => {
+    const arr = Array.isArray(src) ? src : []
+    const monthly = arr.filter((s: any) => toNum(s.amount) > 0)
+      .reduce((sum: number, s: any) => sum + (s.label === 'โบนัส' ? toNum(s.amount) / 12 : toNum(s.amount)), 0)
+    return monthly * 12
+  }
   const autoIncome = key === 'self'
-    ? toNum(clientProfile?.salary) * 12
-    : (toNum(spouseJob?.salary) || toNum(clientProfile?.spouseIncome)) * 12
-  const autoDebt = Array.isArray(liabilities) ? liabilities.reduce((s: number, l: any) => s + toNum(l.balance), 0) : 0
-  const autoInvest = (Array.isArray(invProfile?.investmentAssets) ? invProfile.investmentAssets.reduce((s: number, a: any) => s + toNum(a.currentValue), 0) : 0)
-    + (Array.isArray(invProfile?.savingsAccounts) ? invProfile.savingsAccounts.reduce((s: number, a: any) => s + toNum(a.currentValue), 0) : 0)
+    ? annualIncomeFrom(clientProfile?.incomeSources) || toNum(clientProfile?.salary) * 12
+    : annualIncomeFrom(clientProfile?.spouseIncomeSources) || (toNum(spouseJob?.salary) || toNum(clientProfile?.spouseIncome)) * 12
+
+  const selfAge = clientProfile?.birthDate ? new Date().getFullYear() - new Date(clientProfile.birthDate).getFullYear() : null
+  const currentAge = key === 'self' ? selfAge : (clientProfile?.spouseAge ?? null)
+  const retAge = (key === 'self' ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? 60
+  const workingYears = currentAge != null ? Math.max(0, retAge - currentAge) : 25
+  const preRetReturn = profile?.preRetirementReturn ?? 4
+
+  const invSrc: any = key === 'self' ? invProfile : (invProfile?.spouseData ?? {})
+  const profileDebt = Array.isArray(invSrc?.liabilities) ? invSrc.liabilities.reduce((s: number, l: any) => s + toNum(l.currentBalance), 0) : 0
+  const tableDebt = Array.isArray(liabilities) ? liabilities.reduce((s: number, l: any) => s + toNum(l.balance), 0) : 0
+  const autoDebt = profileDebt + tableDebt
+  const autoInvestment = Array.isArray(invSrc?.investmentAssets) ? invSrc.investmentAssets.reduce((s: number, a: any) => s + toNum(a.currentValue), 0) : 0
+  const autoDeposit = Array.isArray(invSrc?.savingsAccounts) ? invSrc.savingsAccounts.reduce((s: number, a: any) => s + toNum(a.currentValue), 0) : 0
   const personName = key === 'self' ? (clientProfile?.firstName ?? '') : (clientProfile?.spouseProfile?.firstName ?? '###')
   const personPolicies = Array.isArray(lifePolicies) ? lifePolicies.filter((p: any) => (p.insuredPerson || '').includes(personName)) : []
   const autoInsurance = personPolicies.reduce((s: number, p: any) => s + toNum(p.sumAssured), 0)
   const autoSeverance = toNum(sevPlan?.[key]?.netSeverance)
+  const autoAssets = { investment: autoInvestment, deposit: autoDeposit, insurance: autoInsurance, severance: autoSeverance }
+
+  // ค่าหักอัตโนมัติ 5 รายการ (ปกส/PVD/กองทุนออม/เบี้ยประกันตนเอง/ภาษี)
+  const toAnnual = (amount: number, freq: string) => freq === 'MONTHLY' ? amount * 12 : amount
+  const welfare: any = key === 'self' ? clientProfile : clientProfile?.spouseProfile
+  const monthlySalary = key === 'self' ? toNum(clientProfile?.salary) : (toNum(spouseJob?.salary) || toNum(clientProfile?.spouseIncome))
+  const autoSS = welfare?.hasSocialSecurity ? Math.min(monthlySalary, 17500) * 0.05 * 12 : 0
+  const autoPVD = welfare?.hasPVD ? monthlySalary * (toNum(welfare?.pvdEmployeeRate) / 100) * 12 : 0
+  const autoSavings = Array.isArray(expenses)
+    ? expenses.filter((e: any) => String(e.category).startsWith('saving_')).reduce((s: number, e: any) => s + toAnnual(e.amount, e.frequency), 0) : 0
+  const lifePremiumAnnual = personPolicies.reduce((s: number, p: any) => s + toNum(p.premium), 0)
+  const healthPremiumAnnual = Array.isArray(expenses)
+    ? expenses.filter((e: any) => e.category === 'fixed_health_ins').reduce((s: number, e: any) => s + toAnnual(e.amount, e.frequency), 0) : 0
+  const autoTax = taxPlan?.[key] ? calcTaxPlan({ ...defaultTaxState(), ...taxPlan[key] }).tax : 0
+  const autoDeduct = { ss: autoSS, pvd: autoPVD, savings: autoSavings, insurance: lifePremiumAnnual + healthPremiumAnnual, tax: autoTax }
+
+  // ระยะเวลาความคุ้มครอง (จนบุตรคนเล็กพึ่งตัวเองได้ 22 − อายุ · ไม่มีบุตร → ปีทำงาน)
+  const children = Array.isArray(clientProfile?.children) ? clientProfile.children : []
+  const childAges = children.map((c: any) => toNum(c.age)).filter((a: number) => a > 0)
+  const youngestAge = childAges.length ? Math.min(...childAges) : null
+  const autoYears = youngestAge != null ? Math.max(1, 22 - youngestAge) : (workingYears || 20)
 
   const plan: PersonPlan = { ...defaultPlan(), ...(saved?.[key] ?? {}) }
-  const income = plan.income || autoIncome
-  if (!(income > 0)) return null
+  const C = computeInsurance(plan, { autoIncome, workingYears, autoDebt, autoAssets, autoDeduct, autoYears, preRetReturn })
 
-  // Needs-based (mirror PersonPanel)
-  const sumDeduct = plan.deductions.reduce((s, it) => s + toNum(it.amount), 0)
-  const familyExpense = Math.max(0, income - sumDeduct)
-  const realRate = (1 + plan.returnRate / 100) / (1 + plan.incomeGrowth / 100) - 1
-  const familyIncomePV = pvAnnuity(realRate, plan.years, familyExpense)
-  const manualDebt = plan.debts.reduce((s, it) => s + toNum(it.amount), 0)
-  const sumDebt = manualDebt + autoDebt
-  const coverageNeed = familyIncomePV + sumDebt + toNum(plan.education) + toNum(plan.finalExpense)
-  const manualAssets = plan.assets.reduce((s, it) => s + toNum(it.amount), 0)
-  const sumAssets = manualAssets + autoInvest + autoInsurance + autoSeverance
-  const netNeed = Math.max(0, coverageNeed - sumAssets)
-
-  if (!(coverageNeed > 0)) return null
+  if (!(C.income > 0) || !(C.recommendedNeed > 0)) return null
   return {
-    need: coverageNeed,
-    have: sumAssets,
-    gap: netNeed,
+    need: C.recommendedNeed,
+    have: C.sumAssets,
+    gap: C.recommendedNet,
     existingInsurance: autoInsurance,
-    coveragePct: Math.max(0, Math.min(100, Math.round((sumAssets / coverageNeed) * 100))),
+    coveragePct: Math.max(0, Math.min(100, Math.round((C.sumAssets / C.recommendedNeed) * 100))),
   }
 }
