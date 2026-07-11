@@ -428,12 +428,12 @@ function CommentDialog({ title, value, onSave, onClose }: { title: string; value
   }
   return (
     <div className="no-print" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', gap: 12, transform: `translate(${pos.x}px, ${pos.y}px)`, boxShadow: 'var(--shadow)' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 784, background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', gap: 12, transform: `translate(${pos.x}px, ${pos.y}px)`, boxShadow: 'var(--shadow)' }}>
         <div onMouseDown={onDragStart} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'move', userSelect: 'none' }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><GripVertical size={16} style={{ color: 'var(--text-muted)' }} />คำแนะนำ · {title}</h3>
           <button onClick={onClose} onMouseDown={e => e.stopPropagation()} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
         </div>
-        <textarea value={text} onChange={e => setText(e.target.value)} autoFocus rows={7}
+        <textarea value={text} onChange={e => setText(e.target.value)} autoFocus rows={10}
           placeholder="เขียนคำแนะนำ/ข้อสังเกตของแผนด้านนี้..."
           style={{ width: '100%', boxSizing: 'border-box', padding: '11px 13px', background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 9, color: 'var(--text-primary)', fontSize: 14, lineHeight: 1.6, outline: 'none', resize: 'vertical', fontFamily: 'inherit' }} />
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
