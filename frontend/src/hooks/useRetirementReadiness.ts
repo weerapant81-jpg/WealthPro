@@ -27,6 +27,8 @@ export function useRetirementReadiness(person: 'client' | 'spouse') {
   const assetAtRetirement = projectedAsset ?? 0
 
   const res = calcPerson(data, assetAtRetirement, extraAssets)
+  // สถานการณ์ "ไม่ออมเพิ่ม" — สินทรัพย์เดิม + เงินก้อน (ปกส./PVD/ชดเชย) โตเอง ไม่มีเงินออมสะสมใหม่
+  const resNoSave = calcPerson(data, assetAtRetirement, extraAssets, undefined, undefined, true)
   const have = assetAtRetirement + extraAssets
   const needed = res.totalNeeded
   if (!(needed > 0)) return null
@@ -34,6 +36,6 @@ export function useRetirementReadiness(person: 'client' | 'spouse') {
     needed, have, gap: res.gap, annualSavings: res.annualSavings,
     readinessPct: Math.max(0, Math.min(100, Math.round((have / needed) * 100))),
     sources: { asset: assetAtRetirement, sso: ssoPV, pvd: pvdAtRetire, severance: sevNet },
-    retireAge, projectionRows: res.projectionRows,
+    retireAge, projectionRows: res.projectionRows, projectionRowsNoSave: resNoSave.projectionRows,
   }
 }

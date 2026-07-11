@@ -778,7 +778,8 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
     const map = new Map<number, any>()
     const add = (rows: any[] | undefined, key: string) => (rows ?? []).forEach((r: any) => { const o = map.get(r.age) || { age: r.age }; o[key] = val(r); map.set(r.age, o) })
     add(retSelf?.projectionRows, 'self')
-    if (hasSpouse) add(retSpouse?.projectionRows, 'spouse')
+    add(retSelf?.projectionRowsNoSave, 'selfNo')          // สถานการณ์ไม่ออมเพิ่ม
+    if (hasSpouse) { add(retSpouse?.projectionRows, 'spouse'); add(retSpouse?.projectionRowsNoSave, 'spouseNo') }
     return [...map.values()].sort((a, b) => a.age - b.age)
   }, [retSelf, retSpouse, hasSpouse])
 
@@ -1312,6 +1313,9 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                   {retSelf?.retireAge != null && <ReferenceLine x={retSelf.retireAge} stroke={AM} strokeDasharray="4 4" label={{ value: `เกษียณ ${retSelf.retireAge}`, position: 'insideTopRight', fill: AM, fontSize: 10 }} />}
                   <Area type="monotone" dataKey="self" name={selfName} stroke={CY} strokeWidth={2.4} fill="url(#pdRetSelf)" dot={false} />
                   {hasSpouse && <Line type="monotone" dataKey="spouse" name={spouseName} stroke={VI} strokeWidth={2.2} dot={false} />}
+                  {/* สถานการณ์ "ไม่ออมเพิ่ม" — เส้นประ (สินทรัพย์เดิม + เงินก้อน โตเอง) */}
+                  <Line type="monotone" dataKey="selfNo" name={`${selfName} (ไม่ออมเพิ่ม)`} stroke={CY} strokeWidth={1.8} strokeDasharray="5 4" dot={false} connectNulls />
+                  {hasSpouse && <Line type="monotone" dataKey="spouseNo" name={`${spouseName} (ไม่ออมเพิ่ม)`} stroke={VI} strokeWidth={1.8} strokeDasharray="5 4" dot={false} connectNulls />}
                 </ComposedChart>
               </ResponsiveContainer>
             </div>

@@ -124,7 +124,7 @@ function pvGoal(g: Goal, yearsToRet: number, yearsAfter: number, infRate: number
   return pv
 }
 
-export function calcPerson(p: Person, assetAtRetirement: number, extraAssets = 0, assetReturnPct?: number, existingAssetByAge?: Map<number, number>): CalcResult {
+export function calcPerson(p: Person, assetAtRetirement: number, extraAssets = 0, assetReturnPct?: number, existingAssetByAge?: Map<number, number>, noNewSavings = false): CalcResult {
   const yearsTo = Math.max(0, p.retirementAge - p.currentAge)
   // ปีสุดท้ายที่ออมได้คืออายุ (เกษียณ − 1) — พอถึงปีเกษียณไม่มีรายได้ออมแล้ว
   const saveYears = Math.max(0, yearsTo - 1)
@@ -151,11 +151,13 @@ export function calcPerson(p: Person, assetAtRetirement: number, extraAssets = 0
   // ออมงวดสุดท้ายที่อายุ (เกษียณ − 1) แล้วโตอีก 1 ปีจนครบ ณ วันเกษียณ → ตัวคูณ = fvAnnuity(saveYears) × (1+i)
   const dueFactor = fvAnnuity(i, saveYears, 1) * (1 + i)
   const annualSavings = (gap > 0 && dueFactor > 0) ? gap / dueFactor : 0
+  // สถานการณ์ "ไม่ออมเพิ่ม" → เงินออมสะสม = 0 (ดูว่าสินทรัพย์เดิม + เงินก้อนพอไหม)
+  const savingsAnnual = noNewSavings ? 0 : annualSavings
   // มูลค่าเงินออมสะสม ณ อายุ A: ออมจนถึงอายุ (เกษียณ−1) จากนั้นปล่อยให้โตอย่างเดียว
   const savAt = (yr: number) => {
     if (yr <= 0) return 0
-    if (yr <= saveYears) return fvAnnuity(i, yr, annualSavings)
-    return fvAnnuity(i, saveYears, annualSavings) * Math.pow(1 + i, yr - saveYears)
+    if (yr <= saveYears) return fvAnnuity(i, yr, savingsAnnual)
+    return fvAnnuity(i, saveYears, savingsAnnual) * Math.pow(1 + i, yr - saveYears)
   }
   const savedFVAtRetire = savAt(yearsTo)
 
