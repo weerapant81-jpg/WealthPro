@@ -94,7 +94,7 @@ export default function UserProfilePage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 920 }}>
       {/* Header */}
-      <PageHeader icon={UserCog} title="ปรับแต่งข้อมูลผู้ใช้" subtitle="ข้อมูลนี้จะนำไปแสดงในเอกสารแผนการเงินที่สั่งพิมพ์"
+      <PageHeader icon={UserCog} title="ตั้งค่าผู้ใช้" subtitle="ข้อมูลนี้จะนำไปแสดงในเอกสารแผนการเงินที่สั่งพิมพ์"
         right={
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}>
             {status === 'saving' && <><Loader2 size={14} className="up-spin" color="var(--text-muted)" /><span style={{ color: 'var(--text-muted)' }}>กำลังบันทึก...</span></>}

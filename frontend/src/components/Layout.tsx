@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import { useClient } from '../context/ClientContext'
 import { logout } from '../lib/auth'
 import CopilotWidget from './CopilotWidget'
-import { LayoutDashboard, Target, Settings, LogOut, ClipboardList, ClipboardCheck, ShieldCheck, Calculator, Users, RefreshCw, Sun, Moon, UserCog, Menu, ChevronLeft, ChevronRight, ChevronDown, User, Shield, TrendingUp, Wallet, Activity, Briefcase, Scale, HeartPulse, GraduationCap, CalendarRange, ScrollText, Search, ArrowRight, FileText, BookOpen } from 'lucide-react'
+import { LayoutDashboard, Target, Settings, LogOut, ClipboardList, ClipboardCheck, ShieldCheck, Calculator, Users, RefreshCw, Sun, Moon, UserCog, Menu, ChevronLeft, ChevronRight, ChevronDown, User, Shield, TrendingUp, Wallet, Activity, Briefcase, Scale, HeartPulse, GraduationCap, CalendarRange, ScrollText, Receipt, Search, ArrowRight, FileText, BookOpen } from 'lucide-react'
 
 // เมนูย่อยของ "ข้อมูลลูกค้า" (ขับแท็บด้วย ?tab=)
 const CLIENT_TABS = [
@@ -28,6 +28,7 @@ const FINANCIAL_TABS = [
   { tab: 'education', icon: GraduationCap, label: 'ทุนการศึกษาบุตร' },
   { tab: 'insurance', icon: HeartPulse, label: 'วางแผนประกัน' },
   { tab: 'retirement', icon: Target, label: 'วางแผนเกษียณ' },
+  { tab: 'tax', icon: Receipt, label: 'วางแผนภาษี' },
   { tab: 'estate', icon: ScrollText, label: 'วางแผนมรดก' },
 ]
 // พาธที่มีเมนูย่อย
@@ -47,7 +48,6 @@ const nav = [
   { to: '/client', icon: ClipboardList, label: 'ข้อมูลลูกค้า' },
   { to: '/financial-plan', icon: Target, label: 'วางแผนการเงิน' },
   { to: '/action-plan', icon: ClipboardCheck, label: 'แผนปฏิบัติการ' },
-  { to: '/tax', icon: Calculator, label: 'วางแผนภาษี' },
   { to: '/forward-cashflow', icon: CalendarRange, label: 'งบการเงินล่วงหน้า' },
   { to: '/calculator', icon: Calculator, label: 'เครื่องคิดเลข' },
   { to: '/settings', icon: Settings, label: 'สมมติฐาน' },
@@ -204,22 +204,22 @@ export default function Layout({ children }: { children: ReactNode }) {
         })}
       </nav>
 
-      {/* ปรับแต่งข้อมูลผู้ใช้ — ล่างสุด */}
-      <div style={{ borderTop: '1px solid var(--card-border)', padding: asRail ? '8px 8px 4px' : '8px 12px 4px' }}>
-        <NavLink to="/user-profile" title={asRail ? 'ปรับแต่งข้อมูลผู้ใช้' : undefined}
-          onClick={() => setDrawerOpen(false)}
-          style={({ isActive }) => linkStyle(isActive, asRail)}>
-          <UserCog size={18} />{!asRail && 'ปรับแต่งข้อมูลผู้ใช้'}
-        </NavLink>
-      </div>
-
-      {/* Collapse toggle (จอกว้างเท่านั้น) */}
+      {/* Collapse toggle (จอกว้างเท่านั้น) — อยู่เหนือ "ตั้งค่าผู้ใช้" */}
       {canToggle && (
         <button onClick={() => setCollapsed(c => !c)} title={collapsed ? 'ขยายเมนู' : 'พับเมนู'}
           style={{ display: 'flex', alignItems: 'center', justifyContent: asRail ? 'center' : 'flex-start', gap: 8, padding: asRail ? '12px 0' : '11px 16px', margin: 8, borderRadius: 10, background: 'none', border: '1px solid var(--card-border)', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12.5 }}>
           {collapsed ? <ChevronRight size={16} /> : <><ChevronLeft size={16} /> พับเมนู</>}
         </button>
       )}
+
+      {/* ตั้งค่าผู้ใช้ — ล่างสุด */}
+      <div style={{ borderTop: '1px solid var(--card-border)', padding: asRail ? '8px 8px 4px' : '8px 12px 4px' }}>
+        <NavLink to="/user-profile" title={asRail ? 'ตั้งค่าผู้ใช้' : undefined}
+          onClick={() => setDrawerOpen(false)}
+          style={({ isActive }) => linkStyle(isActive, asRail)}>
+          <UserCog size={18} />{!asRail && 'ตั้งค่าผู้ใช้'}
+        </NavLink>
+      </div>
 
       {/* เอกสารกฎหมาย (เหนือ copyright) */}
       <button onClick={() => { navigate('/privacy'); setDrawerOpen(false) }} title="นโยบายความเป็นส่วนตัว"

@@ -3,9 +3,10 @@ import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { Target, GraduationCap, HeartPulse, TrendingUp, Shield, Briefcase, Scale, ScrollText, User, Users } from 'lucide-react'
+import { Target, GraduationCap, HeartPulse, TrendingUp, Shield, Briefcase, Scale, ScrollText, Receipt, User, Users } from 'lucide-react'
 import RetirementPlanPage from './RetirementPlanPage'
 import EstatePlanPage from './EstatePlanPage'
+import TaxPlanningPage from './TaxPlanningPage'
 import { PageHeader } from '../components/ui'
 import { WizardNav } from '../components/WizardNav'
 import EducationPlanPage from './EducationPlanPage'
@@ -25,6 +26,7 @@ const TABS = [
   { key: 'education', label: 'ทุนการศึกษาบุตร', icon: GraduationCap, Comp: EducationPlanPage, proj: false, hasPerson: false },
   { key: 'insurance', label: 'วางแผนประกัน', icon: HeartPulse, Comp: InsurancePlanPage, proj: false, hasPerson: true },
   { key: 'retirement', label: 'วางแผนเกษียณ', icon: Target, Comp: RetirementPlanPage, proj: false, hasPerson: true },
+  { key: 'tax', label: 'วางแผนภาษี', icon: Receipt, Comp: TaxPlanningPage, proj: false, hasPerson: false },
   { key: 'estate', label: 'วางแผนมรดก', icon: ScrollText, Comp: EstatePlanPage, proj: false, hasPerson: true },
 ] as const
 
