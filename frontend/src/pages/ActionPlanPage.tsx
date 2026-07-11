@@ -20,8 +20,10 @@ type Item = {
   source: string; autoKey: string | null; completedAt: string | null; subPlan: SubRow[] | null
 }
 type SubRow = Record<string, any>
-type SubCol = { key: string; label: string; type: 'text' | 'money' | 'date'; placeholder?: string; flex?: boolean }
+type SubCol = { key: string; label: string; type: 'text' | 'money' | 'date' | 'select'; placeholder?: string; flex?: boolean; options?: string[] }
 type SubConfig = { title: string; accent: string; cols: SubCol[] }
+const OWNER_OPTIONS = ['ลูกค้า', 'คู่สมรส', 'ที่ปรึกษา', 'ร่วม']
+const ownerCol: SubCol = { key: 'owner', label: 'ผู้รับผิดชอบ', type: 'select', options: OWNER_OPTIONS }
 const SUBPLAN_CONFIG: Record<string, SubConfig> = {
   liquidity: {
     title: 'แผนบริหารสภาพคล่อง', accent: '#06b6d4',
@@ -29,6 +31,7 @@ const SUBPLAN_CONFIG: Record<string, SubConfig> = {
       { key: 'method', label: 'วิธีการ', type: 'text', placeholder: 'เช่น กันเงินอัตโนมัติทุกเดือน · ลดค่าใช้จ่ายฟุ่มเฟือย', flex: true },
       { key: 'tool', label: 'เครื่องมือ', type: 'text', placeholder: 'เช่น บัญชีดอกเบี้ยสูง · กองทุนตลาดเงิน' },
       { key: 'amount', label: 'จำนวนเงิน/เดือน', type: 'money' },
+      ownerCol,
       { key: 'schedule', label: 'กำหนดการ', type: 'date' },
     ],
   },
@@ -38,6 +41,7 @@ const SUBPLAN_CONFIG: Record<string, SubConfig> = {
       { key: 'desc', label: 'แผนปฏิบัติการ', type: 'text', placeholder: 'เช่น ซื้อประกันชีวิตแบบ 20 pay life', flex: true },
       { key: 'sumInsured', label: 'ทุนประกัน', type: 'money' },
       { key: 'premium', label: 'เบี้ยประกัน', type: 'money' },
+      ownerCol,
       { key: 'schedule', label: 'กำหนดการ', type: 'date' },
     ],
   },
@@ -47,6 +51,7 @@ const SUBPLAN_CONFIG: Record<string, SubConfig> = {
       { key: 'desc', label: 'แผนปฏิบัติการ', type: 'text', placeholder: 'เช่น ลงทุนในกองทุนรวม', flex: true },
       { key: 'assetType', label: 'ประเภทสินทรัพย์', type: 'text', placeholder: 'RMF / SSF / หุ้น' },
       { key: 'amount', label: 'จำนวนเงิน', type: 'money' },
+      ownerCol,
       { key: 'schedule', label: 'กำหนดการ', type: 'date' },
     ],
   },
@@ -56,6 +61,7 @@ const SUBPLAN_CONFIG: Record<string, SubConfig> = {
       { key: 'desc', label: 'แผนปฏิบัติการ', type: 'text', placeholder: 'เช่น ทยอยลงทุนเพื่อการศึกษา', flex: true },
       { key: 'assetType', label: 'ประเภทสินทรัพย์', type: 'text', placeholder: 'กองทุนรวม / สลาก / ประกันสะสมทรัพย์' },
       { key: 'amount', label: 'จำนวนเงิน', type: 'money' },
+      ownerCol,
       { key: 'schedule', label: 'กำหนดการ', type: 'date' },
     ],
   },
@@ -64,6 +70,7 @@ const SUBPLAN_CONFIG: Record<string, SubConfig> = {
     cols: [
       { key: 'who', label: 'ใคร', type: 'text', placeholder: 'เช่น ลูกค้า / ทนายความ' },
       { key: 'desc', label: 'ทำอะไร', type: 'text', placeholder: 'เช่น จัดทำพินัยกรรม · ระบุผู้รับผลประโยชน์', flex: true },
+      ownerCol,
       { key: 'schedule', label: 'เมื่อไหร่', type: 'date' },
     ],
   },
@@ -194,7 +201,7 @@ function SubPlanTable({ value, config, onSave, hideHeader }: { value: SubRow[] |
 
   const cellStyle: React.CSSProperties = { padding: '5px 8px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--navy-800)', color: 'var(--text-primary)', fontSize: 12, width: '100%' }
   const th: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', padding: '4px 8px' }
-  const widthOf = (c: SubCol) => c.flex ? 'minmax(160px,1fr)' : c.type === 'money' ? '128px' : c.type === 'date' ? '120px' : '130px'
+  const widthOf = (c: SubCol) => c.flex ? 'minmax(160px,1fr)' : c.type === 'money' ? '128px' : c.type === 'date' ? '120px' : c.type === 'select' ? '116px' : '130px'
   const gridCols = config.cols.map(widthOf).join(' ') + ' 28px'
   const sumOf = (key: string) => rows.reduce((a, r) => a + (Number(r[key]) || 0), 0)
 
@@ -225,7 +232,12 @@ function SubPlanTable({ value, config, onSave, hideHeader }: { value: SubRow[] |
                 ? <NumBox key={col.key} value={row[col.key] ?? null} width={124} onChange={v => setSave(i, col.key, v)} />
                 : col.type === 'date'
                   ? <input key={col.key} type="date" value={row[col.key] || ''} onChange={e => setSave(i, col.key, e.target.value)} style={cellStyle} />
-                  : <input key={col.key} value={row[col.key] || ''} placeholder={col.placeholder} onChange={e => setCell(i, col.key, e.target.value)} onBlur={commit} style={cellStyle} />)}
+                  : col.type === 'select'
+                    ? <select key={col.key} value={row[col.key] || ''} onChange={e => setSave(i, col.key, e.target.value)} style={cellStyle}>
+                        <option value="">— เลือก —</option>
+                        {col.options?.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    : <input key={col.key} value={row[col.key] || ''} placeholder={col.placeholder} onChange={e => setCell(i, col.key, e.target.value)} onBlur={commit} style={cellStyle} />)}
               <button onClick={() => delRow(i)} title="ลบแถว" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2 }}><Trash2 size={13} /></button>
             </div>
           ))}
