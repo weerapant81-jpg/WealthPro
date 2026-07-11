@@ -276,8 +276,11 @@ function ClientDashboard() {
           <Row k="PDPA" v={consentSigned ? 'ลงนามแล้ว ✓' : 'ยังไม่ลงนาม'} color={consentSigned ? '#10b981' : '#f59e0b'} />
           <div style={{ borderTop: '1px solid var(--card-border)', margin: '2px 0' }} />
           <Row k="สินทรัพย์รวม" v={`${fmt(s?.totalAssets ?? 0)} บาท`} />
-          <Row k="หนี้สินรวม" v={`${fmt(s?.totalDebtBalance ?? 0)} บาท`} color="#f59e0b" />
           <Row k="ความมั่งคั่งสุทธิ" v={`${fmt(s?.netWorth ?? 0)} บาท`} color={(s?.netWorth ?? 0) >= 0 ? '#10b981' : '#f43f5e'} />
+          <div style={{ borderTop: '1px solid var(--card-border)', margin: '2px 0' }} />
+          <Row k="นัดหมายครั้งถัดไป"
+            v={profileData?.planReviewDate ? new Date(profileData.planReviewDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) : 'ยังไม่กำหนด'}
+            color={profileData?.planReviewDate ? '#06b6d4' : 'var(--text-muted)'} />
         </div>
 
         {/* ความพร้อมต่อเป้าหมาย (ย้ายขึ้นมาข้างโปรไฟล์) */}
