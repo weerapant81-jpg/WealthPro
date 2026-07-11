@@ -4,8 +4,8 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import {
   User, Users, FileText, Landmark, TrendingUp, ShieldCheck, GraduationCap,
-  Receipt, PieChart as PieIcon, Bot, FileDown,
-  Target, ScrollText, ArrowRight, Camera, Trash2, ClipboardCheck, Wallet, Scale,
+  Receipt, Bot, FileDown,
+  Target, ScrollText, ArrowRight, Camera, Trash2, ClipboardCheck, Wallet, Scale, CalendarRange,
 } from 'lucide-react'
 import { useIsCompact } from '../hooks/useViewport'
 import { useRetirementReadiness } from '../hooks/useRetirementReadiness'
@@ -184,7 +184,7 @@ function ClientDashboard() {
 
   // สรุปแผนดำเนินการ (subPlan) จากหน้าแผนปฏิบัติการ → แผนดำเนินการ · จำนวนเงิน · กำหนดการ
   const CAT_COLOR: Record<string, string> = { liquidity: '#06b6d4', insurance: '#3b82f6', retirement: '#00cfc1', education: '#ffb800', estate: '#a78bfa', tax: '#f59e0b', debt: '#ef4444', savings: '#10b981', other: '#8b9198' }
-  const planRows: { desc: string; amount: number | null; schedule: string; color: string }[] = []
+  const planRows: { desc: string; amount: number | null; schedule: string; owner: string; color: string }[] = []
   for (const it of (actionData?.items ?? [])) {
     const sub = Array.isArray(it.subPlan) ? it.subPlan : []
     for (const r of sub) {
@@ -192,8 +192,9 @@ function ClientDashboard() {
       const rawAmt = r?.amount ?? r?.premium ?? r?.sumInsured
       const amount = rawAmt != null && rawAmt !== '' ? Number(rawAmt) : null
       const schedule = String(r?.schedule || '')
+      const owner = String(r?.owner || '').trim()
       if (!desc && amount == null && !schedule) continue
-      planRows.push({ desc: desc || it.title, amount, schedule, color: CAT_COLOR[it.category] || CAT_COLOR.other })
+      planRows.push({ desc: desc || it.title, amount, schedule, owner, color: CAT_COLOR[it.category] || CAT_COLOR.other })
     }
   }
 
@@ -216,7 +217,7 @@ function ClientDashboard() {
     { icon: TrendingUp, label: 'สินทรัพย์-ลงทุน', to: '/financial-plan?tab=investment' },
     { icon: Receipt, label: 'วางแผนภาษี', to: '/tax' },
     { icon: ClipboardCheck, label: 'แผนปฏิบัติการ', to: '/action-plan' },
-    { icon: PieIcon, label: 'จัดพอร์ตลงทุน', to: '/settings?tab=portfolio' },
+    { icon: CalendarRange, label: 'งบการเงินล่วงหน้า', to: '/forward-cashflow' },
     { icon: FileText, label: 'รายงาน PDF', to: '/report' },
   ]
 
@@ -383,18 +384,20 @@ function ClientDashboard() {
               </div>
             ) : (
               <div style={{ overflowY: 'auto', minHeight: 0 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 110px', gap: 8, padding: '0 4px 6px', borderBottom: '1px solid var(--card-border)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 100px 110px', gap: 8, padding: '0 4px 6px', borderBottom: '1px solid var(--card-border)' }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>แผนดำเนินการ</span>
                   <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textAlign: 'right' }}>จำนวนเงิน</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textAlign: 'center' }}>ผู้รับผิดชอบ</span>
                   <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textAlign: 'right' }}>กำหนดการ</span>
                 </div>
                 {planRows.map((r, i) => (
-                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 110px', gap: 8, alignItems: 'center', padding: '8px 4px', borderBottom: '1px solid var(--divider)' }}>
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 100px 110px', gap: 8, alignItems: 'center', padding: '8px 4px', borderBottom: '1px solid var(--divider)' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: 'var(--text-secondary)', minWidth: 0 }}>
                       <span style={{ width: 7, height: 7, borderRadius: '50%', background: r.color, flexShrink: 0 }} />
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.desc}</span>
                     </span>
                     <span style={{ fontSize: 12.5, fontFamily: 'monospace', textAlign: 'right', color: r.amount ? 'var(--text-primary)' : 'var(--text-muted)' }}>{r.amount ? fmt(r.amount) : '—'}</span>
+                    <span style={{ fontSize: 11.5, textAlign: 'center', color: r.owner ? 'var(--text-secondary)' : 'var(--text-muted)' }}>{r.owner || '—'}</span>
                     <span style={{ fontSize: 11.5, textAlign: 'right', color: r.schedule ? 'var(--text-secondary)' : 'var(--text-muted)' }}>{r.schedule ? new Date(r.schedule).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}</span>
                   </div>
                 ))}
