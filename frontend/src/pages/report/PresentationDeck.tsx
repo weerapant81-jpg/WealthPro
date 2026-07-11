@@ -1327,8 +1327,8 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   {retSelf?.retireAge != null && <ReferenceLine x={retSelf.retireAge} stroke={AM} strokeDasharray="4 4" label={{ value: `เกษียณ ${retSelf.retireAge}`, position: 'insideTopRight', fill: AM, fontSize: 10 }} />}
                   {/* เส้นบอก "อายุที่เงินหมด" (กรณีไม่ออมเพิ่ม) ต่อคน */}
-                  {retChart.depSelf != null && <ReferenceLine x={retChart.depSelf} stroke={CY} strokeDasharray="2 3" label={{ value: `เงินหมด ${retChart.depSelf}`, position: 'top', fill: CY, fontSize: 10, fontWeight: 700 }} />}
-                  {hasSpouse && retChart.depSpouse != null && <ReferenceLine x={retChart.depSpouse} stroke={VI} strokeDasharray="2 3" label={{ value: `เงินหมด ${retChart.depSpouse}`, position: 'top', fill: VI, fontSize: 10, fontWeight: 700 }} />}
+                  {retChart.depSelf != null && <ReferenceLine x={retChart.depSelf} stroke={CY} strokeDasharray="2 3" label={{ value: `เงินหมด ${retChart.depSelf}`, position: 'insideTopLeft', fill: CY, fontSize: 10, fontWeight: 700 }} />}
+                  {hasSpouse && retChart.depSpouse != null && <ReferenceLine x={retChart.depSpouse} stroke={VI} strokeDasharray="2 3" label={{ value: `เงินหมด ${retChart.depSpouse}`, position: 'insideTopRight', fill: VI, fontSize: 10, fontWeight: 700 }} />}
                   <Area type="monotone" dataKey="self" name={selfName} stroke={CY} strokeWidth={2.4} fill="url(#pdRetSelf)" dot={false} />
                   {hasSpouse && <Line type="monotone" dataKey="spouse" name={spouseName} stroke={VI} strokeWidth={2.2} dot={false} />}
                   {/* สถานการณ์ "ไม่ออมเพิ่ม" — เส้นประ ตัดที่จุดเงินหมด (ไม่ connectNulls เพื่อให้จบที่ 0) */}
