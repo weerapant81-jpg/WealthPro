@@ -75,6 +75,9 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* form control ต้องไม่ล้น container — แก้บั๊ก iOS Safari ที่ input[type=date]/select ไม่ยอมหดตาม width แล้วไปทับช่องข้างๆ */
 input, select, textarea { max-width: 100%; box-sizing: border-box; min-width: 0; }
 
+/* ตัวเลือกใน dropdown (native option popup) — กำหนดสีชัด ไม่ให้กลืนพื้น (โดยเฉพาะโหมดมืด) */
+option { background: var(--navy-900); color: var(--text-primary); }
+
 /* ตารางข้อมูลหนาแน่น (สินทรัพย์/หนี้สิน ฯลฯ) — คง input ตัวเล็กไว้ ไม่ให้กฎกัน-zoom 16px ด้านล่างขยายจนล้น (specificity สูงกว่าเลยชนะ) */
 .dense-table input, .dense-table select, .dense-table textarea { font-size: 11px !important; }
 
