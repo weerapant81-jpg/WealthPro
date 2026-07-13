@@ -5,7 +5,7 @@ import { calc, defaultState, type TaxState } from '../lib/tax'
 import { createPortal } from 'react-dom'
 import { Plus, Trash2, Check, Loader2, RefreshCw, X, Maximize2 } from 'lucide-react'
 import { ResponsiveContainer, ComposedChart, Bar, Line as RLine, XAxis, YAxis, Tooltip, CartesianGrid, Legend, Cell, ReferenceLine } from 'recharts'
-import { ChartFrame, TableExcelButton } from '../components/exportable'
+import { ChartFrame, ExcelButton, type ExcelSheet } from '../components/exportable'
 import { useRetirementBalances } from '../hooks/useRetirementBalances'
 
 /* ── helpers ── */
@@ -394,6 +394,64 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
     </td>{rows.map(r => <td key={r.age} style={td} />)}</tr>
   )
 
+  // ── Excel export: สร้างจาก data model ให้ครบทุกแถว/คอลัมน์ (รวมแถวที่เป็น input) ตรงกับตาราง ──
+  const buildBudgetSheet = (): ExcelSheet => {
+    const r0 = (n: number) => Math.round(n || 0)
+    const eLine = (l: Line): (string | number)[] =>
+      [l.label || 'รายการ', l.growth, l.endAge >= lifeExp ? 'ตลอด' : l.endAge, ...rows.map(r => r0(lineAt(l, r.age, retireAge)))]
+    const cLine = (label: string, get: (r: ProjRow) => number): (string | number)[] =>
+      [label, '', '', ...rows.map(r => r0(get(r)))]
+    const sec = (title: string): (string | number)[] => [title]
+    return {
+      name: 'งบประมาณ',
+      rows: [
+        ['รายการ', 'โต%/ปี', 'ถึงอายุ', ...rows.map(r => r.age)],
+        ['', '', '(ปี พ.ศ.)', ...rows.map(r => r.year)],
+        sec('กระแสเงินสดรับ'),
+        ...data.incomeWork.map(eLine),
+        ...data.incomeAsset.map(eLine),
+        cLine('มูลค่ากองทุนเกษียณ (ต้นปี)', r => r.retIncome),
+        cLine('รวมกระแสเงินสดรับ', r => r.inTotal),
+        sec('กระแสเงินสดจ่าย — ค่าใช้จ่ายคงที่'),
+        ...data.expFixed.map(eLine),
+        cLine('รวมค่าใช้จ่ายคงที่', r => r.exFixed),
+        sec('ค่าใช้จ่ายผันแปร (ภาษีคำนวณให้)'),
+        ...data.expVar.map(eLine),
+        cLine('ภาษีเงินได้', r => r.tax),
+        cLine('รวมค่าใช้จ่ายผันแปร (รวมภาษี)', r => r.exVar + r.tax),
+        sec('ค่าใช้จ่ายเพื่อการออม/ลงทุน'),
+        ...data.expSaving.map(eLine),
+        cLine('รวมเพื่อการออม/ลงทุน', r => r.exSaving),
+        cLine('รายจ่ายหลังเกษียณ (ค่าใช้จ่าย+เป้าหมาย+มรดก)', r => r.retExpense),
+        cLine('รวมกระแสเงินสดจ่าย', r => r.outTotal),
+        cLine('กระแสเงินสดสุทธิ', r => r.net),
+        sec('ค่าใช้จ่ายเพื่อเป้าหมายทางการเงิน'),
+        ...data.goalEducation.map(eLine),
+        ...data.goalRetire.map(eLine),
+        ...data.goalInsurance.map(eLine),
+        cLine('รวมรายจ่ายเพื่อเป้าหมาย', r => r.goalTotal),
+        cLine('กระแสเงินสดคงเหลือ', r => r.remain),
+        cLine('มูลค่าคงเหลือกองทุนเกษียณ (ปลายปี)', r => r.retBalance),
+      ],
+    }
+  }
+  const buildTaxSheet = (): ExcelSheet => {
+    const r0 = (n: number) => Math.round(n || 0)
+    return {
+      name: 'ภาษี',
+      rows: [
+        ['รายการ', ...taxRows.map(r => r.age)],
+        ['(ปี พ.ศ.)', ...taxRows.map(r => r.year)],
+        ['เงินได้พึงประเมิน', ...taxRows.map(r => r0(r.taxBreak!.ti))],
+        ['(−) ค่าใช้จ่าย', ...taxRows.map(r => r0(r.taxBreak!.expD))],
+        ['(−) ค่าลดหย่อนรวม', ...taxRows.map(r => r0(r.taxBreak!.allD - r.taxBreak!.expD))],
+        ['เงินได้สุทธิ', ...taxRows.map(r => r0(r.taxBreak!.ni))],
+        ['ภาษีที่ต้องชำระ', ...taxRows.map(r => r0(r.taxBreak!.tax))],
+        ['อัตราภาษีที่แท้จริง (%)', ...taxRows.map(r => Number(r.taxBreak!.eff.toFixed(1)))],
+      ],
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <style>{`@keyframes cf-spin{to{transform:rotate(360deg)}}.cf-spin{animation:cf-spin .9s linear infinite}`}</style>
@@ -446,7 +504,7 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--card-border)', fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'baseline', gap: 8 }}>
           ประมาณการงบประมาณล่วงหน้า <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>แก้ช่องปีแรก / %เติบโต / ปีครบกำหนดชำระ (ช่อง "ปี") ได้โดยตรง</span>
-          <span style={{ marginLeft: 'auto' }}><TableExcelButton filename="ประมาณการงบประมาณล่วงหน้า" title="งบประมาณ" /></span>
+          <span style={{ marginLeft: 'auto' }}><ExcelButton filename="ประมาณการงบประมาณล่วงหน้า" getSheets={buildBudgetSheet} /></span>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table className="dense-table" style={{ borderCollapse: 'collapse', minWidth: '100%' }}>
@@ -499,7 +557,7 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
 
       {/* Tax projection C */}
       <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--card-border)', fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>ประมาณการภาษีเงินได้ล่วงหน้า (ถึงปีก่อนเกษียณ)<TableExcelButton filename="ประมาณการภาษีล่วงหน้า" title="ภาษี" /></div>
+        <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--card-border)', fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>ประมาณการภาษีเงินได้ล่วงหน้า (ถึงปีก่อนเกษียณ)<ExcelButton filename="ประมาณการภาษีล่วงหน้า" getSheets={buildTaxSheet} /></div>
         <div style={{ overflowX: 'auto' }}>
           <table className="dense-table" style={{ borderCollapse: 'collapse', minWidth: '100%' }}>
             <thead>

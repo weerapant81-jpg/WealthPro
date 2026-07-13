@@ -143,6 +143,54 @@ export function exportToExcel(filename: string, sheets: ExcelSheet | ExcelSheet[
   XLSX.writeFile(wb, `${filename}.xlsx`)
 }
 
+/* ── scrape <table> จาก DOM → AOA โดยอ่านค่าจาก input/select/textarea ในเซลล์ด้วย
+   (table_to_book ปกติอ่านแค่ textContent ทำให้แถวที่แก้ไขได้ export ออกมาว่าง) ── */
+function cellToValue(cell: HTMLTableCellElement): string | number {
+  const fields = cell.querySelectorAll('input, select, textarea')
+  let text: string
+  if (fields.length) {
+    const parts: string[] = []
+    fields.forEach(el => {
+      const f = el as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      if (f.tagName === 'SELECT') {
+        const sel = f as HTMLSelectElement
+        parts.push(sel.options[sel.selectedIndex]?.text ?? sel.value)
+      } else if ((f as HTMLInputElement).type === 'checkbox') {
+        if ((f as HTMLInputElement).checked) parts.push('✓')
+      } else if (f.value != null && f.value !== '') {
+        parts.push(String(f.value))
+      }
+    })
+    text = parts.join(' ').trim()
+  } else {
+    text = (cell.textContent || '').replace(/\s+/g, ' ').trim()
+  }
+  const num = text.replace(/,/g, '').trim()
+  if (num !== '' && /^-?\d+(\.\d+)?$/.test(num)) return Number(num)
+  return text
+}
+
+function tableToAOA(table: HTMLTableElement): (string | number)[][] {
+  const out: (string | number)[][] = []
+  table.querySelectorAll('tr').forEach(tr => {
+    const row: (string | number)[] = []
+    tr.querySelectorAll('th, td').forEach(c => {
+      const cell = c as HTMLTableCellElement
+      row.push(cellToValue(cell))
+      for (let i = 1; i < (cell.colSpan || 1); i++) row.push('')
+    })
+    if (row.length) out.push(row)
+  })
+  return out
+}
+
+function exportTableEl(table: HTMLTableElement, filename: string, sheetName?: string) {
+  const ws = XLSX.utils.aoa_to_sheet(tableToAOA(table))
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, (sheetName || 'ตาราง').slice(0, 31))
+  XLSX.writeFile(wb, `${filename}.xlsx`)
+}
+
 /** ห่อ <table> จริง — เพิ่มปุ่ม export Excel ที่ scrape ตารางจาก DOM (ไม่ต้อง hand-code แถว)
     วาง <table> ไว้ข้างใน; ปุ่มลอยมุมขวาบน */
 export function TableFrame({ title, filename, children, style }: {
@@ -155,10 +203,7 @@ export function TableFrame({ title, filename, children, style }: {
   const onExport = () => {
     const table = ref.current?.querySelector('table')
     if (!table) return
-    try {
-      const wb = XLSX.utils.table_to_book(table, { sheet: (title || 'ตาราง').slice(0, 31), raw: false })
-      XLSX.writeFile(wb, `${filename}.xlsx`)
-    } catch (e) { console.error('export table failed', e) }
+    try { exportTableEl(table, filename, title) } catch (e) { console.error('export table failed', e) }
   }
   return (
     <div style={{ position: 'relative', ...style }}>
@@ -183,10 +228,7 @@ export function TableExcelButton({ filename, title, style }: {
     let table: HTMLTableElement | null = null
     while (el && !table) { table = el.querySelector('table'); el = el.parentElement }
     if (!table) { console.warn('ไม่พบตารางสำหรับ export'); return }
-    try {
-      const wb = XLSX.utils.table_to_book(table, { sheet: (title || 'ตาราง').slice(0, 31), raw: false })
-      XLSX.writeFile(wb, `${filename}.xlsx`)
-    } catch (e) { console.error('export table failed', e) }
+    try { exportTableEl(table, filename, title) } catch (e) { console.error('export table failed', e) }
   }
   return (
     <button ref={ref} title="ดาวน์โหลด Excel" onClick={onClick}
