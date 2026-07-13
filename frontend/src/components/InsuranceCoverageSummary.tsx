@@ -10,12 +10,12 @@ const nameMatch = (a: any, b: any) => { const x = norm(a), y = norm(b); return !
 
 export const AXES = [
   { key: 'life', label: 'เสียชีวิต', ref: 10_000_000, stdFactor: (inc: number) => inc * 10 },
-  { key: 'disabled', label: 'ทุพพลภาพ', ref: 5_000_000, stdFactor: (inc: number) => inc * 2 },
-  { key: 'ipd', label: 'ค่ารักษาฯ (IPD)', ref: 2_000_000, stdFactor: (inc: number) => inc * 1.0 },
-  { key: 'daily', label: 'ค่าชดเชยรายวัน', ref: null, stdFactor: (inc: number) => inc * 0.0015 * 5 },
-  { key: 'criticalH', label: 'โรคร้ายแรงลุกลาม', ref: 3_000_000, stdFactor: (inc: number) => inc * 3 },
-  { key: 'criticalL', label: 'โรคร้ายแรงเริ่มต้น', ref: 1_000_000, stdFactor: (inc: number) => inc * 1 },
-  { key: 'accident', label: 'อุบัติเหตุ', ref: 1_000_000, stdFactor: (inc: number) => inc * 3 },
+  { key: 'disabled', label: 'ทุพพลภาพ', ref: 5_000_000, stdFactor: (inc: number) => inc * 10 },
+  { key: 'ipd', label: 'ค่ารักษาฯ (IPD)', ref: 2_000_000, stdFactor: (inc: number) => inc * 5 },
+  { key: 'daily', label: 'ค่าชดเชยรายวัน', ref: null, stdFactor: (inc: number) => inc / 365 },
+  { key: 'criticalH', label: 'โรคร้ายแรงลุกลาม', ref: 3_000_000, stdFactor: (inc: number) => inc * 5 },
+  { key: 'criticalL', label: 'โรคร้ายแรงเริ่มต้น', ref: 1_000_000, stdFactor: (inc: number) => inc * 2 },
+  { key: 'accident', label: 'อุบัติเหตุ', ref: 1_000_000, stdFactor: (inc: number) => inc * 5 },
   { key: 'opd', label: 'วงเงิน OPD', ref: null, stdFactor: (inc: number) => inc * 0.05 },
 ]
 
