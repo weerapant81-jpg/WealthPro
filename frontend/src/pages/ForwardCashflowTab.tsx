@@ -207,8 +207,13 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
   const qc = useQueryClient()
   const { data: cp } = useQuery({ queryKey: ['client-profile'], queryFn: () => api.get('/client-profile').then(r => r.data), retry: false })
   const { data: prof } = useQuery({ queryKey: ['profile'], queryFn: () => api.get('/profile').then(r => r.data), retry: false })
-  const { data: expenses } = useQuery({ queryKey: ['expenses'], queryFn: () => api.get('/expenses').then(r => r.data), retry: false })
-  const { data: liabilities } = useQuery({ queryKey: ['liabilities'], queryFn: () => api.get('/liabilities').then(r => r.data), retry: false })
+  // รายจ่าย/หนี้สิน = ดึงแยกต่อบุคคลจากงบกระแสเงินสด/งบดุล (person: client+shared / spouse+shared) ให้ตรงกับหน้างบการเงิน
+  const { data: expensesSelf } = useQuery({ queryKey: ['expenses', 'client'], queryFn: () => api.get('/expenses', { params: { person: 'client' } }).then(r => r.data), retry: false })
+  const { data: expensesSpouse } = useQuery({ queryKey: ['expenses', 'spouse'], queryFn: () => api.get('/expenses', { params: { person: 'spouse' } }).then(r => r.data), retry: false })
+  const { data: liabilitiesSelf } = useQuery({ queryKey: ['liabilities', 'client'], queryFn: () => api.get('/liabilities', { params: { person: 'client' } }).then(r => r.data), retry: false })
+  const { data: liabilitiesSpouse } = useQuery({ queryKey: ['liabilities', 'spouse'], queryFn: () => api.get('/liabilities', { params: { person: 'spouse' } }).then(r => r.data), retry: false })
+  const expenses = person === 'self' ? expensesSelf : expensesSpouse
+  const liabilities = person === 'self' ? liabilitiesSelf : liabilitiesSpouse
   const { data: lifeInsurances } = useQuery({ queryKey: ['life-insurances'], queryFn: () => api.get('/life-insurances').then(r => r.data), retry: false })
   const { data: taxPlan } = useQuery({ queryKey: ['tax-plan'], queryFn: () => api.get('/tax-plan').then(r => r.data), retry: false })
   // เงินคงเหลือกองทุนเกษียณรายปี (จากหน้าวางแผนเกษียณ) → เงินได้หลังเกษียณ
@@ -230,10 +235,13 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
 
   const loadedRef = useRef(false)
   useEffect(() => {
-    if (loadedRef.current || !isFetched || !cp || !prof || lifeInsurances === undefined) return
+    if (loadedRef.current || !isFetched || !cp || !prof || lifeInsurances === undefined
+      || expensesSelf === undefined || expensesSpouse === undefined
+      || liabilitiesSelf === undefined || liabilitiesSpouse === undefined) return
     const li = lifeInsurances ?? []
-    const seedSelf = seedData('self', cp, prof, expenses ?? [], liabilities ?? [], selfAge ?? 35, prof?.retirementAgeSelf ?? 60, li)
-    const seedSpouse = seedData('spouse', cp, prof, expenses ?? [], liabilities ?? [], cp?.spouseAge ?? 35, prof?.retirementAgeSpouse ?? 60, li)
+    // แต่ละบุคคลใช้รายจ่าย/หนี้สินของตัวเอง (client+shared สำหรับ self, spouse+shared สำหรับคู่สมรส)
+    const seedSelf = seedData('self', cp, prof, expensesSelf ?? [], liabilitiesSelf ?? [], selfAge ?? 35, prof?.retirementAgeSelf ?? 60, li)
+    const seedSpouse = seedData('spouse', cp, prof, expensesSpouse ?? [], liabilitiesSpouse ?? [], cp?.spouseAge ?? 35, prof?.retirementAgeSpouse ?? 60, li)
     // ทุกรายการสิ้นสุดที่ (เกษียณ − 1) — clamp ข้อมูลเดิมที่ตั้ง endAge ไว้ไกลกว่านั้น (รวมค่าใช้จ่ายคงที่/ออม/เป้าหมาย)
     const clampAll = (d: CashflowData, retAge: number): CashflowData => {
       const cap = (arr?: Line[]) => (arr ?? []).map(l => ({ ...l, endAge: Math.min(l.endAge, retAge - 1) }))
@@ -257,7 +265,7 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
     setSelfData((saved?.self && Object.keys(saved.self).length) ? withFreshIncome(saved.self, seedSelf, prof?.retirementAgeSelf ?? 60, autoSelf) : seedSelf)
     setSpouseData((saved?.spouse && Object.keys(saved.spouse).length) ? withFreshIncome(saved.spouse, seedSpouse, prof?.retirementAgeSpouse ?? 60, autoSpouse) : seedSpouse)
     loadedRef.current = true
-  }, [isFetched, saved, cp, prof, expenses, liabilities, lifeInsurances])
+  }, [isFetched, saved, cp, prof, expensesSelf, expensesSpouse, liabilitiesSelf, liabilitiesSpouse, lifeInsurances])
 
   // autosave
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
