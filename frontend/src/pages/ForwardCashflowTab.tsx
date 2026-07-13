@@ -55,14 +55,14 @@ function autoFixedItems(isSelf: boolean, cp: any, lifeInsurances: any[], current
   const raise = isSelf ? toNum(cp?.salaryIncreaseRate) : toNum(spJob?.salaryIncreaseRate)
   const out: Line[] = []
   if (welfare?.hasSocialSecurity && salaryM > 0)
-    out.push({ id: uid(), label: 'ประกันสังคม', base: Math.min(salaryM, 17500) * 0.05 * 12, growth: 0, startAge: currentAge, endAge: retireAge, auto: true })
+    out.push({ id: uid(), label: 'ประกันสังคม', base: Math.min(salaryM, 17500) * 0.05 * 12, growth: 0, startAge: currentAge, endAge: retireAge - 1, auto: true })
   if (welfare?.hasPVD && Number(welfare?.pvdEmployeeRate) > 0 && salaryM > 0)
-    out.push({ id: uid(), label: 'เงินสะสมกองทุนสำรองเลี้ยงชีพ (ส่วนลูกจ้าง)', base: salaryM * 12 * (Number(welfare.pvdEmployeeRate) / 100), growth: raise || 0, startAge: currentAge, endAge: retireAge, auto: true })
+    out.push({ id: uid(), label: 'เงินสะสมกองทุนสำรองเลี้ยงชีพ (ส่วนลูกจ้าง)', base: salaryM * 12 * (Number(welfare.pvdEmployeeRate) / 100), growth: raise || 0, startAge: currentAge, endAge: retireAge - 1, auto: true })
   const pn = _norm(isSelf ? `${cp?.firstName ?? ''} ${cp?.lastName ?? ''}` : `${cp?.spouseProfile?.firstName ?? ''} ${cp?.spouseProfile?.lastName ?? ''}`)
   const lifeAnnual = (Array.isArray(lifeInsurances) ? lifeInsurances : [])
     .filter(p => { const ins = _norm(p?.insuredPerson); return (p?.premium ?? 0) > 0 && !!ins && !!pn && (ins.includes(pn) || pn.includes(ins)) })
     .reduce((s, p) => s + (p.premium || 0), 0)
-  if (lifeAnnual > 0) out.push({ id: uid(), label: 'เบี้ยประกันชีวิต', base: lifeAnnual, growth: 0, startAge: currentAge, endAge: 85, auto: true })
+  if (lifeAnnual > 0) out.push({ id: uid(), label: 'เบี้ยประกันชีวิต', base: lifeAnnual, growth: 0, startAge: currentAge, endAge: retireAge - 1, auto: true })
   return out
 }
 
@@ -102,8 +102,8 @@ function seedData(
   const rent = srcs.find(s => s.label === 'รายได้จากค่าเช่า')
   const divd = srcs.find(s => s.label === 'เงินปันผล')
   const invs = srcs.find(s => s.label === 'รายได้จากการลงทุน')
-  d.incomeAsset.push({ id: uid(), label: 'รายได้จากค่าเช่า', base: rent ? toNum(rent.amount) * 12 : 0, growth: prof?.rentInflation ?? 4, startAge: currentAge, endAge: 85, auto: !!rent })
-  d.incomeAsset.push({ id: uid(), label: 'เงินปันผล/ดอกเบี้ย', base: (divd ? toNum(divd.amount) * 12 : 0) + (invs ? toNum(invs.amount) * 12 : 0), growth: 0, startAge: currentAge, endAge: 85, auto: !!(divd || invs) })
+  d.incomeAsset.push({ id: uid(), label: 'รายได้จากค่าเช่า', base: rent ? toNum(rent.amount) * 12 : 0, growth: prof?.rentInflation ?? 4, startAge: currentAge, endAge: retireAge - 1, auto: !!rent })
+  d.incomeAsset.push({ id: uid(), label: 'เงินปันผล/ดอกเบี้ย', base: (divd ? toNum(divd.amount) * 12 : 0) + (invs ? toNum(invs.amount) * 12 : 0), growth: 0, startAge: currentAge, endAge: retireAge - 1, auto: !!(divd || invs) })
 
   // ค่าใช้จ่าย (จาก /expenses) — แยกตาม prefix + อัตราเติบโตตามประเภท
   const rentInfl = prof?.rentInflation ?? 4
@@ -119,16 +119,16 @@ function seedData(
   const fx = (expenses ?? []).filter(e => String(e.category).startsWith('fixed_'))
   const vr = (expenses ?? []).filter(e => String(e.category).startsWith('var_') && e.category !== 'var_tax')
   const sv = (expenses ?? []).filter(e => String(e.category).startsWith('saving_'))
-  for (const e of fx) d.expFixed.push({ id: uid(), label: e.name, base: toMonthly(toNum(e.amount), e.frequency) * 12, growth: growthFor(e.category, e.name), startAge: currentAge, endAge: 85, auto: true })
+  for (const e of fx) d.expFixed.push({ id: uid(), label: e.name, base: toMonthly(toNum(e.amount), e.frequency) * 12, growth: growthFor(e.category, e.name), startAge: currentAge, endAge: retireAge - 1, auto: true })
   for (const e of vr) d.expVar.push({ id: uid(), label: e.name, base: toMonthly(toNum(e.amount), e.frequency) * 12, growth: growthFor(e.category, e.name), startAge: currentAge, endAge: retireAge - 1, auto: true })
-  for (const e of sv) d.expSaving.push({ id: uid(), label: e.name, base: toMonthly(toNum(e.amount), e.frequency) * 12, growth: 0, startAge: currentAge, endAge: retireAge, auto: true })
+  for (const e of sv) d.expSaving.push({ id: uid(), label: e.name, base: toMonthly(toNum(e.amount), e.frequency) * 12, growth: 0, startAge: currentAge, endAge: retireAge - 1, auto: true })
 
   // หนี้ → ค่าใช้จ่ายคงที่ (จ่ายจนปิดหนี้)
   for (const l of (liabilities ?? [])) {
     const annual = toNum(l.monthlyPayment) * 12
     if (annual <= 0) continue
     const yearsLeft = Math.max(1, Math.ceil(toNum(l.balance) / annual))
-    d.expFixed.push({ id: uid(), label: l.name || 'ผ่อนหนี้', base: annual, growth: 0, startAge: currentAge, endAge: currentAge + yearsLeft - 1, auto: true })
+    d.expFixed.push({ id: uid(), label: l.name || 'ผ่อนหนี้', base: annual, growth: 0, startAge: currentAge, endAge: Math.min(currentAge + yearsLeft - 1, retireAge - 1), auto: true })
   }
 
   // รายการหักอัตโนมัติ (ประกันสังคม/PVD/เบี้ยประกันชีวิต) — ไม่ได้อยู่ใน /expenses
@@ -140,14 +140,14 @@ function seedData(
     d.expVar.push({ id: uid(), label: 'ของใช้ส่วนตัว', base: 60000, growth: infl, startAge: currentAge, endAge: retireAge - 1 })
   }
   if (!d.expSaving.length) {
-    d.expSaving.push({ id: uid(), label: 'กองทุน RMF', base: 0, growth: 0, startAge: currentAge, endAge: retireAge })
-    d.expSaving.push({ id: uid(), label: 'กองทุน Thai ESG', base: 0, growth: 0, startAge: currentAge, endAge: retireAge })
+    d.expSaving.push({ id: uid(), label: 'กองทุน RMF', base: 0, growth: 0, startAge: currentAge, endAge: retireAge - 1 })
+    d.expSaving.push({ id: uid(), label: 'กองทุน Thai ESG', base: 0, growth: 0, startAge: currentAge, endAge: retireAge - 1 })
   }
 
-  // เป้าหมาย (ตัวอย่าง)
-  d.goalEducation.push({ id: uid(), label: 'เงินออมเพื่อการศึกษาบุตร', base: 0, growth: edu, startAge: currentAge, endAge: currentAge + 15 })
-  d.goalRetire.push({ id: uid(), label: 'เงินออมเพื่อการเกษียณ (RMF)', base: 0, growth: 0, startAge: currentAge, endAge: retireAge })
-  d.goalInsurance.push({ id: uid(), label: 'เบี้ยประกันเพื่อคุ้มครองความเสี่ยง', base: 0, growth: 0, startAge: currentAge, endAge: retireAge })
+  // เป้าหมาย (ตัวอย่าง) — สิ้นสุดที่ (เกษียณ − 1); การศึกษาใช้ช่วงที่สั้นกว่าหากถึงก่อน
+  d.goalEducation.push({ id: uid(), label: 'เงินออมเพื่อการศึกษาบุตร', base: 0, growth: edu, startAge: currentAge, endAge: Math.min(currentAge + 15, retireAge - 1) })
+  d.goalRetire.push({ id: uid(), label: 'เงินออมเพื่อการเกษียณ (RMF)', base: 0, growth: 0, startAge: currentAge, endAge: retireAge - 1 })
+  d.goalInsurance.push({ id: uid(), label: 'เบี้ยประกันเพื่อคุ้มครองความเสี่ยง', base: 0, growth: 0, startAge: currentAge, endAge: retireAge - 1 })
 
   // ลดหย่อนเพิ่มเติม (ตัวอย่าง — ส่วนตัว/บุตร/บิดามารดา ดึงอัตโนมัติแยกในเครื่องคำนวณภาษี)
   return d
@@ -343,9 +343,8 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
     }))
   const delLine = (secKey: keyof CashflowData, id: string) => setSec(secKey, data[secKey].filter(l => l.id !== id))
   const addLine = (secKey: keyof CashflowData, isIncome: boolean) => {
-    const endAge = secKey === 'expVar' ? retireAge - 1
-      : isIncome && secKey.startsWith('income') ? lifeExp
-        : secKey === 'incomeWork' ? retireAge : lifeExp
+    // ค่าเริ่มต้นของทุกรายการ = สิ้นสุดที่อายุเกษียณ − 1 (แก้ไขเป็น "ตลอด/∞" เองได้ที่ช่องจำนวนปี)
+    const endAge = retireAge - 1
     setSec(secKey, [...data[secKey], { id: uid(), label: '', base: 0, growth: isIncome ? 5 : (prof?.inflationRate ?? 3), startAge: currentAge, endAge }])
   }
   // ดึงข้อมูลใหม่จากต้นทาง (รายรับ/รายจ่าย/หนี้) — เขียนทับของเดิม
