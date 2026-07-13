@@ -14,15 +14,17 @@ export function useRetirementBalances(person: 'client' | 'spouse') {
   const { data: pvdPlan } = useQuery({ queryKey: ['pvd-plan'], queryFn: () => api.get('/pvd-plan').then(r => r.data), retry: false })
   const { data: sevPlan } = useQuery({ queryKey: ['severance-plan'], queryFn: () => api.get('/severance-plan').then(r => r.data), retry: false })
 
-  const data: Person | null = plan?.[key] ?? null
-  const retireAge = data?.retirementAge ?? (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? 60
+  const dataRaw: Person | null = plan?.[key] ?? null
+  // อายุเกษียณ = แหล่งเดียวจากหน้าสมมติฐาน (profile) มาก่อนค่าที่บันทึกในแผน
+  const retireAge = (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? dataRaw?.retirementAge ?? 60
   const projectedAsset = useProjectedAssetAtRetirement(retireAge, isSelf)
 
   const byAge: Record<number, number> = {}       // มูลค่ารวม/คงเหลือ ปลายปี (closeBalance) — compound แล้ว
   const byAgeOpen: Record<number, number> = {}    // มูลค่ากองทุนต้นปี (openBalance)
   const byAgeExp: Record<number, number> = {}     // ค่าใช้จ่าย/ปี + เป้าหมายพิเศษ + เงินมรดก (เงินถอนใช้)
   const byAgeReturn: Record<number, number> = {}  // ผลตอบแทนที่กองทุนสร้างในปีนั้น (FV growth)
-  if (!data) return { retireAge, byAge, byAgeOpen, byAgeExp, byAgeReturn }
+  if (!dataRaw) return { retireAge, byAge, byAgeOpen, byAgeExp, byAgeReturn }
+  const data: Person = { ...dataRaw, retirementAge: retireAge }
   const fb = fallbackProjections(clientProfile, profile, isSelf)
   const ssoPV = ssoPlan?.[key]?.pensionPV ?? fb.ssoPV
   const pvdAtRetire = pvdPlan?.[key]?.valueAtRetirement ?? fb.pvdAtRetire

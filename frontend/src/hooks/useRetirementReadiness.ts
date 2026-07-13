@@ -14,11 +14,13 @@ export function useRetirementReadiness(person: 'client' | 'spouse') {
   const { data: pvdPlan } = useQuery({ queryKey: ['pvd-plan'], queryFn: () => api.get('/pvd-plan').then(r => r.data), retry: false })
   const { data: sevPlan } = useQuery({ queryKey: ['severance-plan'], queryFn: () => api.get('/severance-plan').then(r => r.data), retry: false })
 
-  const data: Person | null = plan?.[key] ?? null
-  const retireAge = data?.retirementAge ?? (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? 60
+  const dataRaw: Person | null = plan?.[key] ?? null
+  // อายุเกษียณ = แหล่งเดียวจากหน้าสมมติฐาน (profile) มาก่อนค่าที่บันทึกในแผน
+  const retireAge = (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? dataRaw?.retirementAge ?? 60
   const projectedAsset = useProjectedAssetAtRetirement(retireAge, isSelf)
 
-  if (!data) return null
+  if (!dataRaw) return null
+  const data: Person = { ...dataRaw, retirementAge: retireAge }
   const fb = fallbackProjections(clientProfile, profile, isSelf)
   const ssoPV = ssoPlan?.[key]?.pensionPV ?? fb.ssoPV
   const pvdAtRetire = pvdPlan?.[key]?.valueAtRetirement ?? fb.pvdAtRetire

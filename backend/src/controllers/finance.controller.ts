@@ -619,7 +619,17 @@ export async function saveReportPlan(req: AuthRequest, res: Response, next: Next
 // ---- Profile ----
 export async function getProfile(req: AuthRequest, res: Response): Promise<void> {
   const data = await prisma.profile.findUnique({ where: { userId: req.effectiveUserId! } })
-  res.json(data)
+  const saId = await canonicalSuperAdminId()
+  // เติมค่าสมมติฐานที่ยังเป็น null ด้วย "ค่ากลาง" ของ SA (default ตั้งต้น) — ให้ทุกหน้าที่อ่าน /profile ได้ค่าเดียวกัน
+  // ยกเว้นตอนดูโปรไฟล์ของ SA เอง (data = ค่ากลางอยู่แล้ว)
+  if (!saId || saId === req.effectiveUserId) { res.json(data); return }
+  const defaults = await prisma.profile.findUnique({ where: { userId: saId }, select: ASSUMPTION_SELECT })
+  if (!defaults) { res.json(data); return }
+  const merged: any = { ...(data ?? {}) }
+  for (const k of Object.keys(ASSUMPTION_SELECT)) {
+    if (merged[k] == null && (defaults as any)[k] != null) merged[k] = (defaults as any)[k]
+  }
+  res.json(merged)
 }
 // ── ฟิลด์สมมติฐาน (ใช้ทั้ง upsertProfile และค่ากลางของ Super Admin) ──
 const ASSUMPTION_INT = ['retirementAgeSelf', 'retirementAgeSpouse', 'lifeExpectancySelf', 'lifeExpectancySpouse', 'educationCostYear']

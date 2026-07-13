@@ -159,7 +159,8 @@ export default function ProjectionInvestmentTab({ person = 'self' }: { person?: 
   const C_MID  = '#06b6d4'   // median
   const C_HIGH = '#10b981'   // P90 (ดี)
 
-  const retirementAge = retPlan?.[planKey]?.retirementAge ?? (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? 60
+  // อายุเกษียณ = แหล่งเดียวจากหน้าสมมติฐาน (profile) มาก่อนค่าที่บันทึกในแผน
+  const retirementAge = (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? retPlan?.[planKey]?.retirementAge ?? 60
 
   const noData = totalValue === 0 || portfolioReturn === null || currentAge === null
 

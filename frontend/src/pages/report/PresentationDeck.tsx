@@ -693,7 +693,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
     const currentAge = isSelf ? selfAge : (client?.spouseAge ?? null)
     // อายุขัย/อายุเกษียณ = ตามสมมุติฐานแผนเกษียณเป็นหลัก → settings → ค่าเริ่มต้น
     const expectedLifespan = retPlan?.[key]?.lifeExpectancy ?? (isSelf ? profile?.lifeExpectancySelf : profile?.lifeExpectancySpouse) ?? 85
-    const retirementAge = retPlan?.[key]?.retirementAge ?? (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? 60
+    const retirementAge = (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? retPlan?.[key]?.retirementAge ?? 60
     const assets: any[] = invProfile?.investmentAssets ?? []
     const assetReturn = (a: any): number | null => {
       let r = annualizedReturn(toNum(a.investAmount), toNum(a.currentValue), a.investDate)
@@ -825,7 +825,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
     // เกษียณ (ต่อคน)
     people.forEach(p => {
       if (p.ret && p.ret.needed > 0) {
-        const ra = retPlan?.[p.key]?.retirementAge
+        const ra = (p.key === 'self' ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? retPlan?.[p.key]?.retirementAge
         items.push({ name: `เกษียณอายุ · ${p.name}`, when: ra ? `เมื่ออายุ ${ra} ปี` : 'ตามแผนเกษียณ', amount: p.ret.needed, cat: 'retire' })
       }
     })
