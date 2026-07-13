@@ -106,7 +106,8 @@ export default function ProjectionPVDTab({ person = 'self' }: { person?: 'self' 
   const [returnOverride, setReturnOverride] = useState<number | null>(null)
   const [openingBalance, setOpeningBalance] = useState(0)
   const [currentAge, setCurrentAge] = useState(45)
-  const [retirementAge, setRetirementAge] = useState(60)
+  // อายุเกษียณ — ดึงจากหน้าสมมติฐาน (แหล่งเดียว) · แก้ที่หน้าสมมติฐาน
+  const retirementAge = (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? 60
 
   // อัตราผลตอบแทน: อัตราของลูกค้าในหน้าข้อมูลส่วนบุคคลมาก่อน · ไม่มี → ค่ากลางจากตั้งค่า (พิมพ์ทับเพื่อทดลองได้)
   const returnRate = returnOverride ?? (profilePvdReturn > 0 ? profilePvdReturn : (profile?.pvdReturnRate ?? 4))
@@ -128,11 +129,6 @@ export default function ProjectionPVDTab({ person = 'self' }: { person?: 'self' 
     }
     if (!filled.a && ageVal && ageVal > 0) { setCurrentAge(ageVal); filled.a = true }
   }, [clientProfile])
-  useEffect(() => {
-    if (!profile) return
-    const retAge = isSelf ? profile.retirementAgeSelf : profile.retirementAgeSpouse
-    if (!filled.ret && retAge) { setRetirementAge(retAge); filled.ret = true }
-  }, [profile])
 
   // ── Load saved PVD plan once (saved values win over auto-fill) ──
   const loadedRef = useRef(false)
@@ -295,7 +291,9 @@ export default function ProjectionPVDTab({ person = 'self' }: { person?: 'self' 
             </div>
           )}
           <Field label="อายุปัจจุบัน"><NumIn value={currentAge} onChange={setCurrentAge} suffix="ปี" width={70} /></Field>
-          <Field label="อายุเกษียณ"><NumIn value={retirementAge} onChange={setRetirementAge} suffix="ปี" width={70} /></Field>
+          <Field label="อายุเกษียณ">
+            <span><span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600, color: 'var(--cyan)' }}>{retirementAge}</span> <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>ปี · จากสมมติฐาน</span></span>
+          </Field>
         </div>
 
         {/* Chart — stretches to match assumptions height (equal bottom edge) */}

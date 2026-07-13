@@ -104,7 +104,8 @@ export default function ProjectionSeveranceTab({ person = 'self' }: { person?: '
   const [salary, setSalary] = useState(15000)
   const [raiseRate, setRaiseRate] = useState(0)
   const [currentAge, setCurrentAge] = useState(45)
-  const [retirementAge, setRetirementAge] = useState(60)
+  // อายุเกษียณ — ดึงจากหน้าสมมติฐาน (แหล่งเดียว) · แก้ที่หน้าสมมติฐาน
+  const retirementAge = (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? 60
   const [workYearsNow, setWorkYearsNow] = useState(0)
   const [lastSalaryOverride, setLastSalaryOverride] = useState<number | null>(null)
 
@@ -123,10 +124,6 @@ export default function ProjectionSeveranceTab({ person = 'self' }: { person?: '
     if (!filled.w && workVal != null) { setWorkYearsNow(toNum(workVal)); filled.w = true }
     if (!filled.a && ageVal && ageVal > 0) { setCurrentAge(ageVal); filled.a = true }
   }, [clientProfile])
-  useEffect(() => {
-    const retAge = isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse
-    if (retAge && !filled.ret) { setRetirementAge(retAge); filled.ret = true }
-  }, [profile])
 
   // ── Calculation ──
   const calc = useMemo(() => {
@@ -211,7 +208,9 @@ export default function ProjectionSeveranceTab({ person = 'self' }: { person?: '
           </div>
           <div style={{ borderTop: '1px solid var(--card-border)', margin: '8px 0' }} />
           <Field label="อายุปัจจุบัน"><NumIn value={currentAge} onChange={setCurrentAge} suffix="ปี" width={70} /></Field>
-          <Field label="อายุเกษียณ"><NumIn value={retirementAge} onChange={setRetirementAge} suffix="ปี" width={70} /></Field>
+          <Field label="อายุเกษียณ">
+            <span><span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600, color: 'var(--cyan)' }}>{retirementAge}</span> <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>ปี · จากสมมติฐาน</span></span>
+          </Field>
           <div style={{ borderTop: '1px solid var(--card-border)', margin: '8px 0' }} />
           <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
             <div>ระยะถึงเกษียณ: <strong style={{ color: 'var(--cyan)' }}>{calc.yearsToRetire} ปี</strong></div>

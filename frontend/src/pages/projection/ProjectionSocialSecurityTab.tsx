@@ -114,7 +114,8 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
   const [returnRate, setReturnRate] = useState(2.29)   // default = อัตราผลตอบแทนเฉลี่ย 5 ปี (หน้าสมมติฐาน) · auto-fill ทับด้วย profile.ssoReturnRate
   const [openingBalance, setOpeningBalance] = useState(0)
   const [currentAge, setCurrentAge] = useState(45)
-  const [retirementAge, setRetirementAge] = useState(60)
+  // อายุเกษียณ — ดึงจากหน้าสมมติฐาน (แหล่งเดียว ใช้ตรงกันทุกหน้า) · แก้ที่หน้าสมมติฐาน
+  const retirementAge = (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? 60
 
   // ── Pension assumptions ──
   const [startContribAge, setStartContribAge] = useState(30)
@@ -139,8 +140,6 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
   }, [clientProfile])
   useEffect(() => {
     if (!profile) return
-    const retAge = isSelf ? profile.retirementAgeSelf : profile.retirementAgeSpouse
-    if (!filled.ret && retAge) { setRetirementAge(retAge); filled.ret = true }
     if (!filled.rate && profile.ssoReturnRate != null) { setReturnRate(profile.ssoReturnRate); filled.rate = true }
     if (!filled.disc && profile.postRetirementReturn != null) { setDiscountRate(profile.postRetirementReturn); filled.disc = true }
   }, [profile])
@@ -364,7 +363,9 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
             </div>
           )}
           <Field label="อายุปัจจุบัน"><NumIn value={currentAge} onChange={setCurrentAge} suffix="ปี" width={70} /></Field>
-          <Field label="อายุเกษียณ"><NumIn value={retirementAge} onChange={setRetirementAge} suffix="ปี" width={70} /></Field>
+          <Field label="อายุเกษียณ">
+            <span><span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600, color: 'var(--cyan)' }}>{retirementAge}</span> <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>ปี · จากสมมติฐาน</span></span>
+          </Field>
         </div>
 
         {/* Chart — การ์ดสูงพอดีเนื้อหา (ไม่ยืดตามการ์ดสมมติฐาน) */}
