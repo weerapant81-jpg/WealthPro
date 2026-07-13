@@ -74,7 +74,6 @@ function seedData(
 ): CashflowData {
   const d = emptyData()
   const infl = prof?.inflationRate ?? 3
-  const med = prof?.medicalInflation ?? 5
   const edu = prof?.educationInflation ?? 5
   const isSelf = person === 'self'
   const spJob = Array.isArray(cp?.spouseJobs) ? cp.spouseJobs[0] : null
@@ -105,22 +104,14 @@ function seedData(
   d.incomeAsset.push({ id: uid(), label: 'รายได้จากค่าเช่า', base: rent ? toNum(rent.amount) * 12 : 0, growth: prof?.rentInflation ?? 4, startAge: currentAge, endAge: retireAge - 1, auto: !!rent })
   d.incomeAsset.push({ id: uid(), label: 'เงินปันผล/ดอกเบี้ย', base: (divd ? toNum(divd.amount) * 12 : 0) + (invs ? toNum(invs.amount) * 12 : 0), growth: 0, startAge: currentAge, endAge: retireAge - 1, auto: !!(divd || invs) })
 
-  // ค่าใช้จ่าย (จาก /expenses) — แยกตาม prefix + อัตราเติบโตตามประเภท
-  const rentInfl = prof?.rentInflation ?? 4
-  const growthFor = (cat: string, name: string) => {
-    const c = String(cat || '').toLowerCase(); const n = String(name || '')
-    if (/loan|credit/.test(c) || /ผ่อน|กู้|สินเชื่อ|หนี้/.test(n)) return 0           // ผ่อนหนี้ = คงที่
-    if (/_ins/.test(c) || /ประกัน/.test(n)) return 0                                  // เบี้ยประกัน = คงที่
-    if (/health|med/.test(c) || /สุขภาพ|รักษาพยาบาล|แพทย์/.test(n)) return med         // ค่ารักษา = เงินเฟ้อการแพทย์
-    if (/edu/.test(c) || /การศึกษา|เล่าเรียน|ค่าเทอม|โรงเรียน/.test(n)) return edu       // การศึกษา = เงินเฟ้อการศึกษา
-    if (/ค่าเช่า|เช่าบ้าน|เช่าคอนโด/.test(n)) return rentInfl                          // ค่าเช่า
-    return infl                                                                        // ทั่วไป
-  }
+  // ค่าใช้จ่าย (จาก /expenses) — แยกตาม prefix
   const fx = (expenses ?? []).filter(e => String(e.category).startsWith('fixed_'))
   const vr = (expenses ?? []).filter(e => String(e.category).startsWith('var_') && e.category !== 'var_tax')
   const sv = (expenses ?? []).filter(e => String(e.category).startsWith('saving_'))
-  for (const e of fx) d.expFixed.push({ id: uid(), label: e.name, base: toMonthly(toNum(e.amount), e.frequency) * 12, growth: growthFor(e.category, e.name), startAge: currentAge, endAge: retireAge - 1, auto: true })
-  for (const e of vr) d.expVar.push({ id: uid(), label: e.name, base: toMonthly(toNum(e.amount), e.frequency) * 12, growth: growthFor(e.category, e.name), startAge: currentAge, endAge: retireAge - 1, auto: true })
+  // รายจ่ายคงที่ = อัตราโต 0% ทุกแถว (คงที่) · PVD ดึงจากอัตราเพิ่มเงินเดือนใน autoFixedItems
+  for (const e of fx) d.expFixed.push({ id: uid(), label: e.name, base: toMonthly(toNum(e.amount), e.frequency) * 12, growth: 0, startAge: currentAge, endAge: retireAge - 1, auto: true })
+  // รายจ่ายผันแปร = อัตราเงินเฟ้อตามหน้าสมมติฐานทุกแถว
+  for (const e of vr) d.expVar.push({ id: uid(), label: e.name, base: toMonthly(toNum(e.amount), e.frequency) * 12, growth: infl, startAge: currentAge, endAge: retireAge - 1, auto: true })
   for (const e of sv) d.expSaving.push({ id: uid(), label: e.name, base: toMonthly(toNum(e.amount), e.frequency) * 12, growth: 0, startAge: currentAge, endAge: retireAge - 1, auto: true })
 
   // หนี้ → ค่าใช้จ่ายคงที่ (จ่ายจนปิดหนี้)
