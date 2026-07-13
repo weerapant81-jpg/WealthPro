@@ -43,7 +43,7 @@ const defaultForm = {
   workYears: '', salary: '', salaryIncreaseRate: '', company: '',
   address: '', phone: '', contactEmail: '', contactChannel: 'โทรศัพท์',
   addrHouseNo: '', addrSubdistrict: '', addrDistrict: '', addrProvince: '', addrZipcode: '',
-  hasSocialSecurity: false, socialSecurityYears: '',
+  hasSocialSecurity: false, socialSecurityYears: '', socialSecurityValue: '',
   hasGroupInsurance: false, giRoomLimit: '', giMedicalLimit: '', giSurgeryLimit: '', giOpdLimit: '',
   hasPVD: false, pvdEmployeeRate: '', pvdEmployerRate: '', pvdCurrentValue: '', pvdReturnRate: '',
   healthInfo: {
@@ -89,7 +89,7 @@ const defaultSpouseProfile = {
   firstName: '', lastName: '', nickname: '', birthDate: '', nationalId: '',
   nationality: 'ไทย', education: '', educationField: '',
   phone: '', contactEmail: '', contactChannel: 'โทรศัพท์',
-  hasSocialSecurity: false, socialSecurityYears: '',
+  hasSocialSecurity: false, socialSecurityYears: '', socialSecurityValue: '',
   hasGroupInsurance: false, giRoomLimit: '', giMedicalLimit: '', giSurgeryLimit: '', giOpdLimit: '',
   hasPVD: false, pvdEmployeeRate: '', pvdEmployerRate: '', pvdCurrentValue: '', pvdReturnRate: '',
   healthInfo: defaultHealth() as any,
@@ -369,6 +369,7 @@ export default function ClientProfilePage() {
         contactChannel: profile.contactChannel || 'โทรศัพท์',
         hasSocialSecurity: profile.hasSocialSecurity ?? false,
         socialSecurityYears: profile.socialSecurityYears ?? '',
+        socialSecurityValue: profile.socialSecurityValue ?? '',
         hasGroupInsurance: profile.hasGroupInsurance ?? false,
         giRoomLimit: profile.giRoomLimit ?? '',
         giMedicalLimit: profile.giMedicalLimit ?? '',
@@ -450,6 +451,7 @@ export default function ClientProfilePage() {
         parentCareExpense: payload.form.parentCareExpense !== '' ? Number(payload.form.parentCareExpense) : null,
         dependents: payload.form.dependents !== '' ? Number(payload.form.dependents) : null,
         socialSecurityYears: payload.form.socialSecurityYears !== '' ? Number(payload.form.socialSecurityYears) : null,
+        socialSecurityValue: payload.form.socialSecurityValue !== '' ? Number(payload.form.socialSecurityValue) : null,
         giRoomLimit: payload.form.giRoomLimit !== '' ? Number(payload.form.giRoomLimit) : null,
         giMedicalLimit: payload.form.giMedicalLimit !== '' ? Number(payload.form.giMedicalLimit) : null,
         giSurgeryLimit: payload.form.giSurgeryLimit !== '' ? Number(payload.form.giSurgeryLimit) : null,
@@ -1075,10 +1077,14 @@ export default function ClientProfilePage() {
                   </div>
                 </div>
                 {form.hasSocialSecurity && (
-                  <div style={{ paddingLeft: 156 }}>
+                  <div style={{ paddingLeft: 156, display: 'flex', gap: 20, flexWrap: 'wrap' }}>
                     <Field label="เป็นสมาชิกมาแล้ว (ปี)">
                       <input type="number" value={form.socialSecurityYears} onChange={e => set('socialSecurityYears', e.target.value)}
                         placeholder="เช่น 5" style={{ ...inp, maxWidth: 180 }} />
+                    </Field>
+                    <Field label="มูลค่ากองทุนปัจจุบัน (บาท)">
+                      <input type="number" value={form.socialSecurityValue} onChange={e => set('socialSecurityValue', e.target.value)}
+                        placeholder="เช่น 120000" style={{ ...inp, maxWidth: 200 }} />
                     </Field>
                   </div>
                 )}
@@ -1353,8 +1359,9 @@ export default function ClientProfilePage() {
                   </div>
                 </div>
                 {spouseProfile.hasSocialSecurity && (
-                  <div style={{ paddingLeft: 156 }}>
+                  <div style={{ paddingLeft: 156, display: 'flex', gap: 20, flexWrap: 'wrap' }}>
                     <Field label="เป็นสมาชิกมาแล้ว (ปี)"><input type="number" value={spouseProfile.socialSecurityYears} onChange={e => setSp('socialSecurityYears', e.target.value)} placeholder="เช่น 5" style={{ ...inp, maxWidth: 180 }} /></Field>
+                    <Field label="มูลค่ากองทุนปัจจุบัน (บาท)"><input type="number" value={spouseProfile.socialSecurityValue ?? ''} onChange={e => setSp('socialSecurityValue', e.target.value)} placeholder="เช่น 120000" style={{ ...inp, maxWidth: 200 }} /></Field>
                   </div>
                 )}
               </div>

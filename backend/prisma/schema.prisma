@@ -90,6 +90,7 @@ model ClientProfile {
   // Welfare
   hasSocialSecurity     Boolean?  @default(false)
   socialSecurityYears   Float?
+  socialSecurityValue   Float?    // มูลค่ากองทุนประกันสังคมปัจจุบัน → ใช้เป็นยอดยกมาในหน้าคำนวณ
   hasGroupInsurance     Boolean?  @default(false)
   giRoomLimit           Float?
   giMedicalLimit        Float?

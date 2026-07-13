@@ -99,6 +99,11 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
     return list.filter(isSso).reduce((s, a) => s + (parseFloat(String(a?.currentValue ?? '').replace(/,/g, '')) || 0), 0)
   }, [ssInvSrc])
 
+  // สวัสดิการ ปกส. ของบุคคลนี้ (คู่สมรสใช้ของคู่สมรส) + มูลค่ากองทุนปัจจุบันที่กรอกในหน้าข้อมูลส่วนบุคคล
+  const welfare: any = isSelf ? clientProfile : clientProfile?.spouseProfile
+  const profileSSValue = toNum(welfare?.socialSecurityValue)     // ใช้เป็น "ยอดยกมา"
+  const openingSource = profileSSValue > 0 ? profileSSValue : ssoAssetValue   // ให้ค่าที่กรอกในโปรไฟล์มาก่อน
+
   // ── Assumptions (editable, auto-filled from profile) ──
   const [salary, setSalary] = useState(15000)
   const [baseOverrides, setBaseOverrides] = useState<Record<number, number>>({})
@@ -159,14 +164,14 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
     loadedRef.current = true
   }, [isFetched, savedPlan])
 
-  // ── ดึง "ยอดยกมา" จากมูลค่ากองทุนประกันสังคมในสินทรัพย์ลงทุน (เฉพาะเมื่อยังไม่มีค่าที่บันทึกไว้) ──
+  // ── ดึง "ยอดยกมา" จาก "มูลค่ากองทุนปัจจุบัน" ที่กรอกในหน้าข้อมูลส่วนบุคคล (fallback: สินทรัพย์ลงทุน) ──
   const obFilledRef = useRef(false)
   useEffect(() => {
     if (obFilledRef.current || !isFetched) return
     const p = savedPlan?.[person]
     if (p && Number(p.openingBalance) > 0) { obFilledRef.current = true; return } // เคยกรอกเอง → ค่าเดิมชนะ
-    if (ssoAssetValue > 0) { setOpeningBalance(ssoAssetValue); obFilledRef.current = true }
-  }, [isFetched, savedPlan, ssoAssetValue, person])
+    if (openingSource > 0) { setOpeningBalance(openingSource); obFilledRef.current = true }
+  }, [isFetched, savedPlan, openingSource, person])
 
   // ── Debounced autosave + flush on unmount (per-person slice, merged) ──
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -231,8 +236,7 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
   // Pension base = contribution base (เงินเดือน) at retirement year, from the table
   const pensionBase = rows.length ? rows[rows.length - 1].base : Math.min(salary, 17500)
 
-  // จำนวนปีที่เป็นสมาชิก ปกส. มาแล้ว (จากหน้าข้อมูลส่วนบุคคล) — คู่สมรสใช้ของคู่สมรส
-  const welfare: any = isSelf ? clientProfile : clientProfile?.spouseProfile
+  // จำนวนปีที่เป็นสมาชิก ปกส. มาแล้ว (จากหน้าข้อมูลส่วนบุคคล) — welfare ประกาศไว้ด้านบน
   const memberYears = toNum(welfare?.socialSecurityYears)
 
   // ── Pension calculation (เงินบำนาญ) ──
@@ -342,9 +346,11 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
           </div>
           <div style={{ borderTop: '1px solid var(--card-border)', margin: '8px 0' }} />
           <Field label="ยอดยกมา"><NumIn value={openingBalance} onChange={setOpeningBalance} suffix="บาท" money /></Field>
-          {ssoAssetValue > 0 && (
+          {openingSource > 0 && (
             <div style={{ fontSize: 10.5, color: 'var(--text-muted)', padding: '0 0 4px', lineHeight: 1.5 }}>
-              ดึงจากมูลค่ากองทุนประกันสังคมในข้อมูลสินทรัพย์ลงทุน ({fmt(ssoAssetValue)} บาท) · พิมพ์ทับเพื่อปรับได้
+              {profileSSValue > 0
+                ? `ดึงจาก "มูลค่ากองทุนปัจจุบัน" ที่กรอกในหน้าข้อมูลส่วนบุคคล (${fmt(profileSSValue)} บาท)`
+                : `ดึงจากมูลค่ากองทุนประกันสังคมในข้อมูลสินทรัพย์ลงทุน (${fmt(ssoAssetValue)} บาท)`} · พิมพ์ทับเพื่อปรับได้
             </div>
           )}
           <Field label="อายุปัจจุบัน"><NumIn value={currentAge} onChange={setCurrentAge} suffix="ปี" width={70} /></Field>
