@@ -450,10 +450,8 @@ function PersonPanel({ data, onChange, color, isSelf }: {
   }, [clientProfile])
   useEffect(() => {
     if (filledSettings.current || !profile) return
-    const retAge = isSelf ? profile.retirementAgeSelf : profile.retirementAgeSpouse
     const lifeExp = isSelf ? profile.lifeExpectancySelf : profile.lifeExpectancySpouse
     const updates: Partial<Person> = {}
-    if (retAge) updates.retirementAge = retAge
     if (lifeExp) updates.lifeExpectancy = lifeExp
     if (profile.inflationRate != null) updates.inflationRate = profile.inflationRate
     if (profile.preRetirementReturn != null) updates.preRetirementReturn = profile.preRetirementReturn
@@ -463,6 +461,12 @@ function PersonPanel({ data, onChange, color, isSelf }: {
       filledSettings.current = true
     }
   }, [profile])
+  // อายุเกษียณ = แหล่งเดียวจากหน้าสมมติฐาน — sync ให้ตรงเสมอ (แก้ที่หน้าสมมติฐาน)
+  const retAgeSetting = (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? 60
+  useEffect(() => {
+    if (profile && data.retirementAge !== retAgeSetting) onChange({ ...data, retirementAge: retAgeSetting })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [retAgeSetting, data.retirementAge])
   // Auto-fill savingsGrowthRate from salary-increase rate in client profile
   const filledRate = useRef(false)
   useEffect(() => {
@@ -559,7 +563,10 @@ function PersonPanel({ data, onChange, color, isSelf }: {
 
         <SectionLabel>ข้อมูลส่วนตัว</SectionLabel>
         <InputRow label="อายุปัจจุบัน" value={data.currentAge} onChange={v => set('currentAge', v)} unit="ปี" />
-        <InputRow label="อายุเกษียณ" value={data.retirementAge} onChange={v => set('retirementAge', v)} unit="ปี" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, lineHeight: 1.3, color: 'var(--text-secondary)' }}>อายุเกษียณ</span>
+          <span style={{ flexShrink: 0, fontSize: 13 }}><span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--cyan)' }}>{data.retirementAge}</span> <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>ปี · จากสมมติฐาน</span></span>
+        </div>
         <InputRow label="อายุขัย" value={data.lifeExpectancy} onChange={v => set('lifeExpectancy', v)} unit="ปี" />
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 6, padding: '5px 8px', background: 'var(--navy-900)', borderRadius: 6 }}>
           <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>ออมได้ <strong style={{ color }}>{result.saveYears} ปี</strong> (ถึงอายุ {data.retirementAge - 1})</span>
