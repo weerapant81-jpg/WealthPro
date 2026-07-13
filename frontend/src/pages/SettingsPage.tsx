@@ -207,7 +207,9 @@ export default function SettingsPage() {
   const save = useMutation({
     mutationFn: (data: Form) => api.put(isSuper ? '/assumption-defaults' : '/profile', data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: isSuper ? ['assumption-defaults'] : ['profile'] })
+      if (isSuper) qc.invalidateQueries({ queryKey: ['assumption-defaults'] })
+      // refresh ['profile'] เสมอ — หน้าคำนวณอื่นอ่านอายุเกษียณ/สมมติฐานจาก /profile (SA แก้ค่ากลาง = โปรไฟล์ SA เอง)
+      qc.invalidateQueries({ queryKey: ['profile'] })
       qc.invalidateQueries({ queryKey: ['projection'] })
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
