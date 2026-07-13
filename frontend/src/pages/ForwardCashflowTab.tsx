@@ -252,18 +252,16 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
         goalEducation: cap(d.goalEducation), goalRetire: cap(d.goalRetire), goalInsurance: cap(d.goalInsurance),
       }
     }
-    // income = แหล่งเดียว (รายรับล่าสุด) → sync ทุกครั้งที่โหลด · รายจ่าย/ออม/เป้าหมาย ใช้ที่บันทึกไว้
-    // + เติมรายการหักอัตโนมัติ (ประกันสังคม/PVD/เบี้ยประกันชีวิต) ถ้ายังไม่มี
-    const withFreshIncome = (savedD: any, seedD: CashflowData, retAge: number, autos: Line[]) => {
-      const merged = clampAll({ ...emptyData(), ...savedD, incomeWork: seedD.incomeWork, incomeAsset: seedD.incomeAsset }, retAge)
-      const missing = autos.filter(a => !merged.expFixed.some(l => _norm(l.label).includes(_norm(a.label).slice(0, 8))))
-      merged.expFixed = [...merged.expFixed, ...missing]
-      return merged
-    }
-    const autoSelf = autoFixedItems(true, cp, li, selfAge ?? 35, prof?.retirementAgeSelf ?? 60)
-    const autoSpouse = autoFixedItems(false, cp, li, cp?.spouseAge ?? 35, prof?.retirementAgeSpouse ?? 60)
-    setSelfData((saved?.self && Object.keys(saved.self).length) ? withFreshIncome(saved.self, seedSelf, prof?.retirementAgeSelf ?? 60, autoSelf) : seedSelf)
-    setSpouseData((saved?.spouse && Object.keys(saved.spouse).length) ? withFreshIncome(saved.spouse, seedSpouse, prof?.retirementAgeSpouse ?? 60, autoSpouse) : seedSpouse)
+    // งบกระแสเงินสด = แหล่งเดียว → sync รายรับ + รายจ่าย (คงที่/ผันแปร/ออม) สดทุกครั้งที่โหลด
+    // seedD.expFixed รวมรายการหักอัตโนมัติ (ประกันสังคม/PVD/เบี้ยประกันชีวิต) ไว้แล้ว · เป้าหมาย (goals) ใช้ที่บันทึกไว้
+    const withFreshSource = (savedD: any, seedD: CashflowData, retAge: number) =>
+      clampAll({
+        ...emptyData(), ...savedD,
+        incomeWork: seedD.incomeWork, incomeAsset: seedD.incomeAsset,
+        expFixed: seedD.expFixed, expVar: seedD.expVar, expSaving: seedD.expSaving,
+      }, retAge)
+    setSelfData((saved?.self && Object.keys(saved.self).length) ? withFreshSource(saved.self, seedSelf, prof?.retirementAgeSelf ?? 60) : seedSelf)
+    setSpouseData((saved?.spouse && Object.keys(saved.spouse).length) ? withFreshSource(saved.spouse, seedSpouse, prof?.retirementAgeSpouse ?? 60) : seedSpouse)
     loadedRef.current = true
   }, [isFetched, saved, cp, prof, expensesSelf, expensesSpouse, liabilitiesSelf, liabilitiesSpouse, lifeInsurances])
 
