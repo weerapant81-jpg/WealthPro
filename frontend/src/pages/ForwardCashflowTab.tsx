@@ -337,14 +337,6 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
   // ── UI ──
   const updateLine = (secKey: keyof CashflowData, id: string, patch: Partial<Line>) =>
     setSec(secKey, data[secKey].map(l => l.id === id ? { ...l, ...patch } : l))
-  // override ค่ารายช่อง (ตามอายุ); ลบทิ้งเมื่อเป็นค่าว่าง → กลับไปคำนวณตามสูตร
-  const setOverride = (secKey: keyof CashflowData, id: string, age: number, val: number | null) =>
-    setSec(secKey, data[secKey].map(l => {
-      if (l.id !== id) return l
-      const ov = { ...(l.ov ?? {}) }
-      if (val == null) delete ov[String(age)]; else ov[String(age)] = val
-      return { ...l, ov: Object.keys(ov).length ? ov : undefined }
-    }))
   const delLine = (secKey: keyof CashflowData, id: string) => setSec(secKey, data[secKey].filter(l => l.id !== id))
   const addLine = (secKey: keyof CashflowData, isIncome: boolean) => {
     // ค่าเริ่มต้นของทุกรายการ = สิ้นสุดที่อายุเกษียณ − 1 (แก้ไขเป็น "ตลอด/∞" เองได้ที่ช่องจำนวนปี)
@@ -395,12 +387,7 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
       {rows.map((r, idx) => idx === 0
         ? <td key={r.age} style={{ ...td, padding: '2px 4px' }}><input value={line.base ? line.base.toLocaleString('en-US') : ''} inputMode="numeric"
             onChange={e => { const raw = e.target.value.replace(/,/g, ''); if (raw === '' || /^\d+$/.test(raw)) updateLine(secKey, line.id, { base: Number(raw || 0) }) }} style={cellInp} /></td>
-        : r.age === retireAge
-          ? <td key={r.age} style={{ ...td, padding: '2px 4px' }}><input value={(() => { const v = lineAt(line, r.age, retireAge); return v ? Math.round(v).toLocaleString('en-US') : '' })()} inputMode="numeric"
-              title="ช่องอายุเกษียณ — แก้ไขได้ (เว้นว่าง = คำนวณตามสูตร); ปีถัดไปจะโตต่อจากค่านี้"
-              onChange={e => { const raw = e.target.value.replace(/,/g, ''); if (raw === '') setOverride(secKey, line.id, r.age, null); else if (/^\d+$/.test(raw)) setOverride(secKey, line.id, r.age, Number(raw)) }}
-              style={{ ...cellInp, background: 'rgba(245,158,11,0.1)', color: '#fbbf24' }} /></td>
-          : <td key={r.age} style={{ ...td, color: lineAt(line, r.age, retireAge) > 0 ? color : 'var(--text-muted)' }}>{(() => { const v = lineAt(line, r.age, retireAge); return v > 0 ? fmt0(v) : '–' })()}</td>)}
+        : <td key={r.age} style={{ ...td, color: lineAt(line, r.age, retireAge) > 0 ? color : 'var(--text-muted)' }}>{(() => { const v = lineAt(line, r.age, retireAge); return v > 0 ? fmt0(v) : '–' })()}</td>)}
     </tr>
   )
   const AddRow = ({ secKey, isIncome, accent }: { secKey: keyof CashflowData; isIncome: boolean; accent: string }) => (
