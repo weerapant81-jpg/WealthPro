@@ -306,7 +306,7 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
   }, [data, currentAge, lifeExp, retireAge, cp, taxPlan, person, retBalByAge, retExpByAge, retOpenByAge])
 
   const taxRows = rows.filter(r => r.age <= retireAge)
-  const chartData = rows.map(r => ({ age: r.age, net: Math.round(r.net), remain: Math.round(r.remain) }))
+  const chartData = rows.map(r => ({ age: r.age, net: Math.round(r.net), remain: Math.round(r.remain), expense: Math.round(r.outTotal) }))
   const preData = chartData.filter(d => d.age < retireAge)
   const postData = chartData.filter(d => d.age >= retireAge)
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -314,7 +314,7 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
     { key: 'pre', title: 'ก่อนเกษียณ', sub: `อายุ ${currentAge}–${retireAge - 1}`, data: preData },
     { key: 'post', title: 'หลังเกษียณ', sub: `อายุ ${retireAge}–${lifeExp}`, data: postData },
   ]
-  const chartEl = (dataset: any[], height: number) => (
+  const chartEl = (dataset: any[], height: number, showExpense = false) => (
     <ChartFrame title="กระแสเงินสดล่วงหน้า" filename="forward-cashflow" height={height}>
     <ResponsiveContainer width="100%" height="100%">
       <ComposedChart data={dataset}>
@@ -324,7 +324,8 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
         <Tooltip formatter={(v: any) => fmt0(v) + ' บาท'} contentStyle={{ background: 'var(--navy-950)', border: '1px solid var(--card-border)', borderRadius: 8, fontSize: 11 }} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
         <ReferenceLine y={0} stroke="var(--text-muted)" strokeWidth={1} />
-        <Bar dataKey="net" name="กระแสสุทธิ" barSize={height > 300 ? 12 : 7}>
+        {showExpense && <Bar dataKey="expense" name="รายจ่าย/ปี" barSize={height > 300 ? 12 : 7} fill="#f59e0bb0" />}
+        <Bar dataKey="net" name="กระแสสุทธิ" barSize={height > 300 ? 12 : 7} fill="#22c55e">
           {dataset.map((d, i) => <Cell key={i} fill={d.net < 0 ? '#ef4444cc' : '#22c55ecc'} />)}
         </Bar>
         <RLine dataKey="remain" name="คงเหลือหลังเป้าหมาย" stroke="#94a3b8" strokeWidth={1.5}
@@ -424,7 +425,7 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
               <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>{c.title} <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>· {c.sub}</span></p>
               <Maximize2 size={13} style={{ color: 'var(--text-muted)' }} />
             </div>
-            {chartEl(c.data, 220)}
+            {chartEl(c.data, 220, c.key === 'post')}
           </div>
         ))}
       </div>
@@ -439,7 +440,7 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
                 <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{c.title} <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>· {c.sub}</span></p>
                 <button onClick={() => setExpanded(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}><X size={18} /></button>
               </div>
-              {chartEl(c.data, 480)}
+              {chartEl(c.data, 480, c.key === 'post')}
             </div>
           </div>, document.body)
       })()}
