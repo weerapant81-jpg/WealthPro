@@ -461,12 +461,8 @@ function PersonPanel({ data, onChange, color, isSelf }: {
       filledSettings.current = true
     }
   }, [profile])
-  // อายุเกษียณ = แหล่งเดียวจากหน้าสมมติฐาน — sync ให้ตรงเสมอ (แก้ที่หน้าสมมติฐาน)
+  // อายุเกษียณ = แหล่งเดียวจากหน้าสมมติฐาน (profile) — override ค่าที่บันทึกในแผนตอนคำนวณ/แสดงผล
   const retAgeSetting = (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? 60
-  useEffect(() => {
-    if (profile && data.retirementAge !== retAgeSetting) onChange({ ...data, retirementAge: retAgeSetting })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [retAgeSetting, data.retirementAge])
   // Auto-fill savingsGrowthRate from salary-increase rate in client profile
   const filledRate = useRef(false)
   useEffect(() => {
@@ -481,7 +477,7 @@ function PersonPanel({ data, onChange, color, isSelf }: {
     }
   }, [clientProfile])
 
-  const projectedAsset = useProjectedAssetAtRetirement(data.retirementAge, isSelf)
+  const projectedAsset = useProjectedAssetAtRetirement(retAgeSetting, isSelf)
   const portReturn = usePortfolioReturn(isSelf)   // อัตราผลตอบแทนพอร์ต (fallback เมื่อไม่มีข้อมูล Monte Carlo)
   const medianByAge = useInvestmentMedianByAge(isSelf)   // ค่ากลาง Monte Carlo ราย "อายุ" (จากหน้ามูลค่าสินทรัพย์ลงทุน)
   const [manualAsset] = useState<number | null>(null)
@@ -490,7 +486,7 @@ function PersonPanel({ data, onChange, color, isSelf }: {
   const extraAssets = ssoPV + pvdAtRetire + sevNet
   const totalAssets = assetAtRetirement + extraAssets
   // คอลัมน์ "สินทรัพย์เดิม" = ค่ากลาง Monte Carlo ราย "อายุ" (ถ้าไม่มี → โตด้วยผลตอบแทนพอร์ต)
-  const result = useMemo(() => calcPerson(data, assetAtRetirement, extraAssets, portReturn ?? 0, medianByAge), [data, assetAtRetirement, extraAssets, portReturn, medianByAge])
+  const result = useMemo(() => calcPerson({ ...data, retirementAge: retAgeSetting }, assetAtRetirement, extraAssets, portReturn ?? 0, medianByAge), [data, retAgeSetting, assetAtRetirement, extraAssets, portReturn, medianByAge])
 
   // Graduated savings: solve first-year payment of a growing annuity whose FV == gap
   const gradSavings = useMemo(() => {
@@ -565,11 +561,11 @@ function PersonPanel({ data, onChange, color, isSelf }: {
         <InputRow label="อายุปัจจุบัน" value={data.currentAge} onChange={v => set('currentAge', v)} unit="ปี" />
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
           <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, lineHeight: 1.3, color: 'var(--text-secondary)' }}>อายุเกษียณ</span>
-          <span style={{ flexShrink: 0, fontSize: 13 }}><span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--cyan)' }}>{data.retirementAge}</span> <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>ปี · จากสมมติฐาน</span></span>
+          <span style={{ flexShrink: 0, fontSize: 13 }}><span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--cyan)' }}>{retAgeSetting}</span> <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>ปี · จากสมมติฐาน</span></span>
         </div>
         <InputRow label="อายุขัย" value={data.lifeExpectancy} onChange={v => set('lifeExpectancy', v)} unit="ปี" />
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 6, padding: '5px 8px', background: 'var(--navy-900)', borderRadius: 6 }}>
-          <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>ออมได้ <strong style={{ color }}>{result.saveYears} ปี</strong> (ถึงอายุ {data.retirementAge - 1})</span>
+          <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>ออมได้ <strong style={{ color }}>{result.saveYears} ปี</strong> (ถึงอายุ {retAgeSetting - 1})</span>
           <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>หลังเกษียณ <strong style={{ color }}>{result.yearsAfter} ปี</strong></span>
         </div>
 
@@ -711,7 +707,7 @@ function PersonPanel({ data, onChange, color, isSelf }: {
         <div style={{ background: 'var(--navy-900)', borderRadius: 12, padding: '16px 16px 10px' }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>การคาดการณ์มูลค่าเงินในอนาคต</div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 14 }}>
-            สะสม (อายุ {data.currentAge}–{data.retirementAge - 1}) → ใช้เงิน (อายุ {data.retirementAge}–{data.lifeExpectancy})
+            สะสม (อายุ {data.currentAge}–{retAgeSetting - 1}) → ใช้เงิน (อายุ {retAgeSetting}–{data.lifeExpectancy})
           </div>
           <ChartFrame title="การคาดการณ์มูลค่าเงินในอนาคต" filename="retirement-projection" height={260}>
           <ResponsiveContainer width="100%" height="100%">
@@ -723,7 +719,7 @@ function PersonPanel({ data, onChange, color, isSelf }: {
                 label={{ value: 'ล้านบาท', angle: -90, position: 'insideLeft', fontSize: 11, fill: 'var(--text-muted)' }} />
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ fontSize: 11, color: 'var(--text-secondary)' }} />
-              <ReferenceLine x={data.retirementAge - 1} stroke={color} strokeDasharray="6 3" label={{ value: 'เกษียณ', fill: color, fontSize: 11, position: 'top' }} />
+              <ReferenceLine x={retAgeSetting - 1} stroke={color} strokeDasharray="6 3" label={{ value: 'เกษียณ', fill: color, fontSize: 11, position: 'top' }} />
               <ReferenceLine y={0} stroke="#f87171" strokeDasharray="4 2" />
               <Bar dataKey="living" name="ค่าใช้จ่าย/ปี" fill="#f8717150" stroke="#f87171" strokeWidth={0.5} barSize={16} />
               <Bar dataKey="goals" name="เป้าหมายพิเศษ" fill="#f59e0b50" stroke="#f59e0b" strokeWidth={0.5} barSize={16} />
@@ -760,7 +756,7 @@ function PersonPanel({ data, onChange, color, isSelf }: {
               <tbody>
                 {result.projectionRows.map((row, idx) => {
                   const isRet = row.phase === 'retirement'
-                  const isRetireYear = row.age === data.retirementAge
+                  const isRetireYear = row.age === retAgeSetting
                   const balance = isRet ? row.closeBalance ?? 0 : row.totalAccum ?? 0
                   const isNegative = isRet && balance < 0
                   return (

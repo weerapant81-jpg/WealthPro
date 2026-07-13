@@ -7,6 +7,7 @@ import { MoneyInput as MoneyInputBase } from '../components/MoneyInput'
 import { PageHeader } from '../components/ui'
 import { TableExcelButton } from '../components/exportable'
 import { useAuth } from '../context/AuthContext'
+import { useClient } from '../context/ClientContext'
 import InvestmentAssumptionPage from './InvestmentAssumptionPage'
 
 const CURRENT_YEAR = new Date().getFullYear() + 543  // พ.ศ.
@@ -133,6 +134,9 @@ export default function SettingsPage() {
   const qc = useQueryClient()
   const { user } = useAuth()
   const isSuper = user?.role === 'SUPER_ADMIN'
+  const { selectedClient } = useClient()
+  // แก้ค่ากลาง เฉพาะ SA ที่ยังไม่ได้เลือกลูกค้า · ถ้าเลือกลูกค้าแล้ว = แก้ของลูกค้ารายนั้น
+  const editGlobal = isSuper && !selectedClient
   const { data: profile, isFetched } = useQuery({ queryKey: ['profile'], queryFn: () => api.get('/profile').then(r => r.data) })
   // ค่าสมมติฐานกลางที่ Super Admin ตั้งไว้ — SA แก้ที่นี่ · FA ใช้เป็น default ตั้งต้นของลูกค้า
   const { data: defaults, isFetched: defFetched } = useQuery({ queryKey: ['assumption-defaults'], queryFn: () => api.get('/assumption-defaults').then(r => r.data), retry: false })
@@ -162,11 +166,11 @@ export default function SettingsPage() {
 
   useEffect(() => {
     // SA แก้ค่ากลาง (ใช้ defaults) · FA แก้ค่าลูกค้า (ใช้ profile, fallback = defaults)
-    const ready = defFetched && (isSuper || isFetched)
+    const ready = defFetched && (editGlobal || isFetched)
     if (!ready || initRef.current) return   // init ครั้งเดียว — กัน refetch มา reset ค่าที่กำลังแก้
     initRef.current = true
-    const base: any = isSuper ? (defaults ?? {}) : (profile ?? {})
-    const fb: any = isSuper ? {} : (defaults ?? {})
+    const base: any = editGlobal ? (defaults ?? {}) : (profile ?? {})
+    const fb: any = editGlobal ? {} : (defaults ?? {})
     const pick = (k: string, hard: any) => base[k] ?? fb[k] ?? hard
     const ec = (base.educationCosts && typeof base.educationCosts === 'object') ? base.educationCosts
       : (fb.educationCosts && typeof fb.educationCosts === 'object') ? fb.educationCosts : defaultEduCosts()
@@ -197,7 +201,7 @@ export default function SettingsPage() {
       educationCostYear:    pick('educationCostYear', CURRENT_YEAR),
       educationCosts:       ec,
     })
-  }, [profile, defaults, isFetched, defFetched, isSuper])
+  }, [profile, defaults, isFetched, defFetched, editGlobal])
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm(f => ({ ...f, [k]: v }))
 
@@ -205,9 +209,9 @@ export default function SettingsPage() {
     setForm(f => ({ ...f, educationCosts: { ...f.educationCosts, [level]: { ...f.educationCosts[level], [type]: val } } }))
 
   const save = useMutation({
-    mutationFn: (data: Form) => api.put(isSuper ? '/assumption-defaults' : '/profile', data),
+    mutationFn: (data: Form) => api.put(editGlobal ? '/assumption-defaults' : '/profile', data),
     onSuccess: () => {
-      if (isSuper) qc.invalidateQueries({ queryKey: ['assumption-defaults'] })
+      if (editGlobal) qc.invalidateQueries({ queryKey: ['assumption-defaults'] })
       // refresh ['profile'] เสมอ — หน้าคำนวณอื่นอ่านอายุเกษียณ/สมมติฐานจาก /profile (SA แก้ค่ากลาง = โปรไฟล์ SA เอง)
       qc.invalidateQueries({ queryKey: ['profile'] })
       qc.invalidateQueries({ queryKey: ['projection'] })
@@ -242,15 +246,15 @@ export default function SettingsPage() {
       {TabBar}
       {/* แถบบอกบริบท: SA แก้ค่ากลาง · FA แก้ค่าลูกค้า (default มาจากค่ากลาง) */}
       <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, fontSize: 12.5, lineHeight: 1.5,
-        background: isSuper ? 'rgba(245,158,11,0.12)' : 'var(--cyan-dim)',
-        border: `1px solid ${isSuper ? '#f59e0b' : 'var(--cyan)'}`, color: 'var(--text-secondary)' }}>
-        {isSuper
-          ? <><b style={{ color: 'var(--text-primary)' }}>คุณกำลังตั้งค่าสมมติฐานกลาง</b> — ค่านี้จะเป็น default ตั้งต้นให้นักวางแผน (FA) ทุกคนสำหรับลูกค้าใหม่ที่ยังไม่ปรับแก้</>
-          : <><b style={{ color: 'var(--text-primary)' }}>ค่าเริ่มต้นมาจากค่ากลางของผู้ให้บริการ</b> — คุณแก้ไขสำหรับลูกค้ารายนี้ได้ตามต้องการ (ค่าที่แก้จะใช้เฉพาะลูกค้าคนนี้)</>}
+        background: editGlobal ? 'rgba(245,158,11,0.12)' : 'var(--cyan-dim)',
+        border: `1px solid ${editGlobal ? '#f59e0b' : 'var(--cyan)'}`, color: 'var(--text-secondary)' }}>
+        {editGlobal
+          ? <><b style={{ color: 'var(--text-primary)' }}>คุณกำลังตั้งค่าสมมติฐานกลาง</b> — ค่านี้จะเป็น default ตั้งต้นให้นักวางแผน (FA) ทุกคนสำหรับลูกค้าใหม่ที่ยังไม่ปรับแก้ (เลือกลูกค้าก่อน หากต้องการแก้เฉพาะรายคน)</>
+          : <><b style={{ color: 'var(--text-primary)' }}>แก้ไขสำหรับ{selectedClient?.name ? `ลูกค้า: ${selectedClient.name}` : 'ลูกค้ารายนี้'}</b> — ค่าเริ่มต้นมาจากค่ากลางของผู้ให้บริการ · ค่าที่แก้จะใช้เฉพาะลูกค้าคนนี้</>}
       </div>
       {/* Header + Save bar */}
       <div style={{ marginBottom: 28 }}>
-        <PageHeader icon={SlidersHorizontal} title={isSuper ? 'ตั้งค่าสมมติฐานกลาง' : 'ตั้งค่าสมมติฐาน'} subtitle="สมมติฐานเหล่านี้ใช้คำนวณแผนการเงินส่วนบุคคล"
+        <PageHeader icon={SlidersHorizontal} title={editGlobal ? 'ตั้งค่าสมมติฐานกลาง' : 'ตั้งค่าสมมติฐาน (รายลูกค้า)'} subtitle="สมมติฐานเหล่านี้ใช้คำนวณแผนการเงินส่วนบุคคล"
           right={
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
           {saved && (
