@@ -208,7 +208,7 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
     const out: Row[] = []
     const rr = returnRate / 100
     let empBal = 0, erBal = 0, govBal = 0, carry = openingBalance
-    for (let age = currentAge; age <= retirementAge; age++) {
+    for (let age = currentAge; age < retirementAge; age++) {   // ปีสุดท้ายที่จ่ายสมทบ = อายุเกษียณ − 1
       const base = baseFor(age)
       const empC = base * (empRate / 100) * 12
       const erC = base * (employerRate / 100) * 12
@@ -362,7 +362,7 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
                   contentStyle={{ background: 'var(--navy-950)', border: '1px solid var(--card-border)', borderRadius: 8, fontSize: 12 }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <ReferenceLine x={retirementAge} stroke="#f59e0b" strokeDasharray="4 4" label={{ value: 'เกษียณ', fill: '#f59e0b', fontSize: 11, position: 'insideTopLeft' }} />
+                <ReferenceLine x={retirementAge - 1} stroke="#f59e0b" strokeDasharray="4 4" label={{ value: `ปีสุดท้ายสมทบ (${retirementAge - 1})`, fill: '#f59e0b', fontSize: 11, position: 'insideTopLeft' }} />
                 <Bar dataKey="emp"   name="ส่วนลูกจ้าง" stackId="a" fill={C_EMP} />
                 <Bar dataKey="er"    name="ส่วนนายจ้าง" stackId="a" fill={C_ER} />
                 <Bar dataKey="gov"   name="ส่วนรัฐ" stackId="a" fill={C_GOV} />
@@ -404,7 +404,7 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
               </tr>
             )}
             {rows.map(r => {
-              const isRetire = r.age === retirementAge
+              const isRetire = r.age === retirementAge - 1   // แถวสุดท้าย = ปีสุดท้ายที่สมทบ (อายุเกษียณ − 1)
               return (
                 <tr key={r.age} style={{ borderBottom: '1px solid var(--divider)', background: isRetire ? 'rgba(245,158,11,0.07)' : 'transparent' }}>
                   <td style={{ ...td, fontWeight: isRetire ? 700 : 400, color: isRetire ? '#f59e0b' : 'var(--text-secondary)' }}>{r.age}{isRetire && ' ⭐'}</td>
