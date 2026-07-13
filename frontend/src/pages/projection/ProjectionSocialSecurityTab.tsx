@@ -231,9 +231,15 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
   // Pension base = contribution base (เงินเดือน) at retirement year, from the table
   const pensionBase = rows.length ? rows[rows.length - 1].base : Math.min(salary, 17500)
 
+  // จำนวนปีที่เป็นสมาชิก ปกส. มาแล้ว (จากหน้าข้อมูลส่วนบุคคล) — คู่สมรสใช้ของคู่สมรส
+  const welfare: any = isSelf ? clientProfile : clientProfile?.spouseProfile
+  const memberYears = toNum(welfare?.socialSecurityYears)
+
   // ── Pension calculation (เงินบำนาญ) ──
   const pension = useMemo(() => {
-    const N = Math.max(0, Math.round((retirementAge - startContribAge) * 12))
+    // จำนวนปีสมทบทั้งหมด = เป็นสมาชิกมาแล้ว + ปีที่เหลือถึงเกษียณ−1 (นับรวมปีปัจจุบัน = อายุเกษียณ − อายุปัจจุบัน)
+    const totalYears = memberYears + Math.max(0, retirementAge - currentAge)
+    const N = Math.max(0, Math.round(totalYears * 12))
     const eligible = N >= 180
     const ratePct = eligible ? 20 + ((N - 180) / 12) * 1.5 : 0
     const monthly = (ratePct / 100) * pensionBase
@@ -243,7 +249,7 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
     const factor = i === 0 ? n : (1 - Math.pow(1 + i, -n)) / i
     const pv = annual * factor
     return { N, eligible, ratePct, monthly, annual, pv }
-  }, [retirementAge, startContribAge, pensionBase, pensionYears, discountRate])
+  }, [memberYears, retirementAge, currentAge, pensionBase, pensionYears, discountRate])
 
   // เก็บ "มูลค่าปัจจุบัน ณ เกษียณ" (บำนาญ) ไว้ในข้อมูลที่บันทึก เพื่อให้การ์ดสรุปแผนเกษียณดึงไปใช้
   valuesRef.current = { ...valuesRef.current, pensionPV: pension.pv }
