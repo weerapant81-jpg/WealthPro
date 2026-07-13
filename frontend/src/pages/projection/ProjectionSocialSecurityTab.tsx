@@ -323,7 +323,7 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
 
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : '300px 1fr', gap: 20, alignItems: 'stretch' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : '300px 1fr', gap: 20, alignItems: 'start' }}>
 
         {/* Assumptions */}
         <div style={{ ...card }}>
@@ -351,12 +351,12 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
           <Field label="อายุเกษียณ"><NumIn value={retirementAge} onChange={setRetirementAge} suffix="ปี" width={70} /></Field>
         </div>
 
-        {/* Chart — stretches to match assumptions height (equal bottom edge) */}
+        {/* Chart — การ์ดสูงพอดีเนื้อหา (ไม่ยืดตามการ์ดสมมติฐาน) */}
         <div style={{ ...card, display: 'flex', flexDirection: 'column' }}>
           <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 14 }}>
             มูลค่ากองทุนประกันสังคมสะสม (บาท)
           </p>
-          <ChartFrame title="มูลค่ากองทุนประกันสังคมสะสม" filename="social-security" height={320}>
+          <ChartFrame title="มูลค่ากองทุนประกันสังคมสะสม" filename="social-security" height={400}>
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartData} margin={{ top: 8, right: 20, left: 10, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--grid)" />
