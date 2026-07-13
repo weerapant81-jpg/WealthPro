@@ -46,7 +46,7 @@ export function useInvestmentMedianByAge(isSelf: boolean): Map<number, number> {
       ? (birthDate ? new Date().getFullYear() - birthDate.getFullYear() : null)
       : (clientProfile?.spouseAge ?? null)
     const planKey = isSelf ? 'self' : 'spouse'
-    const expectedLifespan = retPlan?.[planKey]?.lifeExpectancy ?? (isSelf ? profile?.lifeExpectancySelf : profile?.lifeExpectancySpouse) ?? 85
+    const expectedLifespan = (isSelf ? profile?.lifeExpectancySelf : profile?.lifeExpectancySpouse) ?? retPlan?.[planKey]?.lifeExpectancy ?? 85
     if (currentAge === null) return map
 
     const assetReturn = (a: any): number | null => {

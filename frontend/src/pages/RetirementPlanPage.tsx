@@ -463,6 +463,8 @@ function PersonPanel({ data, onChange, color, isSelf }: {
   }, [profile])
   // อายุเกษียณ = แหล่งเดียวจากหน้าสมมติฐาน (profile) — override ค่าที่บันทึกในแผนตอนคำนวณ/แสดงผล
   const retAgeSetting = (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? 60
+  // อายุขัย = แหล่งเดียวจากหน้าสมมติฐาน (profile) — override ค่าที่บันทึกในแผนตอนคำนวณ/แสดงผล
+  const lifeExpSetting = (isSelf ? profile?.lifeExpectancySelf : profile?.lifeExpectancySpouse) ?? 85
   // Auto-fill savingsGrowthRate from salary-increase rate in client profile
   const filledRate = useRef(false)
   useEffect(() => {
@@ -486,7 +488,7 @@ function PersonPanel({ data, onChange, color, isSelf }: {
   const extraAssets = ssoPV + pvdAtRetire + sevNet
   const totalAssets = assetAtRetirement + extraAssets
   // คอลัมน์ "สินทรัพย์เดิม" = ค่ากลาง Monte Carlo ราย "อายุ" (ถ้าไม่มี → โตด้วยผลตอบแทนพอร์ต)
-  const result = useMemo(() => calcPerson({ ...data, retirementAge: retAgeSetting }, assetAtRetirement, extraAssets, portReturn ?? 0, medianByAge), [data, retAgeSetting, assetAtRetirement, extraAssets, portReturn, medianByAge])
+  const result = useMemo(() => calcPerson({ ...data, retirementAge: retAgeSetting, lifeExpectancy: lifeExpSetting }, assetAtRetirement, extraAssets, portReturn ?? 0, medianByAge), [data, retAgeSetting, lifeExpSetting, assetAtRetirement, extraAssets, portReturn, medianByAge])
 
   // Graduated savings: solve first-year payment of a growing annuity whose FV == gap
   const gradSavings = useMemo(() => {
@@ -563,7 +565,10 @@ function PersonPanel({ data, onChange, color, isSelf }: {
           <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, lineHeight: 1.3, color: 'var(--text-secondary)' }}>อายุเกษียณ</span>
           <span style={{ flexShrink: 0, fontSize: 13 }}><span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--cyan)' }}>{retAgeSetting}</span> <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>ปี · จากสมมติฐาน</span></span>
         </div>
-        <InputRow label="อายุขัย" value={data.lifeExpectancy} onChange={v => set('lifeExpectancy', v)} unit="ปี" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, lineHeight: 1.3, color: 'var(--text-secondary)' }}>อายุขัย</span>
+          <span style={{ flexShrink: 0, fontSize: 13 }}><span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--cyan)' }}>{lifeExpSetting}</span> <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>ปี · จากสมมติฐาน</span></span>
+        </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 6, padding: '5px 8px', background: 'var(--navy-900)', borderRadius: 6 }}>
           <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>ออมได้ <strong style={{ color }}>{result.saveYears} ปี</strong> (ถึงอายุ {retAgeSetting - 1})</span>
           <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>หลังเกษียณ <strong style={{ color }}>{result.yearsAfter} ปี</strong></span>
@@ -707,7 +712,7 @@ function PersonPanel({ data, onChange, color, isSelf }: {
         <div style={{ background: 'var(--navy-900)', borderRadius: 12, padding: '16px 16px 10px' }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>การคาดการณ์มูลค่าเงินในอนาคต</div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 14 }}>
-            สะสม (อายุ {data.currentAge}–{retAgeSetting - 1}) → ใช้เงิน (อายุ {retAgeSetting}–{data.lifeExpectancy})
+            สะสม (อายุ {data.currentAge}–{retAgeSetting - 1}) → ใช้เงิน (อายุ {retAgeSetting}–{lifeExpSetting})
           </div>
           <ChartFrame title="การคาดการณ์มูลค่าเงินในอนาคต" filename="retirement-projection" height={260}>
           <ResponsiveContainer width="100%" height="100%">

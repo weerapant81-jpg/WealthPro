@@ -17,6 +17,7 @@ export function useRetirementBalances(person: 'client' | 'spouse') {
   const dataRaw: Person | null = plan?.[key] ?? null
   // อายุเกษียณ = แหล่งเดียวจากหน้าสมมติฐาน (profile) มาก่อนค่าที่บันทึกในแผน
   const retireAge = (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? dataRaw?.retirementAge ?? 60
+  const lifeExp = (isSelf ? profile?.lifeExpectancySelf : profile?.lifeExpectancySpouse) ?? dataRaw?.lifeExpectancy ?? 85
   const projectedAsset = useProjectedAssetAtRetirement(retireAge, isSelf)
 
   const byAge: Record<number, number> = {}       // มูลค่ารวม/คงเหลือ ปลายปี (closeBalance) — compound แล้ว
@@ -24,7 +25,7 @@ export function useRetirementBalances(person: 'client' | 'spouse') {
   const byAgeExp: Record<number, number> = {}     // ค่าใช้จ่าย/ปี + เป้าหมายพิเศษ + เงินมรดก (เงินถอนใช้)
   const byAgeReturn: Record<number, number> = {}  // ผลตอบแทนที่กองทุนสร้างในปีนั้น (FV growth)
   if (!dataRaw) return { retireAge, byAge, byAgeOpen, byAgeExp, byAgeReturn }
-  const data: Person = { ...dataRaw, retirementAge: retireAge }
+  const data: Person = { ...dataRaw, retirementAge: retireAge, lifeExpectancy: lifeExp }
   const fb = fallbackProjections(clientProfile, profile, isSelf)
   const ssoPV = ssoPlan?.[key]?.pensionPV ?? fb.ssoPV
   const pvdAtRetire = pvdPlan?.[key]?.valueAtRetirement ?? fb.pvdAtRetire

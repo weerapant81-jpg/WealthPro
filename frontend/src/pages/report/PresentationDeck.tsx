@@ -692,7 +692,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
     const key = isSelf ? 'self' : 'spouse'
     const currentAge = isSelf ? selfAge : (client?.spouseAge ?? null)
     // อายุขัย/อายุเกษียณ = ตามสมมุติฐานแผนเกษียณเป็นหลัก → settings → ค่าเริ่มต้น
-    const expectedLifespan = retPlan?.[key]?.lifeExpectancy ?? (isSelf ? profile?.lifeExpectancySelf : profile?.lifeExpectancySpouse) ?? 85
+    const expectedLifespan = (isSelf ? profile?.lifeExpectancySelf : profile?.lifeExpectancySpouse) ?? retPlan?.[key]?.lifeExpectancy ?? 85
     const retirementAge = (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? retPlan?.[key]?.retirementAge ?? 60
     const assets: any[] = invProfile?.investmentAssets ?? []
     const assetReturn = (a: any): number | null => {

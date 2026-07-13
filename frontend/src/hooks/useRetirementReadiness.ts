@@ -17,10 +17,11 @@ export function useRetirementReadiness(person: 'client' | 'spouse') {
   const dataRaw: Person | null = plan?.[key] ?? null
   // อายุเกษียณ = แหล่งเดียวจากหน้าสมมติฐาน (profile) มาก่อนค่าที่บันทึกในแผน
   const retireAge = (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? dataRaw?.retirementAge ?? 60
+  const lifeExp = (isSelf ? profile?.lifeExpectancySelf : profile?.lifeExpectancySpouse) ?? dataRaw?.lifeExpectancy ?? 85
   const projectedAsset = useProjectedAssetAtRetirement(retireAge, isSelf)
 
   if (!dataRaw) return null
-  const data: Person = { ...dataRaw, retirementAge: retireAge }
+  const data: Person = { ...dataRaw, retirementAge: retireAge, lifeExpectancy: lifeExp }
   const fb = fallbackProjections(clientProfile, profile, isSelf)
   const ssoPV = ssoPlan?.[key]?.pensionPV ?? fb.ssoPV
   const pvdAtRetire = pvdPlan?.[key]?.valueAtRetirement ?? fb.pvdAtRetire

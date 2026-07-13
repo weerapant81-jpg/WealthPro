@@ -51,7 +51,7 @@ export default function InvestmentMonteCarloChart({ person = 'self', height = 30
   const selfAge = birthDate ? new Date().getFullYear() - birthDate.getFullYear() : null
   const currentAge = isSelf ? selfAge : (clientProfile?.spouseAge ?? null)
   // อายุขัย/อายุเกษียณ = ตามสมมุติฐานแผนเกษียณเป็นหลัก → settings → ค่าเริ่มต้น (จบที่อายุขัย ไม่เกินไป)
-  const expectedLifespan = retPlan?.[key]?.lifeExpectancy ?? (isSelf ? profile?.lifeExpectancySelf : profile?.lifeExpectancySpouse) ?? 85
+  const expectedLifespan = (isSelf ? profile?.lifeExpectancySelf : profile?.lifeExpectancySpouse) ?? retPlan?.[key]?.lifeExpectancy ?? 85
   // อายุเกษียณ = แหล่งเดียวจากหน้าสมมติฐาน (profile) มาก่อนค่าที่บันทึกในแผน
   const retirementAge = (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? retPlan?.[key]?.retirementAge ?? 60
   const investmentAssets: any[] = invProfile?.investmentAssets ?? []

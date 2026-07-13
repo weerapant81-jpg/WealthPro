@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>WealthPro — Flowchart Export</title>
+<style>
+  body{margin:0;background:#081521;color:#cfe6f2;font-family:'Sarabun','Segoe UI',sans-serif;
+    display:flex;flex-direction:column;align-items:center;gap:18px;padding:28px}
+  h1{font-size:17px;font-weight:700;color:#e6f6fb;margin:0}
+  p{margin:0;font-size:13px;color:#7fa8c0;text-align:center;max-width:760px}
+  #wrap{box-shadow:0 12px 40px rgba(0,0,0,.5);border-radius:16px;overflow:hidden}
+  button{padding:12px 26px;border:none;border-radius:10px;background:#22d3ee;color:#00201d;
+    font-size:15px;font-weight:800;cursor:pointer;font-family:inherit}
+  button:hover{background:#4fe0f4}
+  .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  select{padding:10px 12px;border-radius:8px;border:1px solid #284660;background:#0f2a44;color:#cfe6f2;font-family:inherit;font-size:14px}
+</style>
+</head>
+<body>
+  <h1>WealthPro — Flowchart สถาปัตยกรรมระบบ</h1>
+  <p>กดปุ่ม “ดาวน์โหลด PNG” เพื่อบันทึกรูป → เปิด Canva สไลด์ที่ 2 → ลากไฟล์รูปวางทับรูปเดิมของเทมเพลตได้เลย</p>
+  <div class="row">
+    <select id="scale">
+      <option value="2">ความละเอียด 2× (1520×1040)</option>
+      <option value="3" selected>ความละเอียด 3× (2280×1560) — แนะนำ</option>
+      <option value="4">ความละเอียด 4× (3040×2080)</option>
+    </select>
+    <button id="dl">⬇️ ดาวน์โหลด PNG</button>
+  </div>
+
+  <div id="wrap">
+  <svg id="fc" viewBox="0 0 760 520" width="760" height="520" xmlns="http://www.w3.org/2000/svg" font-family="'Sarabun','Segoe UI',sans-serif">
+    <defs>
+      <marker id="ac" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#22d3ee"/></marker>
+      <marker id="am" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#6f97b3"/></marker>
+      <marker id="ag" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#a78bfa"/></marker>
+    </defs>
+    <rect x="0" y="0" width="760" height="520" fill="#0b1f33"/>
+
+    <rect x="60" y="34" width="200" height="66" rx="12" fill="#12273f" stroke="#284660"/>
+    <text x="160" y="62" text-anchor="middle" fill="#e6f6fb" font-size="16" font-weight="700">ผู้ใช้</text>
+    <text x="160" y="83" text-anchor="middle" fill="#7fa8c0" font-size="12.5">เบราว์เซอร์ / iPad PWA</text>
+
+    <line x1="160" y1="100" x2="160" y2="176" stroke="#22d3ee" stroke-width="2" marker-end="url(#ac)"/>
+    <text x="172" y="142" fill="#22d3ee" font-size="12" font-weight="600">HTTPS</text>
+
+    <rect x="60" y="182" width="200" height="96" rx="12" fill="#0f2a44" stroke="#22d3ee" stroke-width="1.6"/>
+    <text x="160" y="212" text-anchor="middle" fill="#22d3ee" font-size="15" font-weight="700">Frontend · Vercel</text>
+    <text x="160" y="234" text-anchor="middle" fill="#cfe6f2" font-size="12">wealthpro.cloud</text>
+    <text x="160" y="253" text-anchor="middle" fill="#7fa8c0" font-size="11.5">React SPA + PWA</text>
+
+    <rect x="300" y="182" width="210" height="96" rx="12" fill="#0f2a44" stroke="#22d3ee" stroke-width="1.6"/>
+    <text x="405" y="212" text-anchor="middle" fill="#22d3ee" font-size="15" font-weight="700">Backend API · Render</text>
+    <text x="405" y="234" text-anchor="middle" fill="#cfe6f2" font-size="12">Express REST</text>
+    <text x="405" y="253" text-anchor="middle" fill="#7fa8c0" font-size="11.5">wealthpro-api</text>
+
+    <rect x="550" y="182" width="168" height="96" rx="12" fill="#0f2a44" stroke="#22d3ee" stroke-width="1.6"/>
+    <text x="634" y="212" text-anchor="middle" fill="#22d3ee" font-size="15" font-weight="700">Database · Neon</text>
+    <text x="634" y="234" text-anchor="middle" fill="#cfe6f2" font-size="12">PostgreSQL</text>
+    <text x="634" y="253" text-anchor="middle" fill="#7fa8c0" font-size="11.5">Singapore</text>
+
+    <line x1="262" y1="216" x2="298" y2="216" stroke="#22d3ee" stroke-width="2" marker-end="url(#ac)"/>
+    <text x="280" y="208" text-anchor="middle" fill="#22d3ee" font-size="10.5">API</text>
+    <line x1="298" y1="246" x2="262" y2="246" stroke="#6f97b3" stroke-width="1.6" marker-end="url(#am)"/>
+
+    <line x1="512" y1="216" x2="548" y2="216" stroke="#22d3ee" stroke-width="2" marker-end="url(#ac)"/>
+    <text x="530" y="208" text-anchor="middle" fill="#22d3ee" font-size="10.5">SQL</text>
+    <line x1="548" y1="246" x2="512" y2="246" stroke="#6f97b3" stroke-width="1.6" marker-end="url(#am)"/>
+
+    <rect x="60" y="378" width="200" height="72" rx="12" fill="#12273f" stroke="#284660"/>
+    <text x="160" y="406" text-anchor="middle" fill="#e6f6fb" font-size="14.5" font-weight="700">GitHub</text>
+    <text x="160" y="427" text-anchor="middle" fill="#7fa8c0" font-size="12">source · CI/CD</text>
+
+    <line x1="160" y1="378" x2="160" y2="282" stroke="#34d399" stroke-width="2" marker-end="url(#ac)"/>
+    <rect x="168" y="316" width="104" height="22" rx="6" fill="#0b1f33"/>
+    <text x="176" y="331" fill="#34d399" font-size="11.5" font-weight="600">Auto-deploy</text>
+
+    <rect x="300" y="378" width="210" height="72" rx="12" fill="#1a1633" stroke="#a78bfa" stroke-width="1.4"/>
+    <text x="405" y="406" text-anchor="middle" fill="#c4b5fd" font-size="14.5" font-weight="700">Claude API · Anthropic</text>
+    <text x="405" y="427" text-anchor="middle" fill="#9a8fc7" font-size="12">AI Copilot</text>
+
+    <line x1="405" y1="282" x2="405" y2="374" stroke="#a78bfa" stroke-width="2" marker-end="url(#ag)"/>
+
+    <text x="60" y="490" fill="#5f8098" font-size="11">cyan = คำขอ (request) · เทา = การตอบกลับ (response) · ม่วง = AI · เขียว = deploy</text>
+  </svg>
+  </div>
+
+<script>
+document.getElementById('dl').onclick = function(){
+  var scale = parseInt(document.getElementById('scale').value, 10);
+  var svg = document.getElementById('fc');
+  var W = 760, H = 520;
+  var xml = new XMLSerializer().serializeToString(svg);
+  var svg64 = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(xml)));
+  var img = new Image();
+  img.onload = function(){
+    var c = document.createElement('canvas');
+    c.width = W * scale; c.height = H * scale;
+    var ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    var a = document.createElement('a');
+    a.download = 'wealthpro-architecture-flowchart.png';
+    a.href = c.toDataURL('image/png');
+    a.click();
+  };
+  img.src = svg64;
+};
+</script>
+</body>
+</html>

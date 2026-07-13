@@ -314,7 +314,10 @@ export default function ReportPage() {
       )
     }
     if (kind === 'retirement') {
-      const a = calcRetire(retPlan?.self, assetAtRet(retPlan?.self)), b = calcRetire(retPlan?.spouse, assetAtRet(retPlan?.spouse))
+      // อายุเกษียณ/อายุขัย = แหล่งเดียวจากหน้าสมมติฐาน (profile) override ค่าที่บันทึกในแผน
+      const selfP = retPlan?.self ? { ...retPlan.self, retirementAge: profile?.retirementAgeSelf ?? retPlan.self.retirementAge, lifeExpectancy: profile?.lifeExpectancySelf ?? retPlan.self.lifeExpectancy } : retPlan?.self
+      const spouseP = retPlan?.spouse ? { ...retPlan.spouse, retirementAge: profile?.retirementAgeSpouse ?? retPlan.spouse.retirementAge, lifeExpectancy: profile?.lifeExpectancySpouse ?? retPlan.spouse.lifeExpectancy } : retPlan?.spouse
+      const a = calcRetire(selfP, assetAtRet(retPlan?.self)), b = calcRetire(spouseP, assetAtRet(retPlan?.spouse))
       const persons = [
         { name: `คุณ${client?.firstName || 'ลูกค้า'}`, c: a },
         { name: client?.spouseProfile?.firstName ? `คุณ${client.spouseProfile.firstName}` : 'คู่สมรส', c: b },
