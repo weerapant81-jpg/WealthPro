@@ -7,7 +7,7 @@ import {
 } from 'recharts'
 import { ChartFrame, TableExcelButton } from '../../components/exportable'
 import { card } from '../../styles/dark'
-import { Trash2, RotateCcw, TrendingUp } from 'lucide-react'
+import { Trash2, RotateCcw, TrendingUp, Info } from 'lucide-react'
 
 function fmt(n: number) {
   if (n >= 1e9) return `${(n / 1e9).toFixed(2)} พันล้าน`
@@ -336,6 +336,14 @@ export default function ProjectionInvestmentTab({ person = 'self' }: { person?: 
                   </ComposedChart>
                 </ResponsiveContainer>
                 </ChartFrame>
+                {/* คำอธิบายการอ่านกราฟ */}
+                <div style={{ marginTop: 14, padding: '12px 14px', background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 10, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}><Info size={14} color="var(--cyan)" /> อ่านกราฟนี้อย่างไร</div>
+                  <div><span style={{ color: C_HIGH, fontWeight: 700 }}>● ดี (P90)</span> — โอกาสเพียง ~10% ที่จะได้ดีกว่านี้ (กรณีตลาดเอื้อ) · ไม่ควรใช้เป็นความคาดหวังหลัก</div>
+                  <div><span style={{ color: C_MID, fontWeight: 700 }}>● ปานกลาง (ค่ากลาง · median)</span> — โอกาส 50/50 ที่จะมาก/น้อยกว่านี้ · ใช้เป็น<b>ค่าคาดการณ์หลัก</b>ในการวางแผน</div>
+                  <div><span style={{ color: C_LOW, fontWeight: 700 }}>● แย่ (P10)</span> — มีโอกาส ~10% จะได้แย่กว่านี้ (กรณีตลาดไม่ดี) · ใช้ทดสอบว่า “ถ้าตลาดแย่ แผนยังพอไหม”</div>
+                  <div style={{ marginTop: 6, color: 'var(--text-muted)' }}>จำลอง 1,000 เส้นทาง (Monte Carlo · GBM) · แถบทึบ = ช่วง 80% ของผลลัพธ์ (P10–P90) · ความผันผวนตามระดับความเสี่ยง ({TIER_LABEL[tier]} · SD {sigma}%)</div>
+                </div>
               </div>
             )
           })()}
