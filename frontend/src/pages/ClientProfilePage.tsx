@@ -1109,10 +1109,10 @@ export default function ClientProfilePage() {
                 {form.hasGroupInsurance && (
                   <div style={{ paddingLeft: 156 }}>
                     <Grid cols={2}>
-                      <Field label="วงเงินค่าห้อง (บาท/คืน)"><input type="number" value={form.giRoomLimit} onChange={e => set('giRoomLimit', e.target.value)} placeholder="เช่น 3000" style={inp} /></Field>
-                      <Field label="วงเงินค่ารักษา (บาท/ครั้ง)"><input type="number" value={form.giMedicalLimit} onChange={e => set('giMedicalLimit', e.target.value)} placeholder="เช่น 100000" style={inp} /></Field>
-                      <Field label="วงเงินค่าผ่าตัด (บาท/ครั้ง)"><input type="number" value={form.giSurgeryLimit} onChange={e => set('giSurgeryLimit', e.target.value)} placeholder="เช่น 200000" style={inp} /></Field>
-                      <Field label="วงเงิน OPD (บาท/ครั้ง)"><input type="number" value={form.giOpdLimit} onChange={e => set('giOpdLimit', e.target.value)} placeholder="เช่น 1000" style={inp} /></Field>
+                      <Field label="วงเงินค่าห้อง (บาท/คืน)"><CommaInput value={form.giRoomLimit} onChange={v => set('giRoomLimit', v)} placeholder="เช่น 3,000" style={inp} /></Field>
+                      <Field label="วงเงินค่ารักษา (บาท/ครั้ง)"><CommaInput value={form.giMedicalLimit} onChange={v => set('giMedicalLimit', v)} placeholder="เช่น 100,000" style={inp} /></Field>
+                      <Field label="วงเงินค่าผ่าตัด (บาท/ครั้ง)"><CommaInput value={form.giSurgeryLimit} onChange={v => set('giSurgeryLimit', v)} placeholder="เช่น 200,000" style={inp} /></Field>
+                      <Field label="วงเงิน OPD (บาท/ครั้ง)"><CommaInput value={form.giOpdLimit} onChange={v => set('giOpdLimit', v)} placeholder="เช่น 1,000" style={inp} /></Field>
                     </Grid>
                   </div>
                 )}
@@ -1379,10 +1379,10 @@ export default function ClientProfilePage() {
                 {spouseProfile.hasGroupInsurance && (
                   <div style={{ paddingLeft: 156 }}>
                     <Grid cols={2}>
-                      <Field label="วงเงินค่าห้อง (บาท/คืน)"><input type="number" value={spouseProfile.giRoomLimit} onChange={e => setSp('giRoomLimit', e.target.value)} placeholder="เช่น 3000" style={inp} /></Field>
-                      <Field label="วงเงินค่ารักษา (บาท/ครั้ง)"><input type="number" value={spouseProfile.giMedicalLimit} onChange={e => setSp('giMedicalLimit', e.target.value)} placeholder="เช่น 100000" style={inp} /></Field>
-                      <Field label="วงเงินค่าผ่าตัด (บาท/ครั้ง)"><input type="number" value={spouseProfile.giSurgeryLimit} onChange={e => setSp('giSurgeryLimit', e.target.value)} placeholder="เช่น 200000" style={inp} /></Field>
-                      <Field label="วงเงิน OPD (บาท/ครั้ง)"><input type="number" value={spouseProfile.giOpdLimit} onChange={e => setSp('giOpdLimit', e.target.value)} placeholder="เช่น 1000" style={inp} /></Field>
+                      <Field label="วงเงินค่าห้อง (บาท/คืน)"><CommaInput value={spouseProfile.giRoomLimit ?? ''} onChange={v => setSp('giRoomLimit', v)} placeholder="เช่น 3,000" style={inp} /></Field>
+                      <Field label="วงเงินค่ารักษา (บาท/ครั้ง)"><CommaInput value={spouseProfile.giMedicalLimit ?? ''} onChange={v => setSp('giMedicalLimit', v)} placeholder="เช่น 100,000" style={inp} /></Field>
+                      <Field label="วงเงินค่าผ่าตัด (บาท/ครั้ง)"><CommaInput value={spouseProfile.giSurgeryLimit ?? ''} onChange={v => setSp('giSurgeryLimit', v)} placeholder="เช่น 200,000" style={inp} /></Field>
+                      <Field label="วงเงิน OPD (บาท/ครั้ง)"><CommaInput value={spouseProfile.giOpdLimit ?? ''} onChange={v => setSp('giOpdLimit', v)} placeholder="เช่น 1,000" style={inp} /></Field>
                     </Grid>
                   </div>
                 )}
