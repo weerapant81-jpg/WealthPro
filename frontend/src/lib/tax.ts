@@ -33,6 +33,33 @@ export interface TaxState {
   mortgage: number; easyReceipt: number; shopDee: number; otop: number
   donation: number; eduDonation: number; politicalDonate: number; newHome: number
   prepaid: number
+  // ค่าใช้จ่ายที่ผู้ใช้แก้เอง รายมาตรา (ถ้าไม่มี = ใช้ค่า default ตามเกณฑ์สรรพากร)
+  expenseOverride?: Partial<Record<ExpenseKey, number>>
+}
+
+// มาตราเงินได้ที่หักค่าใช้จ่ายได้ (40(4) ดอกเบี้ย/เงินปันผล หักไม่ได้)
+export type ExpenseKey = 'income40_1' | 'income40_2' | 'income40_3' | 'prof40_6' | 'income40_7' | 'rental' | 'other40'
+export const EXPENSE_KEYS: ExpenseKey[] = ['income40_1', 'income40_2', 'income40_3', 'prof40_6', 'income40_7', 'rental', 'other40']
+
+// ค่าใช้จ่าย default ตามเกณฑ์สรรพากร รายมาตรา (40(1)-(3) หัก 50% รวมกัน ≤100,000 แล้วเฉลี่ยตามสัดส่วน)
+export function expenseDefaults(s: TaxState): Record<ExpenseKey, number> {
+  const g123 = s.income40_1 + s.income40_2 + s.income40_3
+  const exp123 = Math.min(g123 * 0.5, 100000)
+  const share = (v: number) => (g123 > 0 ? exp123 * (v / g123) : 0)
+  return {
+    income40_1: share(s.income40_1),
+    income40_2: share(s.income40_2),
+    income40_3: share(s.income40_3),
+    prof40_6: s.prof40_6type === 'doctor' ? s.prof40_6 * 0.6 : s.prof40_6 * 0.4,
+    income40_7: s.income40_7 * 0.6,
+    rental: s.rental * 0.3,
+    other40: s.other40 * 0.6,
+  }
+}
+// ค่าใช้จ่ายที่ใช้จริงรายมาตรา = override ของผู้ใช้ (ถ้ามี) มิฉะนั้นใช้ default
+export function expenseFor(s: TaxState, key: ExpenseKey): number {
+  const ov = s.expenseOverride?.[key]
+  return ov != null && !isNaN(ov) ? ov : (expenseDefaults(s)[key] ?? 0)
 }
 export const defaultState = (): TaxState => ({
   income40_1: 0, income40_2: 0, income40_3: 0, interest: 0, dividend: 0,
@@ -48,12 +75,8 @@ export const defaultState = (): TaxState => ({
 
 export function calc(s: TaxState) {
   const ti = s.income40_1 + s.income40_2 + s.income40_3 + (s.interest + s.dividend) + s.prof40_6 + s.income40_7 + s.rental + s.other40
-  const exp_123 = Math.min((s.income40_1 + s.income40_2 + s.income40_3) * 0.50, 100000)
-  const exp_5 = s.rental * 0.30
-  const exp_6 = s.prof40_6type === 'doctor' ? s.prof40_6 * 0.60 : s.prof40_6 * 0.40
-  const exp_7 = s.income40_7 * 0.60
-  const exp_8 = s.other40 * 0.60
-  const expD = exp_123 + exp_5 + exp_6 + exp_7 + exp_8
+  // ค่าใช้จ่ายรวม = ผลรวมรายมาตรา (override ของผู้ใช้ ถ้ามี มิฉะนั้นใช้ default ตามเกณฑ์สรรพากร)
+  const expD = EXPENSE_KEYS.reduce((a, k) => a + expenseFor(s, k), 0)
 
   const selfD = 60000, spouseD = (s.maritalStatus === 'married' && !s.spouseIncome) ? 60000 : 0
   const childD = Math.min(s.children, 3) * 30000, parentD = s.parents * 30000, disD = s.disabled * 60000

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { Calculator, Check, Loader2, User, Users, RefreshCw } from 'lucide-react'
 import { useIsCompact } from '../hooks/useViewport'
-import { calc, defaultState, BRACKETS, type TaxState } from '../lib/tax'
+import { calc, defaultState, BRACKETS, expenseFor, type TaxState, type ExpenseKey } from '../lib/tax'
 import { MoneyInput } from '../components/MoneyInput'
 
 /* ── helpers ── */
@@ -139,6 +139,12 @@ export default function TaxPlanningPage() {
   const s = person === 'self' ? selfS : spouseS
   const setS = person === 'self' ? setSelfS : setSpouseS
   const set = <K extends keyof TaxState>(k: K, v: TaxState[K]) => setS(p => ({ ...p, [k]: v }))
+  // แก้ค่าใช้จ่ายรายมาตรา (null = ลบ override กลับไปใช้ค่า default)
+  const setExpense = (k: ExpenseKey, v: number | null) => setS(p => {
+    const ov = { ...(p.expenseOverride ?? {}) }
+    if (v == null) delete ov[k]; else ov[k] = v
+    return { ...p, expenseOverride: Object.keys(ov).length ? ov : undefined }
+  })
   const M = (label: string, k: keyof TaxState, hint?: string) =>
     <Row label={label} hint={hint}><MoneyInput value={s[k] as number} onChange={v => set(k, v as any)} /></Row>
 
@@ -203,21 +209,19 @@ export default function TaxPlanningPage() {
 
   // ── ตารางเงินได้ 3 คอลัมน์: เงินได้ · ค่าใช้จ่าย (ตามมาตรา) · เงินหลังค่าใช้จ่าย ──
   // ค่าใช้จ่ายคิดตามเกณฑ์สรรพากร (ตรงกับ lib/tax.ts calc)
-  const g123 = s.income40_1 + s.income40_2 + s.income40_3
-  const exp123 = Math.min(g123 * 0.5, 100000)   // 40(1)-(3) หัก 50% รวมกันไม่เกิน 100,000
-  const share123 = (v: number) => (g123 > 0 ? exp123 * (v / g123) : 0)
-  const profExp = s.prof40_6type === 'doctor' ? s.prof40_6 * 0.60 : s.prof40_6 * 0.40
-  type IncRow = { label: string; sec: string; key: keyof TaxState; inc: number; exp: number; note: string; prof?: boolean }
+  type IncRow = { label: string; sec: string; key: keyof TaxState; inc: number; exp: number; note: string; prof?: boolean; expKey?: ExpenseKey; over?: boolean }
+  const eKey = (k: ExpenseKey): { expKey: ExpenseKey; exp: number; over: boolean } =>
+    ({ expKey: k, exp: expenseFor(s, k), over: s.expenseOverride?.[k] != null })
   const incomeRows: IncRow[] = [
-    { label: 'เงินเดือน/ค่าจ้าง', sec: '40(1)', key: 'income40_1', inc: s.income40_1, exp: share123(s.income40_1), note: 'หัก 50% รวม (1)-(3) ≤100,000' },
-    { label: 'ค่าจ้าง/คอมมิชชั่น', sec: '40(2)', key: 'income40_2', inc: s.income40_2, exp: share123(s.income40_2), note: 'หัก 50% รวม (1)-(3) ≤100,000' },
-    { label: 'ค่าลิขสิทธิ์/Goodwill', sec: '40(3)', key: 'income40_3', inc: s.income40_3, exp: share123(s.income40_3), note: 'หัก 50% รวม (1)-(3) ≤100,000' },
+    { label: 'เงินเดือน/ค่าจ้าง', sec: '40(1)', key: 'income40_1', inc: s.income40_1, note: 'หัก 50% รวม (1)-(3) ≤100,000', ...eKey('income40_1') },
+    { label: 'ค่าจ้าง/คอมมิชชั่น', sec: '40(2)', key: 'income40_2', inc: s.income40_2, note: 'หัก 50% รวม (1)-(3) ≤100,000', ...eKey('income40_2') },
+    { label: 'ค่าลิขสิทธิ์/Goodwill', sec: '40(3)', key: 'income40_3', inc: s.income40_3, note: 'หัก 50% รวม (1)-(3) ≤100,000', ...eKey('income40_3') },
     { label: 'ดอกเบี้ย', sec: '40(4)', key: 'interest', inc: s.interest, exp: 0, note: 'หักค่าใช้จ่ายไม่ได้' },
     { label: 'เงินปันผล', sec: '40(4)', key: 'dividend', inc: s.dividend, exp: 0, note: 'หักค่าใช้จ่ายไม่ได้' },
-    { label: 'วิชาชีพอิสระ', sec: '40(6)', key: 'prof40_6', inc: s.prof40_6, exp: profExp, note: 'แพทย์ 60% · อื่นๆ 40%', prof: true },
-    { label: 'รับเหมา (มีค่าของ)', sec: '40(7)', key: 'income40_7', inc: s.income40_7, exp: s.income40_7 * 0.60, note: 'หัก 60%' },
-    { label: 'ค่าเช่าทรัพย์สิน', sec: '40(5)', key: 'rental', inc: s.rental, exp: s.rental * 0.30, note: 'หัก 30% (บ้าน/สิ่งปลูกสร้าง)' },
-    { label: 'เงินได้อื่นๆ', sec: '40(8)', key: 'other40', inc: s.other40, exp: s.other40 * 0.60, note: 'หัก 60%' },
+    { label: 'วิชาชีพอิสระ', sec: '40(6)', key: 'prof40_6', inc: s.prof40_6, note: 'แพทย์ 60% · อื่นๆ 40%', prof: true, ...eKey('prof40_6') },
+    { label: 'รับเหมา (มีค่าของ)', sec: '40(7)', key: 'income40_7', inc: s.income40_7, note: 'หัก 60%', ...eKey('income40_7') },
+    { label: 'ค่าเช่าทรัพย์สิน', sec: '40(5)', key: 'rental', inc: s.rental, note: 'หัก 30% (บ้าน/สิ่งปลูกสร้าง)', ...eKey('rental') },
+    { label: 'เงินได้อื่นๆ', sec: '40(8)', key: 'other40', inc: s.other40, note: 'หัก 60%', ...eKey('other40') },
   ]
   const totInc = incomeRows.reduce((a, r) => a + r.inc, 0)
   const totExp = incomeRows.reduce((a, r) => a + r.exp, 0)
@@ -347,7 +351,17 @@ export default function TaxPlanningPage() {
                       )}
                       <MoneyInput value={r.inc} onChange={v => set(r.key, v as any)} />
                     </div>
-                    <div style={{ fontSize: 12.5, fontFamily: 'monospace', textAlign: 'right', color: r.exp > 0 ? '#f59e0b' : 'var(--text-muted)' }}>{r.exp > 0 ? `−${fmt(r.exp)}` : '—'}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                      {r.expKey ? (
+                        <>
+                          <MoneyInput value={Math.round(r.exp)} onChange={v => setExpense(r.expKey!, v)} />
+                          {r.over
+                            ? <button onClick={() => setExpense(r.expKey!, null)} title="กลับไปใช้ค่าตามเกณฑ์สรรพากร"
+                                style={{ background: 'none', border: 'none', color: 'var(--cyan)', fontSize: 9.5, cursor: 'pointer', padding: 0 }}>↺ ค่าตามเกณฑ์</button>
+                            : <span style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>ตามเกณฑ์</span>}
+                        </>
+                      ) : <span style={{ fontSize: 12.5, fontFamily: 'monospace', textAlign: 'right', color: 'var(--text-muted)' }}>—</span>}
+                    </div>
                     <div style={{ fontSize: 12.5, fontFamily: 'monospace', textAlign: 'right', fontWeight: 600, color: 'var(--text-primary)' }}>{fmt(r.inc - r.exp)}</div>
                   </div>
                 ))}
