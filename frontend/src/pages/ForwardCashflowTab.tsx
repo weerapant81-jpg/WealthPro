@@ -234,16 +234,20 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
     const li = lifeInsurances ?? []
     const seedSelf = seedData('self', cp, prof, expenses ?? [], liabilities ?? [], selfAge ?? 35, prof?.retirementAgeSelf ?? 60, li)
     const seedSpouse = seedData('spouse', cp, prof, expenses ?? [], liabilities ?? [], cp?.spouseAge ?? 35, prof?.retirementAgeSpouse ?? 60, li)
-    // รายได้ทำงาน + ค่าใช้จ่ายผันแปร สิ้นสุดที่ (เกษียณ − 1) — clamp ข้อมูลเดิมที่ตั้ง endAge ไว้ไกลกว่านั้น
-    const clampWork = (d: CashflowData, retAge: number): CashflowData => ({
-      ...d,
-      incomeWork: (d.incomeWork ?? []).map(l => ({ ...l, endAge: Math.min(l.endAge, retAge - 1) })),
-      expVar: (d.expVar ?? []).map(l => ({ ...l, endAge: Math.min(l.endAge, retAge - 1) })),
-    })
+    // ทุกรายการสิ้นสุดที่ (เกษียณ − 1) — clamp ข้อมูลเดิมที่ตั้ง endAge ไว้ไกลกว่านั้น (รวมค่าใช้จ่ายคงที่/ออม/เป้าหมาย)
+    const clampAll = (d: CashflowData, retAge: number): CashflowData => {
+      const cap = (arr?: Line[]) => (arr ?? []).map(l => ({ ...l, endAge: Math.min(l.endAge, retAge - 1) }))
+      return {
+        ...d,
+        incomeWork: cap(d.incomeWork), incomeAsset: cap(d.incomeAsset),
+        expFixed: cap(d.expFixed), expVar: cap(d.expVar), expSaving: cap(d.expSaving),
+        goalEducation: cap(d.goalEducation), goalRetire: cap(d.goalRetire), goalInsurance: cap(d.goalInsurance),
+      }
+    }
     // income = แหล่งเดียว (รายรับล่าสุด) → sync ทุกครั้งที่โหลด · รายจ่าย/ออม/เป้าหมาย ใช้ที่บันทึกไว้
     // + เติมรายการหักอัตโนมัติ (ประกันสังคม/PVD/เบี้ยประกันชีวิต) ถ้ายังไม่มี
     const withFreshIncome = (savedD: any, seedD: CashflowData, retAge: number, autos: Line[]) => {
-      const merged = clampWork({ ...emptyData(), ...savedD, incomeWork: seedD.incomeWork, incomeAsset: seedD.incomeAsset }, retAge)
+      const merged = clampAll({ ...emptyData(), ...savedD, incomeWork: seedD.incomeWork, incomeAsset: seedD.incomeAsset }, retAge)
       const missing = autos.filter(a => !merged.expFixed.some(l => _norm(l.label).includes(_norm(a.label).slice(0, 8))))
       merged.expFixed = [...merged.expFixed, ...missing]
       return merged
