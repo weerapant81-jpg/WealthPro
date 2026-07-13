@@ -93,6 +93,11 @@ export default function ProjectionPVDTab({ person = 'self' }: { person?: 'self' 
     return list.filter(isPvd).reduce((s, a) => s + (parseFloat(String(a?.currentValue ?? '').replace(/,/g, '')) || 0), 0)
   }, [invSrc])
 
+  // มูลค่ากองทุน PVD ปัจจุบัน + อัตราผลตอบแทน ที่กรอกในหน้าข้อมูลส่วนบุคคล (คู่สมรสใช้ของคู่สมรส)
+  const pvdWelfare: any = isSelf ? clientProfile : clientProfile?.spouseProfile
+  const profilePvdValue = toNum(pvdWelfare?.pvdCurrentValue)       // → ยอดยกมา
+  const profilePvdReturn = toNum(pvdWelfare?.pvdReturnRate)        // → อัตราผลตอบแทนกองทุน
+
   // ── Assumptions (editable, auto-filled) ──
   const [salary, setSalary] = useState(30000)
   const [raiseRate, setRaiseRate] = useState(3)
@@ -103,8 +108,8 @@ export default function ProjectionPVDTab({ person = 'self' }: { person?: 'self' 
   const [currentAge, setCurrentAge] = useState(45)
   const [retirementAge, setRetirementAge] = useState(60)
 
-  // อัตราผลตอบแทน: อิงจาก "ตั้งค่า → กองทุนสำรองเลี้ยงชีพ" เสมอ (พิมพ์ทับเพื่อทดลองได้)
-  const returnRate = returnOverride ?? (profile?.pvdReturnRate ?? 4)
+  // อัตราผลตอบแทน: อัตราของลูกค้าในหน้าข้อมูลส่วนบุคคลมาก่อน · ไม่มี → ค่ากลางจากตั้งค่า (พิมพ์ทับเพื่อทดลองได้)
+  const returnRate = returnOverride ?? (profilePvdReturn > 0 ? profilePvdReturn : (profile?.pvdReturnRate ?? 4))
 
   const filled = useMemo(() => ({ s: false, raise: false, emp: false, er: false, a: false, ret: false }), [])
   useEffect(() => {
@@ -149,15 +154,16 @@ export default function ProjectionPVDTab({ person = 'self' }: { person?: 'self' 
     loadedRef.current = true
   }, [isFetched, savedPlan])
 
-  // ── ดึง "ยอดยกมา" จากมูลค่ากองทุน PVD ในสินทรัพย์ลงทุน (เฉพาะเมื่อยังไม่มีค่าที่บันทึกไว้) ──
+  // ── ดึง "ยอดยกมา" จาก "มูลค่ากองทุนปัจจุบัน" ที่กรอกในหน้าข้อมูลส่วนบุคคล (fallback: สินทรัพย์ลงทุน) ──
   const obFilledRef = useRef(false)
   useEffect(() => {
-    if (obFilledRef.current || !isFetched) return
+    if (obFilledRef.current || !isFetched || clientProfile === undefined) return
+    // ค่าจากโปรไฟล์เป็นแหล่งหลัก — มาก่อนค่าที่บันทึกไว้ (กันค่าเก่าที่ค้างมาบัง)
+    if (profilePvdValue > 0) { setOpeningBalance(profilePvdValue); obFilledRef.current = true; return }
     const p = savedPlan?.[person]
-    // ถือว่า > 0 = ผู้ใช้เคยกรอกเอง → ค่าเดิมชนะ; ถ้าเป็น 0/ว่าง = ยังไม่ได้กรอก → ดึงจากสินทรัพย์
     if (p && Number(p.openingBalance) > 0) { obFilledRef.current = true; return }
     if (pvdAssetValue > 0) { setOpeningBalance(pvdAssetValue); obFilledRef.current = true }
-  }, [isFetched, savedPlan, pvdAssetValue, person])
+  }, [isFetched, clientProfile, savedPlan, profilePvdValue, pvdAssetValue, person])
 
   // ── Debounced autosave + flush on unmount (per-person slice, merged) ──
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -270,16 +276,22 @@ export default function ProjectionPVDTab({ person = 'self' }: { person?: 'self' 
           <Field label="อัตราเงินสะสม ลูกจ้าง"><NumIn value={empRate} onChange={setEmpRate} suffix="%" width={70} /></Field>
           <Field label="อัตราเงินสมทบ นายจ้าง"><NumIn value={employerRate} onChange={setEmployerRate} suffix="%" width={70} /></Field>
           <Field label="อัตราผลตอบแทนกองทุน"><NumIn value={returnRate} onChange={setReturnOverride} suffix="% ต่อปี" width={70} /></Field>
-          {profile?.pvdReturnAsOf && (
+          {profilePvdReturn > 0 ? (
+            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', padding: '0 0 4px', lineHeight: 1.5 }}>
+              ดึงจาก "อัตราผลตอบแทน" ที่กรอกในหน้าข้อมูลส่วนบุคคล · พิมพ์ทับเพื่อปรับได้
+            </div>
+          ) : profile?.pvdReturnAsOf && (
             <div style={{ fontSize: 10.5, color: 'var(--text-muted)', padding: '0 0 4px', lineHeight: 1.5 }}>
               {profile.pvdReturnAsOf} · ตั้งค่าได้ที่ "ตั้งค่า → กองทุนสำรองเลี้ยงชีพ"
             </div>
           )}
           <div style={{ borderTop: '1px solid var(--card-border)', margin: '8px 0' }} />
           <Field label="ยอดยกมา"><NumIn value={openingBalance} onChange={setOpeningBalance} suffix="บาท" money width={100} /></Field>
-          {pvdAssetValue > 0 && (
+          {(profilePvdValue > 0 || pvdAssetValue > 0) && (
             <div style={{ fontSize: 10.5, color: 'var(--text-muted)', padding: '0 0 4px', lineHeight: 1.5 }}>
-              ดึงจากมูลค่ากองทุน PVD ในข้อมูลสินทรัพย์ลงทุน ({fmt(pvdAssetValue)} บาท) · พิมพ์ทับเพื่อปรับได้
+              {profilePvdValue > 0
+                ? `ดึงจาก "มูลค่ากองทุนปัจจุบัน" ที่กรอกในหน้าข้อมูลส่วนบุคคล (${fmt(profilePvdValue)} บาท)`
+                : `ดึงจากมูลค่ากองทุน PVD ในข้อมูลสินทรัพย์ลงทุน (${fmt(pvdAssetValue)} บาท)`} · พิมพ์ทับเพื่อปรับได้
             </div>
           )}
           <Field label="อายุปัจจุบัน"><NumIn value={currentAge} onChange={setCurrentAge} suffix="ปี" width={70} /></Field>

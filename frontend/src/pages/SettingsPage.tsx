@@ -2,7 +2,7 @@
 import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { Save, CheckCircle, User, TrendingUp, GraduationCap, Percent, Shield, Briefcase, SlidersHorizontal, ChartPie } from 'lucide-react'
+import { Save, CheckCircle, User, TrendingUp, GraduationCap, Percent, Shield, SlidersHorizontal, ChartPie } from 'lucide-react'
 import { MoneyInput as MoneyInputBase } from '../components/MoneyInput'
 import { PageHeader } from '../components/ui'
 import { TableExcelButton } from '../components/exportable'
@@ -362,19 +362,7 @@ export default function SettingsPage() {
             </Row>
           </Section>
 
-          {/* กองทุนสำรองเลี้ยงชีพ */}
-          <Section icon={<Briefcase size={16} />} title="กองทุนสำรองเลี้ยงชีพ">
-            <Row label="ผลตอบแทนเฉลี่ย 5 ปี" hint="ใช้ในแท็บ 'มูลค่ากองทุน PVD/กบข'">
-              <NumInput value={form.pvdReturnRate} onChange={v => set('pvdReturnRate', v)} unit="%/ปี" step={0.01} />
-            </Row>
-            <div style={{ marginTop: 6 }}>
-              <div style={{ fontSize: 13, color: 'var(--text-primary)', marginBottom: 6 }}>ข้อมูล ณ</div>
-              <input value={form.pvdReturnAsOf} onChange={e => set('pvdReturnAsOf', e.target.value)} style={inp} placeholder="เช่น เฉลี่ย 5 ปี" />
-            </div>
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.5 }}>
-              อ้างอิงผลตอบแทนกองทุนสำรองเลี้ยงชีพของท่าน — แนะนำตรวจสอบ/แก้ไขเป็นระยะ
-            </p>
-          </Section>
+          {/* กองทุนสำรองเลี้ยงชีพ — ย้ายไปกรอกที่หน้าข้อมูลส่วนบุคคล (สวัสดิการที่มี) แล้ว */}
 
         </div>
 

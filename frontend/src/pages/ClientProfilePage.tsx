@@ -1139,6 +1139,8 @@ export default function ClientProfilePage() {
                     <Grid cols={2}>
                       <Field label="อัตราสะสมส่วนลูกจ้าง (%)"><input type="number" value={form.pvdEmployeeRate} onChange={e => set('pvdEmployeeRate', e.target.value)} placeholder="เช่น 5" style={inp} /></Field>
                       <Field label="อัตราสมทบส่วนนายจ้าง (%)"><input type="number" value={form.pvdEmployerRate} onChange={e => set('pvdEmployerRate', e.target.value)} placeholder="เช่น 5" style={inp} /></Field>
+                      <Field label="มูลค่ากองทุนปัจจุบัน (บาท)"><input type="number" value={form.pvdCurrentValue} onChange={e => set('pvdCurrentValue', e.target.value)} placeholder="เช่น 500000" style={inp} /></Field>
+                      <Field label="อัตราผลตอบแทน (%/ปี)"><input type="number" value={form.pvdReturnRate} onChange={e => set('pvdReturnRate', e.target.value)} placeholder="เช่น 4" style={inp} /></Field>
                     </Grid>
                   </div>
                 )}
@@ -1399,6 +1401,8 @@ export default function ClientProfilePage() {
                     <Grid cols={2}>
                       <Field label="อัตราสะสมส่วนลูกจ้าง (%)"><input type="number" value={spouseProfile.pvdEmployeeRate} onChange={e => setSp('pvdEmployeeRate', e.target.value)} placeholder="เช่น 5" style={inp} /></Field>
                       <Field label="อัตราสมทบส่วนนายจ้าง (%)"><input type="number" value={spouseProfile.pvdEmployerRate} onChange={e => setSp('pvdEmployerRate', e.target.value)} placeholder="เช่น 5" style={inp} /></Field>
+                      <Field label="มูลค่ากองทุนปัจจุบัน (บาท)"><input type="number" value={spouseProfile.pvdCurrentValue ?? ''} onChange={e => setSp('pvdCurrentValue', e.target.value)} placeholder="เช่น 500000" style={inp} /></Field>
+                      <Field label="อัตราผลตอบแทน (%/ปี)"><input type="number" value={spouseProfile.pvdReturnRate ?? ''} onChange={e => setSp('pvdReturnRate', e.target.value)} placeholder="เช่น 4" style={inp} /></Field>
                     </Grid>
                   </div>
                 )}
