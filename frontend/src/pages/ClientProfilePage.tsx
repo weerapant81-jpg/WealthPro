@@ -273,14 +273,14 @@ type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error' | 'invalid'
 export default function ClientProfilePage() {
   const qc = useQueryClient()
   type TabKey = 'personal' | 'family' | 'insurance' | 'investment' | 'goals' | 'finance' | 'risk'
-  const TAB_KEYS: TabKey[] = ['personal', 'family', 'insurance', 'investment', 'goals', 'finance', 'risk']
+  const TAB_KEYS: TabKey[] = ['personal', 'family', 'insurance', 'investment', 'finance', 'goals', 'risk']
   const TAB_STEPS: { key: TabKey; label: string }[] = [
     { key: 'personal', label: 'ข้อมูลส่วนบุคคล' },
     { key: 'family', label: 'ข้อมูลครอบครัว' },
     { key: 'insurance', label: 'ข้อมูลการประกัน' },
     { key: 'investment', label: 'ข้อมูลสินทรัพย์-หนี้สิน' },
-    { key: 'goals', label: 'เป้าหมายทางการเงิน' },
     { key: 'finance', label: 'งบการเงินส่วนบุคคล' },
+    { key: 'goals', label: 'เป้าหมายทางการเงิน' },
     { key: 'risk', label: 'ประเมินความเสี่ยง' },
   ]
   const [searchParams, setSearchParams] = useSearchParams()
