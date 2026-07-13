@@ -288,6 +288,26 @@ function SummaryRow({ label, value, color = 'var(--cyan)', bold = false, unit = 
   )
 }
 
+function StatCard({ label, value, color, unit = 'บาท', emphasize = false }: {
+  label: string; value: number; color: string; unit?: string; emphasize?: boolean
+}) {
+  return (
+    <div style={{
+      padding: '11px 13px',
+      borderRadius: 11,
+      background: emphasize ? `${color}1f` : 'var(--navy-900)',
+      border: `1px solid ${emphasize ? `${color}66` : 'var(--card-border)'}`,
+      display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0,
+    }}>
+      <span style={{ fontSize: 11, lineHeight: 1.3, color: 'var(--text-muted)' }}>{label}</span>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+        <span style={{ fontFamily: 'monospace', fontSize: emphasize ? 20 : 18, fontWeight: 800, color, lineHeight: 1 }}>{fmt(value, 0)}</span>
+        <span style={{ fontSize: 10.5, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{unit}</span>
+      </div>
+    </div>
+  )
+}
+
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
   return (
@@ -707,6 +727,20 @@ function PersonPanel({ data, onChange, color, isSelf }: {
 
       {/* ── Right: chart + table ── */}
       <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+        {/* Summary strip — 5 key figures above the chart */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+          <StatCard label="เงินเกษียณที่ต้องการ" value={result.totalNeeded} color="#f87171" />
+          <StatCard label="มูลค่าสินทรัพย์ที่มี" value={totalAssets} color="#4ade80" />
+          <StatCard
+            label={result.gap > 0 ? 'ส่วนที่ยังขาด' : 'ส่วนที่เกิน'}
+            value={Math.abs(result.gap)}
+            color={result.gap > 0 ? '#f87171' : '#4ade80'}
+            emphasize
+          />
+          <StatCard label="ต้องออมเพิ่ม (ออมเท่ากันทุกปี)" value={result.gap > 0 ? result.annualSavings : 0} color="var(--cyan)" unit="บาท/ปี" />
+          <StatCard label="ต้องออมเพิ่ม (ออมเพิ่มขึ้นทุกปี)" value={result.gap > 0 ? gradSavings.first : 0} color="var(--cyan)" unit="บาท/ปี" />
+        </div>
 
         {/* Chart */}
         <div style={{ background: 'var(--navy-900)', borderRadius: 12, padding: '16px 16px 10px' }}>
