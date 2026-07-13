@@ -25,6 +25,7 @@ interface Row {
   erOpen: number;  erRet: number;  erEnd: number
   carry: number
   total: number
+  locked?: boolean   // ปีที่หยุดสมทบแล้วแต่เงินยังล็อกในกองทุน (เกษียณก่อน 55 → โตต่อจนถอนได้ที่ 55)
 }
 
 function NumIn({ value, onChange, suffix, width = 110, money = false }: {
@@ -193,25 +194,30 @@ export default function ProjectionPVDTab({ person = 'self' }: { person?: 'self' 
     }
   }, [])
 
+  // อายุที่ถอนกองทุนได้ = max(อายุเกษียณ, 55) — ถอนก่อน 55 ผิดเงื่อนไข
+  const withdrawAge = Math.max(retirementAge, 55)
+
   // ── Build projection ──
   const rows = useMemo<Row[]>(() => {
     const out: Row[] = []
     const rr = returnRate / 100
     const g = raiseRate / 100
     let empBal = 0, erBal = 0, carry = openingBalance
-    for (let age = currentAge; age < retirementAge; age++) {   // ปีสุดท้ายที่สมทบ = อายุเกษียณ − 1
+    // สมทบถึงอายุเกษียณ−1 · ถ้าเกษียณก่อน 55 เงินยังล็อกโตต่อ (เฉพาะผลตอบแทน) จนถอนได้ที่ 55
+    for (let age = currentAge; age < withdrawAge; age++) {
+      const contributing = age < retirementAge
       const yearSalary = salary * Math.pow(1 + g, age - currentAge)
-      const empC = yearSalary * (empRate / 100) * 12
-      const erC = yearSalary * (employerRate / 100) * 12
+      const empC = contributing ? yearSalary * (empRate / 100) * 12 : 0
+      const erC = contributing ? yearSalary * (employerRate / 100) * 12 : 0
       const empOpen = empBal + empC, empRet = empOpen * rr, empEnd = empOpen + empRet
       const erOpen = erBal + erC,    erRet = erOpen * rr,   erEnd = erOpen + erRet
       carry = carry * (1 + rr)
       const total = empEnd + erEnd + carry
-      out.push({ age, salary: yearSalary, empOpen, empRet, empEnd, erOpen, erRet, erEnd, carry, total })
+      out.push({ age, salary: contributing ? yearSalary : 0, empOpen, empRet, empEnd, erOpen, erRet, erEnd, carry, total, locked: !contributing })
       empBal = empEnd; erBal = erEnd
     }
     return out
-  }, [salary, raiseRate, empRate, employerRate, returnRate, openingBalance, currentAge, retirementAge])
+  }, [salary, raiseRate, empRate, employerRate, returnRate, openingBalance, currentAge, retirementAge, withdrawAge])
 
   const monthlyContrib = salary * ((empRate + employerRate) / 100)
   const valueAtRetirement = rows.length ? rows[rows.length - 1].total : 0
@@ -244,7 +250,7 @@ export default function ProjectionPVDTab({ person = 'self' }: { person?: 'self' 
           { label: 'อัตราสะสม+สมทบ', value: `${(empRate + employerRate).toFixed(0)}%`, color: 'var(--cyan-light)' },
           { label: 'เงินสะสม+สมทบ/เดือน', value: `${fmt(monthlyContrib, 0)} บาท`, color: '#22c55e' },
           { label: 'ผลตอบแทน (ต่อปี)', value: `${returnRate.toFixed(2)}%`, color: '#f59e0b' },
-          { label: `มูลค่า ณ เกษียณ (อายุ ${retirementAge})`, value: `${fmt(valueAtRetirement, 0)} บาท`, color: '#4ade80' },
+          { label: `มูลค่า ณ อายุ ${withdrawAge} (ถอนได้)`, value: `${fmt(valueAtRetirement, 0)} บาท`, color: '#4ade80' },
         ].map(({ label, value, color }) => (
           <div key={label} style={{ ...card, padding: '14px 18px' }}>
             <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{label}</p>
@@ -298,6 +304,9 @@ export default function ProjectionPVDTab({ person = 'self' }: { person?: 'self' 
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <ReferenceLine x={retirementAge - 1} stroke="#f59e0b" strokeDasharray="4 4" label={{ value: `ปีสุดท้ายสมทบ (${retirementAge - 1})`, fill: '#f59e0b', fontSize: 11, position: 'insideTopLeft' }} />
+              {withdrawAge - 1 !== retirementAge - 1 && (
+                <ReferenceLine x={withdrawAge - 1} stroke="#4ade80" strokeDasharray="4 4" label={{ value: `ถอนได้ (${withdrawAge})`, fill: '#4ade80', fontSize: 11, position: 'insideTopRight' }} />
+              )}
               <Bar dataKey="emp"   name="ส่วนลูกจ้าง" stackId="a" fill={C_EMP} />
               <Bar dataKey="er"    name="ส่วนนายจ้าง" stackId="a" fill={C_ER} />
               <Bar dataKey="carry" name="ยอดยกมา" stackId="a" fill={C_CARRY} />
@@ -337,14 +346,14 @@ export default function ProjectionPVDTab({ person = 'self' }: { person?: 'self' 
               </tr>
             )}
             {rows.map(r => {
-              const isRetire = r.age === retirementAge - 1   // แถวสุดท้าย = ปีสุดท้ายที่สมทบ (อายุเกษียณ − 1)
+              const isRetire = r.age === withdrawAge - 1   // แถวสุดท้าย = ปีที่ถอนได้ (อายุ 55 หรืออายุเกษียณ)
               return (
-                <tr key={r.age} style={{ borderBottom: '1px solid var(--divider)', background: isRetire ? 'rgba(245,158,11,0.07)' : 'transparent' }}>
-                  <td style={{ ...td, fontWeight: isRetire ? 700 : 400, color: isRetire ? '#f59e0b' : 'var(--text-secondary)' }}>{r.age}{isRetire && ' ⭐'}</td>
-                  <td style={tdNum}>{fmt(r.salary, 0)}</td>
+                <tr key={r.age} style={{ borderBottom: '1px solid var(--divider)', background: isRetire ? 'rgba(74,222,128,0.08)' : r.locked ? 'rgba(148,163,184,0.06)' : 'transparent' }}>
+                  <td style={{ ...td, fontWeight: isRetire ? 700 : 400, color: isRetire ? '#4ade80' : r.locked ? 'var(--text-muted)' : 'var(--text-secondary)' }}>{r.age}{isRetire ? ' ⭐' : r.locked ? ' 🔒' : ''}</td>
+                  <td style={tdNum}>{r.locked ? '—' : fmt(r.salary, 0)}</td>
                   <td style={tdNum}>{fmt(r.empOpen)}</td><td style={tdNum}>{fmt(r.empRet)}</td><td style={{ ...tdNum, color: C_EMP }}>{fmt(r.empEnd)}</td>
                   <td style={tdNum}>{fmt(r.erOpen)}</td><td style={tdNum}>{fmt(r.erRet)}</td><td style={{ ...tdNum, color: C_ER }}>{fmt(r.erEnd)}</td>
-                  <td style={{ ...tdNum, fontWeight: 700, color: isRetire ? '#f59e0b' : 'var(--text-primary)' }}>{fmt(r.total)}</td>
+                  <td style={{ ...tdNum, fontWeight: 700, color: isRetire ? '#4ade80' : 'var(--text-primary)' }}>{fmt(r.total)}</td>
                 </tr>
               )
             })}

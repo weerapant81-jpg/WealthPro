@@ -26,6 +26,7 @@ interface Row {
   govOpen: number; govRet: number; govEnd: number
   carry: number
   total: number
+  locked?: boolean   // ปีที่หยุดสมทบแล้วแต่เงินยังล็อกในกองทุน (เกษียณก่อน 55 → โตต่อจนถอนได้ที่ 55)
 }
 
 /* ── small editable inputs ── */
@@ -119,9 +120,11 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
   const [startContribAge, setStartContribAge] = useState(30)
   const [discountRate, setDiscountRate] = useState(4)
 
-  // จำนวนปีรับบำนาญ (n) = อายุขัย − อายุเกษียณ (อายุขัยจากหน้าตั้งค่า)
+  // อายุที่รับเงิน ปกส. ได้ = max(อายุเกษียณ, 55) — บำเหน็จ/บำนาญ รับได้เมื่ออายุ ≥ 55
+  const withdrawAge = Math.max(retirementAge, 55)
+  // จำนวนปีรับบำนาญ (n) = อายุขัย − อายุที่เริ่มรับบำนาญ (55 ถ้าเกษียณก่อน 55)
   const lifeExpectancy = (isSelf ? profile?.lifeExpectancySelf : profile?.lifeExpectancySpouse) ?? 85
-  const pensionYears = Math.max(0, lifeExpectancy - retirementAge)
+  const pensionYears = Math.max(0, lifeExpectancy - withdrawAge)
 
   const filled = useMemo(() => ({ s: false, a: false, ret: false, rate: false, disc: false }), [])
   useEffect(() => {
@@ -213,8 +216,10 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
     const out: Row[] = []
     const rr = returnRate / 100
     let empBal = 0, erBal = 0, govBal = 0, carry = openingBalance
-    for (let age = currentAge; age < retirementAge; age++) {   // ปีสุดท้ายที่จ่ายสมทบ = อายุเกษียณ − 1
-      const base = baseFor(age)
+    // สมทบถึงอายุเกษียณ−1 · ถ้าเกษียณก่อน 55 เงินยังล็อกโตต่อ (เฉพาะผลตอบแทน) จนถอนได้ที่ 55
+    for (let age = currentAge; age < withdrawAge; age++) {
+      const contributing = age < retirementAge
+      const base = contributing ? baseFor(age) : 0
       const empC = base * (empRate / 100) * 12
       const erC = base * (employerRate / 100) * 12
       const govC = base * (govRate / 100) * 12
@@ -223,18 +228,19 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
       const govOpen = govBal + govC, govRet = govOpen * rr, govEnd = govOpen + govRet
       carry = carry * (1 + rr)
       const total = empEnd + erEnd + govEnd + carry
-      out.push({ age, base, empOpen, empRet, empEnd, erOpen, erRet, erEnd, govOpen, govRet, govEnd, carry, total })
+      out.push({ age, base, empOpen, empRet, empEnd, erOpen, erRet, erEnd, govOpen, govRet, govEnd, carry, total, locked: !contributing })
       empBal = empEnd; erBal = erEnd; govBal = govEnd
     }
     return out
-  }, [salary, baseOverrides, empRate, employerRate, govRate, returnRate, openingBalance, currentAge, retirementAge])
+  }, [salary, baseOverrides, empRate, employerRate, govRate, returnRate, openingBalance, currentAge, retirementAge, withdrawAge])
 
   const base = rows.length ? rows[0].base : Math.min(salary, 17500)
   const monthlyContrib = base * ((empRate + employerRate + govRate) / 100)
   const valueAtRetirement = rows.length ? rows[rows.length - 1].total : 0
 
-  // Pension base = contribution base (เงินเดือน) at retirement year, from the table
-  const pensionBase = rows.length ? rows[rows.length - 1].base : Math.min(salary, 17500)
+  // Pension base = ฐานเงินเดือนสมทบปีสุดท้ายที่ "สมทบจริง" (ไม่นับปีที่ล็อก)
+  const lastContribRow = [...rows].reverse().find(r => !r.locked)
+  const pensionBase = lastContribRow ? lastContribRow.base : Math.min(salary, 17500)
 
   // จำนวนปีที่เป็นสมาชิก ปกส. มาแล้ว (จากหน้าข้อมูลส่วนบุคคล) — welfare ประกาศไว้ด้านบน
   const memberYears = toNum(welfare?.socialSecurityYears)
@@ -251,9 +257,11 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
     const i = discountRate / 100
     const n = pensionYears
     const factor = i === 0 ? n : (1 - Math.pow(1 + i, -n)) / i
-    const pv = annual * factor
+    // PV ณ อายุเริ่มรับบำนาญ (withdrawAge) แล้วคิดลดกลับมาที่ปีเกษียณ (ถ้าเกษียณก่อน 55)
+    const pvAtStart = annual * factor
+    const pv = pvAtStart / Math.pow(1 + i, Math.max(0, withdrawAge - retirementAge))
     return { N, eligible, ratePct, monthly, annual, pv }
-  }, [memberYears, retirementAge, currentAge, pensionBase, pensionYears, discountRate])
+  }, [memberYears, retirementAge, currentAge, withdrawAge, pensionBase, pensionYears, discountRate])
 
   // เก็บ "มูลค่าปัจจุบัน ณ เกษียณ" (บำนาญ) ไว้ในข้อมูลที่บันทึก เพื่อให้การ์ดสรุปแผนเกษียณดึงไปใช้
   valuesRef.current = { ...valuesRef.current, pensionPV: pension.pv }
@@ -296,7 +304,7 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
           <span><span style={{ fontFamily: 'monospace', fontSize: 16, fontWeight: 600, color: 'var(--cyan)' }}>{fmt(monthlyContrib, 0)}</span> <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>บาท</span></span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '8px 0 0', marginTop: 4, borderTop: '1px solid var(--card-border)', flexWrap: 'wrap', gap: 6 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#4ade80' }}>เงินบำเหน็จชราภาพ</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#4ade80' }}>เงินบำเหน็จชราภาพ <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)' }}>(ณ อายุ {withdrawAge} · ถอนได้)</span></span>
           <span><span style={{ fontFamily: 'monospace', fontSize: 22, fontWeight: 800, color: '#4ade80' }}>{fmt(valueAtRetirement, 0)}</span> <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>บาท</span></span>
         </div>
       </div>
@@ -375,6 +383,9 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <ReferenceLine x={retirementAge - 1} stroke="#f59e0b" strokeDasharray="4 4" label={{ value: `ปีสุดท้ายสมทบ (${retirementAge - 1})`, fill: '#f59e0b', fontSize: 11, position: 'insideTopLeft' }} />
+                {withdrawAge - 1 !== retirementAge - 1 && (
+                  <ReferenceLine x={withdrawAge - 1} stroke="#4ade80" strokeDasharray="4 4" label={{ value: `ถอนได้ (${withdrawAge})`, fill: '#4ade80', fontSize: 11, position: 'insideTopRight' }} />
+                )}
                 <Bar dataKey="emp"   name="ส่วนลูกจ้าง" stackId="a" fill={C_EMP} />
                 <Bar dataKey="er"    name="ส่วนนายจ้าง" stackId="a" fill={C_ER} />
                 <Bar dataKey="gov"   name="ส่วนรัฐ" stackId="a" fill={C_GOV} />
@@ -416,19 +427,21 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
               </tr>
             )}
             {rows.map(r => {
-              const isRetire = r.age === retirementAge - 1   // แถวสุดท้าย = ปีสุดท้ายที่สมทบ (อายุเกษียณ − 1)
+              const isRetire = r.age === withdrawAge - 1   // แถวสุดท้าย = ปีที่ถอนได้ (อายุ 55 หรืออายุเกษียณ)
               return (
-                <tr key={r.age} style={{ borderBottom: '1px solid var(--divider)', background: isRetire ? 'rgba(245,158,11,0.07)' : 'transparent' }}>
-                  <td style={{ ...td, fontWeight: isRetire ? 700 : 400, color: isRetire ? '#f59e0b' : 'var(--text-secondary)' }}>{r.age}{isRetire && ' ⭐'}</td>
+                <tr key={r.age} style={{ borderBottom: '1px solid var(--divider)', background: isRetire ? 'rgba(74,222,128,0.08)' : r.locked ? 'rgba(148,163,184,0.06)' : 'transparent' }}>
+                  <td style={{ ...td, fontWeight: isRetire ? 700 : 400, color: isRetire ? '#4ade80' : r.locked ? 'var(--text-muted)' : 'var(--text-secondary)' }}>{r.age}{isRetire ? ' ⭐' : r.locked ? ' 🔒' : ''}</td>
                   <td style={{ ...tdNum, padding: '3px 6px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                      <NumIn value={r.base} onChange={v => setBaseOverrides(o => ({ ...o, [r.age]: v }))} money width={88} />
-                    </div>
+                    {r.locked
+                      ? <span style={{ color: 'var(--text-muted)' }}>—</span>
+                      : <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          <NumIn value={r.base} onChange={v => setBaseOverrides(o => ({ ...o, [r.age]: v }))} money width={88} />
+                        </div>}
                   </td>
                   <td style={tdNum}>{fmt(r.empOpen)}</td><td style={tdNum}>{fmt(r.empRet)}</td><td style={{ ...tdNum, color: C_EMP }}>{fmt(r.empEnd)}</td>
                   <td style={tdNum}>{fmt(r.erOpen)}</td><td style={tdNum}>{fmt(r.erRet)}</td><td style={{ ...tdNum, color: C_ER }}>{fmt(r.erEnd)}</td>
                   <td style={tdNum}>{fmt(r.govOpen)}</td><td style={tdNum}>{fmt(r.govRet)}</td><td style={{ ...tdNum, color: C_GOV }}>{fmt(r.govEnd)}</td>
-                  <td style={{ ...tdNum, fontWeight: 700, color: isRetire ? '#f59e0b' : 'var(--text-primary)' }}>{fmt(r.total)}</td>
+                  <td style={{ ...tdNum, fontWeight: 700, color: isRetire ? '#4ade80' : 'var(--text-primary)' }}>{fmt(r.total)}</td>
                 </tr>
               )
             })}
