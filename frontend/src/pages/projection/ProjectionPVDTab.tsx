@@ -265,7 +265,7 @@ export default function ProjectionPVDTab({ person = 'self' }: { person?: 'self' 
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : '300px 1fr', gap: 20, alignItems: 'stretch' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : '300px 1fr', gap: 20, alignItems: 'start' }}>
 
         {/* Assumptions */}
         <div style={{ ...card }}>
@@ -303,7 +303,7 @@ export default function ProjectionPVDTab({ person = 'self' }: { person?: 'self' 
           <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 14 }}>
             มูลค่ากองทุนสำรองเลี้ยงชีพสะสม (บาท)
           </p>
-          <ChartFrame title="มูลค่ากองทุนสำรองเลี้ยงชีพสะสม" filename="pvd-fund" height={320}>
+          <ChartFrame title="มูลค่ากองทุนสำรองเลี้ยงชีพสะสม" filename="pvd-fund" height={400}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 8, right: 20, left: 10, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--grid)" />
