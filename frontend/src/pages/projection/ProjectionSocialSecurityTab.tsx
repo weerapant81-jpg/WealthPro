@@ -170,11 +170,13 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
   // ── ดึง "ยอดยกมา" จาก "มูลค่ากองทุนปัจจุบัน" ที่กรอกในหน้าข้อมูลส่วนบุคคล (fallback: สินทรัพย์ลงทุน) ──
   const obFilledRef = useRef(false)
   useEffect(() => {
-    if (obFilledRef.current || !isFetched) return
+    if (obFilledRef.current || !isFetched || clientProfile === undefined) return
+    // ค่าจากโปรไฟล์เป็นแหล่งหลัก — มาก่อนค่าที่บันทึกไว้ (กันค่าเก่าที่ค้างมาบัง)
+    if (profileSSValue > 0) { setOpeningBalance(profileSSValue); obFilledRef.current = true; return }
     const p = savedPlan?.[person]
     if (p && Number(p.openingBalance) > 0) { obFilledRef.current = true; return } // เคยกรอกเอง → ค่าเดิมชนะ
-    if (openingSource > 0) { setOpeningBalance(openingSource); obFilledRef.current = true }
-  }, [isFetched, savedPlan, openingSource, person])
+    if (ssoAssetValue > 0) { setOpeningBalance(ssoAssetValue); obFilledRef.current = true }
+  }, [isFetched, clientProfile, savedPlan, profileSSValue, ssoAssetValue, person])
 
   // ── Debounced autosave + flush on unmount (per-person slice, merged) ──
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
