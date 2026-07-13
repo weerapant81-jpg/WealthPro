@@ -352,15 +352,9 @@ export default function TaxPlanningPage() {
                       <MoneyInput value={r.inc} onChange={v => set(r.key, v as any)} />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                      {r.expKey ? (
-                        <>
-                          <MoneyInput value={Math.round(r.exp)} onChange={v => setExpense(r.expKey!, v)} />
-                          {r.over
-                            ? <button onClick={() => setExpense(r.expKey!, null)} title="กลับไปใช้ค่าตามเกณฑ์สรรพากร"
-                                style={{ background: 'none', border: 'none', color: 'var(--cyan)', fontSize: 9.5, cursor: 'pointer', padding: 0 }}>↺ ค่าตามเกณฑ์</button>
-                            : <span style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>ตามเกณฑ์</span>}
-                        </>
-                      ) : <span style={{ fontSize: 12.5, fontFamily: 'monospace', textAlign: 'right', color: 'var(--text-muted)' }}>—</span>}
+                      {r.expKey
+                        ? <MoneyInput value={Math.round(r.exp)} onChange={v => setExpense(r.expKey!, v)} />
+                        : <span style={{ fontSize: 12.5, fontFamily: 'monospace', textAlign: 'right', color: 'var(--text-muted)' }}>—</span>}
                     </div>
                     <div style={{ fontSize: 12.5, fontFamily: 'monospace', textAlign: 'right', fontWeight: 600, color: 'var(--text-primary)' }}>{fmt(r.inc - r.exp)}</div>
                   </div>
