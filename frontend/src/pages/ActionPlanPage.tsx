@@ -6,7 +6,7 @@ import { useInsuranceReadiness } from '../hooks/useInsuranceReadiness'
 import { useEducationReadiness } from '../hooks/useEducationReadiness'
 import {
   ClipboardCheck, Plus, Trash2, CalendarClock, Target, ShieldCheck,
-  GraduationCap, Wallet, Landmark, Receipt, ScrollText, Sparkles, Flag, User, Users, UserCog, Check,
+  GraduationCap, Wallet, Landmark, Receipt, ScrollText, Sparkles, Flag, User, Users, Check,
   ChevronDown, ListChecks,
 } from 'lucide-react'
 
@@ -72,6 +72,16 @@ const SUBPLAN_CONFIG: Record<string, SubConfig> = {
       { key: 'desc', label: 'ทำอะไร', type: 'text', placeholder: 'เช่น จัดทำพินัยกรรม · ระบุผู้รับผลประโยชน์', flex: true },
       ownerCol,
       { key: 'schedule', label: 'เมื่อไหร่', type: 'date' },
+    ],
+  },
+  tax: {
+    title: 'แผนดำเนินการด้านภาษี', accent: '#0ea5e9',
+    cols: [
+      { key: 'desc', label: 'แผนปฏิบัติการ', type: 'text', placeholder: 'เช่น ซื้อ RMF/SSF เพิ่ม · ทำประกันชีวิตลดหย่อน', flex: true },
+      { key: 'tool', label: 'เครื่องมือ/สิทธิ', type: 'text', placeholder: 'RMF / SSF / ThaiESG / ประกันชีวิต' },
+      { key: 'amount', label: 'จำนวนเงิน', type: 'money' },
+      ownerCol,
+      { key: 'schedule', label: 'กำหนดการ', type: 'date' },
     ],
   },
 }
@@ -431,11 +441,6 @@ function ItemCard({ it, index, metricCtx, items, onPatch, onRemove }: {
               <select value={it.priority} onChange={e => onPatch(it.id, { priority: e.target.value })} style={{ ...chip, border: `1px solid ${pr.color}55`, background: `${pr.color}14`, color: pr.color }}>
                 {Object.entries(PRIORITY).map(([k, v]) => <option key={k} value={k}>ความสำคัญ {v.label}</option>)}
               </select>
-              <button onClick={() => onPatch(it.id, { owner: it.owner === 'client' ? 'advisor' : 'client' })} style={{ ...chip, display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid var(--card-border)', background: 'var(--navy-800)', color: 'var(--text-secondary)' }}>
-                {it.owner === 'client' ? <User size={11} /> : <UserCog size={11} />}{it.owner === 'client' ? 'ลูกค้า' : 'ที่ปรึกษา'}
-              </button>
-              <input type="date" value={it.dueDate ? it.dueDate.slice(0, 10) : ''} onChange={e => onPatch(it.id, { dueDate: e.target.value || null })}
-                style={{ fontSize: 11, padding: '3px 8px', borderRadius: 7, border: '1px solid var(--card-border)', background: 'var(--navy-800)', color: 'var(--text-secondary)' }} />
             </div>
           </div>
           {showTracking && <Gauge pct={p.pct} color={gaugeColor} caption={p.hasTarget && p.curVal != null ? (prog >= 100 ? 'สำเร็จ ✓' : 'คืบหน้า') : undefined} />}
@@ -479,14 +484,19 @@ function ItemCard({ it, index, metricCtx, items, onPatch, onRemove }: {
           <div style={{ border: '1px solid var(--card-border)', borderRadius: 11, overflow: 'hidden' }}>
             <button onClick={() => setOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 13px', background: open ? 'var(--navy-800)' : 'var(--navy-900)', border: 'none', cursor: 'pointer', color: 'var(--text-primary)' }}>
               <ListChecks size={15} style={{ color: c.color }} />
-              <span style={{ fontSize: 12.5, fontWeight: 700 }}>{isTax ? 'สรุปสิทธิลดหย่อนภาษี' : SUBPLAN_CONFIG[it.category].title}</span>
+              <span style={{ fontSize: 12.5, fontWeight: 700 }}>{hasSubTable ? SUBPLAN_CONFIG[it.category].title : 'สรุปสิทธิลดหย่อนภาษี'}</span>
               {hasSubTable && rowCount > 0 && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· {rowCount} รายการ</span>}
               <ChevronDown size={16} style={{ marginLeft: 'auto', color: 'var(--text-muted)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .25s' }} />
             </button>
             <div style={{ maxHeight: open ? 2400 : 0, overflow: 'hidden', transition: 'max-height .35s ease' }}>
               <div style={{ padding: '2px 13px 13px' }}>
                 {hasSubTable && <SubPlanTable value={it.subPlan} config={SUBPLAN_CONFIG[it.category]} hideHeader onSave={rows => onPatch(it.id, { subPlan: rows })} />}
-                {isTax && <TaxDeductionSummary items={items} hideHeader />}
+                {isTax && (
+                  <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--card-border)' }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }}>สรุปสิทธิลดหย่อนภาษี</div>
+                    <TaxDeductionSummary items={items} hideHeader />
+                  </div>
+                )}
               </div>
             </div>
           </div>
