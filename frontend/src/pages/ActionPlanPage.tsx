@@ -526,20 +526,6 @@ const PLAN_SECTIONS: { key: string; title: string; sub: string; icon: React.Elem
   { key: 'estate', title: 'การวางแผนส่งมอบมรดก', sub: 'ส่งต่อทรัพย์สินราบรื่น เป็นธรรม ประหยัดภาษี', icon: ScrollText, color: '#a78bfa', cats: ['estate'] },
 ]
 
-function SumRow({ label, value, color, strong }: { label: string; value: string; color?: string; strong?: boolean }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '3px 0', gap: 10 }}>
-      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{label}</span>
-      <span style={{ fontSize: 12.5, fontWeight: strong ? 700 : 600, fontFamily: 'monospace', color: color ?? 'var(--text-primary)' }}>{value}</span>
-    </div>
-  )
-}
-const SumBox = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ padding: '11px 13px', borderRadius: 10, background: 'var(--navy-900)', border: '1px solid var(--card-border)', marginBottom: 12 }}>
-    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: .5, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6 }}>ความต้องการ (จากการคำนวณ)</div>
-    {children}
-  </div>
-)
 
 // กล่องคำแนะนำนักวางแผน — บันทึกตอน blur
 function AdviceBox({ value, color, onSave }: { value: string; color: string; onSave: (v: string) => void }) {
@@ -559,9 +545,38 @@ function AdviceBox({ value, color, onSave }: { value: string; color: string; onS
   )
 }
 
+const money = (n: number) => n >= 1e6 ? `฿${(n / 1e6).toFixed(1)}M` : `฿${fmt(n)}`
+
+// แถบความคืบหน้า (label + ค่า + %)
+function MetricBar({ label, valueText, pct, color }: { label: string; valueText: string; pct: number; color: string }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 11, marginBottom: 6 }}>
+        <span style={{ color: 'var(--text-muted)', letterSpacing: .4, textTransform: 'uppercase' }}>{label}</span>
+        <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{valueText}</span>
+      </div>
+      <div style={{ height: 6, borderRadius: 999, background: 'var(--navy-700)', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${Math.max(0, Math.min(100, pct))}%`, background: color, borderRadius: 999, transition: 'width .5s' }} />
+      </div>
+    </div>
+  )
+}
+function StatBox({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div style={{ background: 'var(--navy-950)', padding: '9px 11px', borderRadius: 10, border: '1px solid var(--card-border)' }}>
+      <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{label}</div>
+      <div style={{ fontSize: 16, fontWeight: 700, color: color ?? 'var(--text-primary)', marginTop: 2, fontFamily: 'monospace' }}>{value}</div>
+    </div>
+  )
+}
+const StatRow = ({ children }: { children: React.ReactNode }) => (
+  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>{children}</div>
+)
+
 export default function ActionPlanPage() {
   const qc = useQueryClient()
   const [person, setPerson] = useState<'self' | 'spouse'>('self')
+  const [expandedItem, setExpandedItem] = useState<string | null>(null)
   const ratioPerson = person === 'spouse' ? 'spouse' : 'client'
   const { data: cp } = useQuery({ queryKey: ['client-profile'], queryFn: () => api.get('/client-profile').then(r => r.data) })
   const clientName = cp?.firstName ? `คุณ${cp.firstName}` : 'ลูกค้า'
@@ -661,69 +676,62 @@ export default function ActionPlanPage() {
     return NEU
   }
 
-  const renderSummary = (key: string): React.ReactNode => {
+  const AMBER = '#f59e0b', GREEN = '#10b981'
+  const renderMetrics = (key: string): React.ReactNode => {
     if (key === 'liquidity') {
       if (!s) return null
-      const g = s.totalAssets > 0 ? (s.totalDebtBalance / s.totalAssets) * 100 : 0
-      return (
-        <SumBox>
-          <SumRow label="เงินสำรองฉุกเฉินที่ควรมี (6 เดือน)" value={baht(metricCtx.sixMonthReserve)} />
-          <SumRow label="เงินสำรองที่มีจริง" value={baht(metricCtx.liquidAssets)} color={metricCtx.emergencyMonths >= 6 ? '#10b981' : '#f59e0b'} />
-          <SumRow label="ครอบคลุมค่าใช้จ่าย" value={`${metricCtx.emergencyMonths.toFixed(1)} เดือน`} />
-          <SumRow label="หนี้ต่อสินทรัพย์" value={`${g.toFixed(0)}%`} color={g > 50 ? '#f59e0b' : undefined} />
-          <SumRow label="อัตราการออม" value={`${metricCtx.savingsRate.toFixed(0)}%`} color={metricCtx.savingsRate < 10 ? '#f59e0b' : '#10b981'} />
-        </SumBox>
-      )
-    }
-    if (key === 'investment') {
-      const hasContent = (edu && edu.childCount > 0) || goalRows.length > 0
-      if (!hasContent) return null
-      return (
-        <SumBox>
-          {edu && edu.childCount > 0 && <>
-            <SumRow label={`ทุนการศึกษาบุตร (${edu.childCount} คน)`} value={baht(edu.totalNominal)} strong color="#ffb800" />
-            <SumRow label="ต้องออมเพื่อการศึกษา" value={`~${fmt(edu.monthlySaving)}/เดือน`} />
-          </>}
-          {goalRows.length > 0 && <>
-            {(edu && edu.childCount > 0) && <div style={{ borderTop: '1px dashed var(--card-border)', margin: '6px 0' }} />}
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', margin: '2px 0 4px' }}>เป้าหมายการเงิน (จากหน้าเป้าหมาย)</div>
-            {goalRows.map((gr: any, i: number) => (
-              <SumRow key={i} label={`${gr.name || 'เป้าหมาย'}${gr.targetDate ? ` · ${gr.targetDate}` : ''}`} value={baht(Number(String(gr.targetAmount || '').replace(/,/g, '')) || 0)} />
-            ))}
-          </>}
-        </SumBox>
-      )
+      return <>
+        <MetricBar label="เงินสำรองฉุกเฉิน" valueText={`${money(metricCtx.liquidAssets)} / ${money(metricCtx.sixMonthReserve)}`}
+          pct={metricCtx.sixMonthReserve > 0 ? metricCtx.liquidAssets / metricCtx.sixMonthReserve * 100 : 0} color="var(--cyan)" />
+        <StatRow>
+          <StatBox label="อัตราการออม" value={`${metricCtx.savingsRate.toFixed(0)}%`} color={metricCtx.savingsRate < 10 ? AMBER : GREEN} />
+          <StatBox label="หนี้ / สินทรัพย์" value={`${metricCtx.debtToAsset.toFixed(0)}%`} color={metricCtx.debtToAsset > 50 ? AMBER : undefined} />
+        </StatRow>
+      </>
     }
     if (key === 'insurance') {
       if (!ins) return null
-      return (
-        <SumBox>
-          <SumRow label="ทุนประกันที่แนะนำ" value={baht(ins.need)} strong color="#3b82f6" />
-          <SumRow label="· แบบ Human Life Value" value={baht(ins.hlvNeed)} />
-          <SumRow label="· แบบ Needs-Based" value={baht(ins.needsNeed)} />
-          <SumRow label="ความคุ้มครองที่มี" value={baht(ins.have)} />
-          <SumRow label="ส่วนที่ยังขาด" value={ins.gap > 0 ? baht(ins.gap) : 'เพียงพอ'} color={ins.gap > 0 ? '#f59e0b' : '#10b981'} strong />
-        </SumBox>
-      )
+      return <>
+        <MetricBar label="ทุนประกันชีวิต (HLV)" valueText={`${money(ins.have)} / ${money(ins.need)}`}
+          pct={ins.need > 0 ? ins.have / ins.need * 100 : 0} color={ins.gap > 0 ? AMBER : 'var(--cyan)'} />
+        <StatRow>
+          <StatBox label="ทุนแนะนำ (Needs)" value={money(ins.needsNeed)} />
+          <StatBox label="ส่วนที่ขาด" value={ins.gap > 0 ? money(ins.gap) : 'เพียงพอ'} color={ins.gap > 0 ? AMBER : GREEN} />
+        </StatRow>
+      </>
     }
     if (key === 'retirement') {
       if (!ret) return null
-      return (
-        <SumBox>
-          <SumRow label="เงินเกษียณที่ต้องการ" value={baht((ret as any).needed ?? 0)} strong color="#00cfc1" />
-          <SumRow label="ทรัพย์สินเพื่อเกษียณที่มี" value={baht(ret.have ?? 0)} />
-          <SumRow label="ส่วนที่ยังขาด" value={ret.gap > 0 ? baht(ret.gap) : 'เพียงพอ'} color={ret.gap > 0 ? '#f59e0b' : '#10b981'} strong />
-          {ret.gap > 0 && (ret as any).annualSavings > 0 && <SumRow label="ต้องออมเพิ่ม" value={`~${fmt((ret as any).annualSavings)}/ปี`} />}
-        </SumBox>
-      )
+      const need = (ret as any).needed ?? 0
+      return <>
+        <MetricBar label="ทุนเกษียณที่ต้องการ" valueText={`${money(ret.have ?? 0)} / ${money(need)}`}
+          pct={need > 0 ? (ret.have ?? 0) / need * 100 : 0} color={ret.gap > 0 ? AMBER : 'var(--cyan)'} />
+        <StatRow>
+          <StatBox label="ส่วนที่ขาด" value={ret.gap > 0 ? money(ret.gap) : 'เพียงพอ'} color={ret.gap > 0 ? AMBER : GREEN} />
+          <StatBox label="ต้องออม/เดือน" value={(ret as any).annualSavings > 0 ? money((ret as any).annualSavings / 12) : '—'} />
+        </StatRow>
+      </>
+    }
+    if (key === 'investment') {
+      return <>
+        <StatRow>
+          <StatBox label="เป้าหมายการเงิน" value={`${goalRows.length} รายการ`} />
+          <StatBox label="ทุนการศึกษา" value={edu && edu.childCount > 0 ? money(edu.totalNominal) : '—'} color={edu && edu.childCount > 0 ? '#ffb800' : undefined} />
+        </StatRow>
+        {goalRows.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            {goalRows.slice(0, 4).map((gr: any, i: number) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, padding: '3px 0', color: 'var(--text-secondary)' }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{gr.name || 'เป้าหมาย'}</span>
+                <span style={{ fontFamily: 'monospace', color: 'var(--text-primary)', flexShrink: 0 }}>{money(Number(String(gr.targetAmount || '').replace(/,/g, '')) || 0)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </>
     }
     if (key === 'tax') {
-      return (
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: .5, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6 }}>สิทธิลดหย่อนตามแผน (จากการคำนวณ)</div>
-          <TaxDeductionSummary items={items} hideHeader />
-        </div>
-      )
+      return <div style={{ marginBottom: 14 }}><TaxDeductionSummary items={items} hideHeader /></div>
     }
     return null
   }
@@ -759,92 +767,108 @@ export default function ActionPlanPage() {
         </div>
       </div>
 
-      {/* overall progress */}
-      <div style={card}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>ความคืบหน้าโดยรวม</span>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{doneCount}/{items.length} รายการเสร็จ</span>
-        </div>
-        <div style={{ height: 12, borderRadius: 8, background: 'var(--navy-700)', overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${overallPct}%`, background: 'linear-gradient(90deg,var(--cyan),var(--cyan-light))', borderRadius: 8, transition: 'width .3s' }} />
-        </div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--cyan)', marginTop: 8 }}>{overallPct}%</div>
-      </div>
-
-      {/* 6 ด้าน CFP */}
+      {/* 6 ด้าน CFP — bento grid */}
       {isLoading ? <div style={{ ...card, color: 'var(--text-muted)', fontSize: 13 }}>กำลังโหลด...</div> : (() => {
         const KNOWN = new Set(PLAN_SECTIONS.flatMap(x => x.cats))
         const itemsFor = (sec: typeof PLAN_SECTIONS[number]) => items.filter(it => sec.cats.includes(it.category) || (sec.key === 'investment' && !KNOWN.has(it.category)))
         const sugFor = (sec: typeof PLAN_SECTIONS[number]) => suggestions.filter(sg => sec.cats.includes(sg.category) || (sec.key === 'investment' && !KNOWN.has(sg.category)))
-        return PLAN_SECTIONS.map((sec, si) => {
-          const st = sectionStatus(sec.key)
-          const secItems = itemsFor(sec)
-          const secSug = sugFor(sec)
-          const summary = renderSummary(sec.key)
-          return (
-            <div key={sec.key} style={card}>
-              {/* header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 14 }}>
-                <div style={{ width: 22, height: 22, borderRadius: 7, background: `${sec.color}22`, color: sec.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, flexShrink: 0 }}>{si + 1}</div>
-                <div style={{ width: 34, height: 34, borderRadius: 9, background: `${sec.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <sec.icon size={18} style={{ color: sec.color }} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{sec.title}</div>
-                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{sec.sub}</div>
-                </div>
-                <span style={{ fontSize: 11.5, fontWeight: 700, color: st.color, background: `${st.color === 'var(--text-muted)' ? 'var(--navy-900)' : st.color + '1a'}`, border: `1px solid ${st.color === 'var(--text-muted)' ? 'var(--card-border)' : st.color + '55'}`, borderRadius: 999, padding: '3px 11px', whiteSpace: 'nowrap' }}>{st.label}</span>
-              </div>
+        const warnSecs = PLAN_SECTIONS.filter(x => sectionStatus(x.key).color === AMBER)
+        return <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 20, alignItems: 'start' }}>
+            {PLAN_SECTIONS.map((sec, si) => {
+              const st = sectionStatus(sec.key)
+              const secItems = itemsFor(sec)
+              const secSug = sugFor(sec)
+              return (
+                <div key={sec.key} style={{ ...card, display: 'flex', flexDirection: 'column', minHeight: 440 }}>
+                  {/* header */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 16 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 11, background: `${sec.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <sec.icon size={20} style={{ color: sec.color }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 700 }}>ด้านที่ {si + 1}</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{sec.title}</div>
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: st.color, whiteSpace: 'nowrap' }}>{st.label}</span>
+                  </div>
 
-              {/* ① ความต้องการ */}
-              {summary}
+                  {/* ① ตัวชี้วัด (คำนวณ) */}
+                  {renderMetrics(sec.key)}
 
-              {/* ② คำแนะนำนักวางแผน */}
-              <AdviceBox value={advice[sec.key] || ''} color={sec.color} onSave={t => saveAdvice.mutate({ section: sec.key, text: t })} />
+                  {/* ② คำแนะนำนักวางแผน */}
+                  <AdviceBox value={advice[sec.key] || ''} color={sec.color} onSave={t => saveAdvice.mutate({ section: sec.key, text: t })} />
 
-              {/* คำแนะนำอัตโนมัติ (ยังไม่ได้เพิ่มเข้าแผน) */}
-              {secSug.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                  {/* คำแนะนำอัตโนมัติ */}
                   {secSug.map(sg => (
-                    <div key={sg.autoKey} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '9px 12px', borderRadius: 10, background: 'var(--navy-900)', border: `1px dashed ${sec.color}44` }}>
-                      <Sparkles size={15} style={{ color: sec.color, flexShrink: 0 }} />
+                    <div key={sg.autoKey} style={{ display: 'flex', gap: 9, alignItems: 'center', padding: '8px 11px', borderRadius: 10, background: 'var(--navy-900)', border: `1px dashed ${sec.color}44`, marginBottom: 8 }}>
+                      <Sparkles size={14} style={{ color: sec.color, flexShrink: 0 }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)' }}>{sg.title}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{(sg as any).reason}</div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{sg.title}</div>
+                        <div style={{ fontSize: 10.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(sg as any).reason}</div>
                       </div>
                       <button onClick={() => create.mutate({ ...sg, source: 'auto' })} disabled={create.isPending}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 11px', borderRadius: 8, border: `1px solid ${sec.color}`, background: `${sec.color}18`, color: sec.color, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                        <Plus size={12} /> เพิ่มเข้าแผน
+                        title="เพิ่มเข้าแผน" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '4px 9px', borderRadius: 7, border: `1px solid ${sec.color}`, background: `${sec.color}18`, color: sec.color, fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                        <Plus size={11} /> เพิ่ม
                       </button>
                     </div>
                   ))}
-                </div>
-              )}
 
-              {/* ③ แผนดำเนินการ (รายการที่ติดตาม) */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: secItems.length ? 10 : 0 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)' }}>แผนดำเนินการ {secItems.length > 0 && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>· {secItems.length} รายการ</span>}</span>
-                <button onClick={() => create.mutate({ title: 'รายการใหม่', category: sec.cats[0], priority: 'medium', owner: 'advisor', source: 'manual' })}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 8, border: '1px solid var(--card-border)', background: 'var(--navy-900)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}>
-                  <Plus size={13} /> เพิ่มรายการ
-                </button>
-              </div>
-              {secItems.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {secItems.map((it, i) => (
-                    <ItemCard key={it.id} it={it} index={i} metricCtx={metricCtx} items={items}
-                      onPatch={(id, body) => update.mutate({ id, body })} onRemove={id => remove.mutate(id)} />
-                  ))}
+                  {/* ③ แผนดำเนินการ — checklist */}
+                  <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid var(--card-border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: .4, textTransform: 'uppercase', color: sec.color, display: 'flex', alignItems: 'center', gap: 5 }}><ListChecks size={14} /> แผนดำเนินการ</span>
+                      <button onClick={() => create.mutate({ title: 'รายการใหม่', category: sec.cats[0], priority: 'medium', owner: 'advisor', source: 'manual' })}
+                        title="เพิ่มรายการ" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 9px', borderRadius: 7, border: '1px solid var(--card-border)', background: 'var(--navy-900)', color: 'var(--text-secondary)', fontSize: 11.5, cursor: 'pointer' }}>
+                        <Plus size={12} /> เพิ่ม
+                      </button>
+                    </div>
+                    {secItems.length === 0
+                      ? <div style={{ fontSize: 11.5, color: 'var(--text-muted)', padding: '4px 0' }}>ยังไม่มีรายการ — เพิ่มจากคำแนะนำหรือกด "เพิ่ม"</div>
+                      : secItems.map(it => {
+                        const done = it.status === 'done'
+                        const open = expandedItem === it.id
+                        return (
+                          <div key={it.id}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '5px 0' }}>
+                              <input type="checkbox" checked={done} onChange={() => update.mutate({ id: it.id, body: { status: done ? 'todo' : 'done' } })}
+                                style={{ width: 16, height: 16, accentColor: sec.color, cursor: 'pointer', flexShrink: 0 }} />
+                              <span onClick={() => setExpandedItem(open ? null : it.id)}
+                                style={{ flex: 1, minWidth: 0, fontSize: 12.5, cursor: 'pointer', color: done ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: done ? 'line-through' : 'none', opacity: done ? .65 : 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: open ? 'normal' : 'nowrap' }}>{it.title}</span>
+                              <ChevronDown size={14} onClick={() => setExpandedItem(open ? null : it.id)} style={{ color: 'var(--text-muted)', cursor: 'pointer', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+                            </div>
+                            {open && (
+                              <div style={{ margin: '4px 0 10px' }}>
+                                <ItemCard it={it} index={0} metricCtx={metricCtx} items={items}
+                                  onPatch={(id, body) => update.mutate({ id, body })} onRemove={id => { remove.mutate(id); setExpandedItem(null) }} />
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                  </div>
                 </div>
-              )}
+              )
+            })}
+          </div>
+
+          {/* บทสรุปภาพรวม */}
+          <div style={{ marginTop: 4, padding: '20px 24px', borderRadius: 14, border: '1px solid var(--cyan)', background: 'var(--cyan-dim)', display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+            <div style={{ width: 42, height: 42, borderRadius: 999, background: 'var(--cyan)', color: '#00201d', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <ClipboardCheck size={21} />
             </div>
-          )
-        })
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>บทสรุปภาพรวมแผนการเงิน</div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6, lineHeight: 1.65 }}>
+                ความคืบหน้ารวม <strong style={{ color: 'var(--cyan-light)' }}>{overallPct}%</strong> ({doneCount}/{items.length} รายการเสร็จ)
+                {warnSecs.length > 0
+                  ? <> · ด้านที่ควรเร่งดำเนินการ: <strong style={{ color: AMBER }}>{warnSecs.map(w => w.title).join(' · ')}</strong></>
+                  : <> · ทุกด้านอยู่ในเกณฑ์ดี 👍</>}
+              </div>
+            </div>
+          </div>
+        </>
       })()}
-
-      <div style={{ fontSize: 11.5, color: 'var(--text-muted)', textAlign: 'center' }}>
-        ค่า "ปัจจุบัน" ดึงสดจากข้อมูลในระบบ — เมื่อลูกค้าปฏิบัติตามแผน (ออมเพิ่ม/ซื้อประกัน/ลดหนี้) แถบความคืบหน้าจะอัปเดตอัตโนมัติ
-      </div>
     </div>
   )
 }
