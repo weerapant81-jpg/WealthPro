@@ -809,7 +809,7 @@ export default function ActionPlanPage() {
         const sugFor = (sec: typeof PLAN_SECTIONS[number]) => suggestions.filter(sg => sec.cats.includes(sg.category) || (sec.key === 'investment' && !KNOWN.has(sg.category)))
         const warnSecs = PLAN_SECTIONS.filter(x => sectionStatus(x.key).color === AMBER)
         return <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 20, alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 460px), 1fr))', gap: 20, alignItems: 'start' }}>
             {PLAN_SECTIONS.map((sec, si) => {
               const st = sectionStatus(sec.key)
               const secItems = itemsFor(sec)
