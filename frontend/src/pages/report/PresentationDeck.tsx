@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
-  RadarChart, PolarGrid, PolarAngleAxis, Radar, ComposedChart, Area, Line, CartesianGrid, ReferenceLine,
+  RadarChart, PolarGrid, PolarAngleAxis, Radar, ComposedChart, Area, Line, CartesianGrid, ReferenceLine, ReferenceDot,
 } from 'recharts'
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -555,7 +555,6 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   onMoveSlide: (id: string, dir: -1 | 1) => void
 }) {
   const thankPhotoRef = useRef<HTMLInputElement>(null)
-  const [invPerson, setInvPerson] = useState<Person>('self')
   const [dialog, setDialog] = useState<{ key: string; title: string } | null>(null)
   const [snap, setSnap] = useState(true)
 
@@ -680,55 +679,54 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
     ...(hasSpouse ? [{ key: 'spouse' as Person, name: spouseName, ratios: rSpouse, ret: retSpouse, ins: insSpouse, cov: covSpouse, tint: VI }] : []),
   ]
 
-  // สัดส่วนสินทรัพย์ลงทุน (สำหรับสไลด์ลงทุน — ตาม invPerson)
-  const allocation = useMemo(() => {
-    const assets: any[] = invProfile?.investmentAssets ?? []
-    const groups: Record<string, number> = {}
-    assets.forEach(a => { const v = toNum(a.currentValue); if (v > 0) groups[a.assetClass || 'อื่นๆ'] = (groups[a.assetClass || 'อื่นๆ'] || 0) + v })
-    return Object.entries(groups).map(([name, value]) => ({ name, value }))
-  }, [invProfile])
-
-  const mc = useMemo(() => {
-    const isSelf = invPerson === 'self'
-    const key = isSelf ? 'self' : 'spouse'
-    const currentAge = isSelf ? selfAge : (client?.spouseAge ?? null)
-    // อายุขัย/อายุเกษียณ = ตามสมมุติฐานแผนเกษียณเป็นหลัก → settings → ค่าเริ่มต้น
-    const expectedLifespan = (isSelf ? profile?.lifeExpectancySelf : profile?.lifeExpectancySpouse) ?? retPlan?.[key]?.lifeExpectancy ?? 85
-    const retirementAge = (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? retPlan?.[key]?.retirementAge ?? 60
-    const assets: any[] = invProfile?.investmentAssets ?? []
-    const assetReturn = (a: any): number | null => {
-      let r = annualizedReturn(toNum(a.investAmount), toNum(a.currentValue), a.investDate)
-      if (r === null) { const m = parseFloat(a.annualReturn); if (!isNaN(m)) r = m }
-      return r
-    }
-    const totalValue = assets.reduce((s, a) => s + toNum(a.currentValue), 0)
-    let wr = 0, cv = 0
-    assets.forEach(a => { const v = toNum(a.currentValue), r = assetReturn(a); if (r !== null && v > 0) { cv += v; wr += r * v } })
-    const portfolioReturn = cv > 0 ? wr / cv : null
-    const riskSrc = isSelf ? profile : profile?.spouseRisk
-    const riskLabel = String(riskSrc?.riskLabel ?? riskSrc?.riskLevel ?? '')
-    const tier: 'low' | 'mid' | 'high' = /สูง/.test(riskLabel) ? 'high' : /กลาง|ปานกลาง/.test(riskLabel) ? 'mid' : /ต่ำ/.test(riskLabel) ? 'low' : ((portfolioReturn ?? 0) >= 8 ? 'high' : (portfolioReturn ?? 0) >= 4 ? 'mid' : 'low')
-    const sigma = { low: 6, mid: 11, high: 16 }[tier]
-    if (currentAge === null || portfolioReturn === null || totalValue <= 0) return { rows: [] as any[], retirementAge, currentAge, expectedLifespan }
-    const mu = portfolioReturn / 100, sd = sigma / 100, years = expectedLifespan - currentAge
-    const rng = mulberry32((Math.round(totalValue) ^ (Math.round(portfolioReturn * 100) << 3) ^ (sigma << 1) ^ 0x9e3779b9) >>> 0)
-    const byYear: number[][] = Array.from({ length: years + 1 }, () => [])
-    for (let p = 0; p < 1000; p++) {
-      let v = totalValue; byYear[0].push(v)
-      for (let y = 1; y <= years; y++) {
-        let u1 = rng(); if (u1 < 1e-12) u1 = 1e-12
-        const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * rng())
-        v *= Math.exp((mu - (sd * sd) / 2) + sd * z); byYear[y].push(v)
+  // สไลด์ลงทุน — สัดส่วนพอร์ต + มูลค่า ณ เกษียณ 3 สมมุติฐาน (Monte Carlo P10/P50/P90) ต่อคน
+  const invPeople = useMemo(() => {
+    const build = (isSelf: boolean) => {
+      const key = isSelf ? 'self' : 'spouse'
+      const src: any = isSelf ? invProfile : (invProfile?.spouseData ?? {})
+      const assets: any[] = src?.investmentAssets ?? []
+      const groups: Record<string, number> = {}
+      assets.forEach(a => { const v = toNum(a.currentValue); if (v > 0) groups[a.assetClass || 'อื่นๆ'] = (groups[a.assetClass || 'อื่นๆ'] || 0) + v })
+      const allocation = Object.entries(groups).map(([name, value]) => ({ name, value }))
+      const total = allocation.reduce((s, a) => s + a.value, 0)
+      const currentAge = isSelf ? selfAge : (client?.spouseAge ?? null)
+      const retirementAge = (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? retPlan?.[key]?.retirementAge ?? 60
+      const assetReturn = (a: any): number | null => {
+        let r = annualizedReturn(toNum(a.investAmount), toNum(a.currentValue), a.investDate)
+        if (r === null) { const m = parseFloat(a.annualReturn); if (!isNaN(m)) r = m }
+        return r
       }
+      let wr = 0, cv = 0
+      assets.forEach(a => { const v = toNum(a.currentValue), r = assetReturn(a); if (r !== null && v > 0) { cv += v; wr += r * v } })
+      const portfolioReturn = cv > 0 ? wr / cv : null
+      const riskSrc = isSelf ? profile : profile?.spouseRisk
+      const riskLabel = String(riskSrc?.riskLabel ?? riskSrc?.riskLevel ?? '')
+      const tier: 'low' | 'mid' | 'high' = /สูง/.test(riskLabel) ? 'high' : /กลาง|ปานกลาง/.test(riskLabel) ? 'mid' : /ต่ำ/.test(riskLabel) ? 'low' : ((portfolioReturn ?? 0) >= 8 ? 'high' : (portfolioReturn ?? 0) >= 4 ? 'mid' : 'low')
+      const sigma = { low: 6, mid: 11, high: 16 }[tier]
+      let atRet: { p10: number; p50: number; p90: number } | null = null
+      if (currentAge !== null && portfolioReturn !== null && total > 0 && retirementAge > currentAge) {
+        const mu = portfolioReturn / 100, sd = sigma / 100, years = retirementAge - currentAge
+        const rng = mulberry32((Math.round(total) ^ (Math.round(portfolioReturn * 100) << 3) ^ (sigma << 1) ^ 0x9e3779b9) >>> 0)
+        const finals: number[] = []
+        for (let p = 0; p < 1000; p++) {
+          let v = total
+          for (let y = 1; y <= years; y++) {
+            let u1 = rng(); if (u1 < 1e-12) u1 = 1e-12
+            const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * rng())
+            v *= Math.exp((mu - (sd * sd) / 2) + sd * z)
+          }
+          finals.push(v)
+        }
+        const srt = finals.sort((a, b) => a - b)
+        atRet = { p10: percentile(srt, 0.10), p50: percentile(srt, 0.50), p90: percentile(srt, 0.90) }
+      }
+      return { key, allocation, total, retirementAge, portfolioReturn, atRet }
     }
-    const rows = byYear.map((arr, y) => {
-      const srt = arr.slice().sort((a, b) => a - b)
-      return { age: currentAge + y, p10: percentile(srt, 0.10), p50: percentile(srt, 0.50), p90: percentile(srt, 0.90), band: [percentile(srt, 0.10), percentile(srt, 0.90)] as [number, number] }
-    })
-    return { rows, retirementAge, currentAge, expectedLifespan }
-  }, [invPerson, client, profile, invProfile, selfAge, retPlan])
-
-  const portfolioTotal = allocation.reduce((s, a) => s + a.value, 0)
+    return {
+      self: build(true),
+      spouse: hasSpouse ? build(false) : null,
+    }
+  }, [client, profile, invProfile, selfAge, retPlan, hasSpouse])
 
   // โครงสร้างกระแสเงินสด/ภาษี ต่อคน
   const expAnnual = (prefix: string, pkey: Person, exclude?: string) => {
@@ -900,19 +898,6 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
             <Grid3x3 size={14} /> จัดเข้ากริด {snap ? 'เปิด' : 'ปิด'}
           </button>
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>· มุมขวาบนของแต่ละสไลด์ = เพิ่มข้อความ/รูป · ดับเบิลคลิกข้อความเพื่อแก้ · เพิ่มหน้าใหม่ท้ายสุด</span>
-        </div>
-      )}
-      {/* แถบควบคุม (เฉพาะสไลด์ลงทุนที่ต้องเลือกคน) */}
-      {hasSpouse && (
-        <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-          <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>กราฟการลงทุน (สไลด์ที่ 12) แสดงของ:</span>
-          {([['self', selfName, User], ['spouse', spouseName, Users]] as const).map(([p, lbl, Ic]) => (
-            <button key={p} onClick={() => setInvPerson(p)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 13px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                background: invPerson === p ? 'var(--cyan)' : 'transparent', color: invPerson === p ? '#00201d' : 'var(--text-secondary)', border: `1px solid ${invPerson === p ? 'var(--cyan)' : 'var(--card-border)'}` }}>
-              <Ic size={14} /> {lbl}
-            </button>
-          ))}
         </div>
       )}
 
@@ -1291,35 +1276,35 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
           </TwoCol>
         </Slide>
 
-        {/* ── 12. การลงทุนปัจจุบัน ── */}
+        {/* ── 12. การลงทุนปัจจุบัน — พอร์ต + มูลค่า ณ เกษียณ 3 สมมุติฐาน (ทั้งคู่) ── */}
         <Slide slideId="investment" footer={commentFooter('investment')}>
-          <SlideHead icon={TrendingUp} kicker="Investment" title={`สถานะการลงทุน · ${invPerson === 'self' ? selfName : spouseName}`} accent={GR} />
-          <div style={{ display: 'flex', gap: 22, flex: 1, minHeight: 0 }}>
-            <div style={{ width: 320, display: 'flex', flexDirection: 'column' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: INK, marginBottom: 6 }}>สัดส่วนสินทรัพย์ลงทุน</div>
-              {portfolioTotal > 0 ? <MiniPie data={allocation} /> : <Empty text="ยังไม่มีข้อมูลสินทรัพย์ลงทุน" />}
-              {portfolioTotal > 0 && <div style={{ fontSize: 13, fontWeight: 800, color: INK, marginTop: 8 }}>รวม {fmt(portfolioTotal)} บาท</div>}
-            </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: INK, marginBottom: 6 }}>จำลองมูลค่าพอร์ตในอนาคต (Monte Carlo)</div>
-              {mc.rows.length > 0 ? (
-                <ResponsiveContainer width="100%" height={400}>
-                  <ComposedChart data={mc.rows} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
-                    <defs><linearGradient id="pdMcBand" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={CY} stopOpacity={0.24} /><stop offset="100%" stopColor={CY} stopOpacity={0.05} /></linearGradient></defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={HAIR} vertical={false} />
-                    <XAxis dataKey="age" tick={{ fontSize: 10, fill: MUTED }} interval={4} axisLine={{ stroke: LINE }} tickLine={false} />
-                    <YAxis tickFormatter={v => fmtM(v)} tick={{ fontSize: 10, fill: MUTED }} width={44} axisLine={false} tickLine={false} />
-                    <Tooltip formatter={(v: any) => Array.isArray(v) ? `${fmt(v[0])} – ${fmt(v[1])}` : `${fmt(v)} บาท`} labelFormatter={a => `อายุ ${a} ปี`} />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    {mc.retirementAge >= mc.currentAge! && mc.retirementAge <= mc.expectedLifespan && <ReferenceLine x={mc.retirementAge} stroke={AM} strokeDasharray="4 4" label={{ value: `เกษียณ ${mc.retirementAge}`, position: 'insideTopRight', fill: AM, fontSize: 10 }} />}
-                    <Area type="monotone" dataKey="band" stroke="none" fill="url(#pdMcBand)" name="ช่วง 80% (P10–P90)" />
-                    <Line type="monotone" dataKey="p90" stroke={GR} dot={false} strokeWidth={1.5} strokeDasharray="5 3" name="ดี (P90)" />
-                    <Line type="monotone" dataKey="p50" stroke={INK} dot={false} strokeWidth={2.6} name="ค่ากลาง (median)" />
-                    <Line type="monotone" dataKey="p10" stroke={RD} dot={false} strokeWidth={1.5} strokeDasharray="5 3" name="แย่ (P10)" />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              ) : <Empty text="ยังไม่มีข้อมูลเพียงพอ" />}
-            </div>
+          <SlideHead icon={TrendingUp} kicker="Investment" title="สถานะการลงทุน" accent={GR} />
+          <div style={{ display: 'grid', gridTemplateColumns: hasSpouse ? '1fr 1fr' : '1fr', gap: 16, flex: 1, alignContent: 'start' }}>
+            {([['self', selfName, CY, invPeople.self], ...(hasSpouse && invPeople.spouse ? [['spouse', spouseName, VI, invPeople.spouse]] : [])] as any[]).map(([key, name, tint, iv]) => (
+              <div key={key} style={{ display: 'flex', flexDirection: 'column' }}>
+                <PersonHead name={name} tint={tint} />
+                <div style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '10px 12px 6px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: MUTED, textTransform: 'uppercase' }}>สัดส่วนสินทรัพย์ลงทุน</div>
+                  {iv.total > 0 ? <MiniPie data={iv.allocation} height={165} radius={[36, 62]} /> : <Empty text="ยังไม่มีข้อมูลสินทรัพย์ลงทุน" />}
+                  {iv.total > 0 && <div style={{ fontSize: 12.5, fontWeight: 800, color: INK, textAlign: 'center', margin: '4px 0 6px' }}>รวม {fmt(iv.total)} บาท{iv.portfolioReturn != null ? <span style={{ fontWeight: 400, color: SUB }}> · ผลตอบแทน ~{iv.portfolioReturn.toFixed(1)}%/ปี</span> : ''}</div>}
+                </div>
+                {/* มูลค่า ณ เกษียณ 3 สมมุติฐาน */}
+                <div style={{ marginTop: 10, background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '10px 14px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: MUTED, textTransform: 'uppercase', marginBottom: 6 }}>มูลค่า ณ เกษียณ (อายุ {iv.retirementAge} ปี) · Monte Carlo</div>
+                  {iv.atRet ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                      {([['ดี (P90)', iv.atRet.p90, GR], ['ค่ากลาง (P50)', iv.atRet.p50, INK], ['แย่ (P10)', iv.atRet.p10, RD]] as const).map(([lbl, val, col]) => (
+                        <div key={lbl} style={{ background: '#fff', border: `1px solid ${LINE}`, borderRadius: 10, padding: '8px 10px', textAlign: 'center' }}>
+                          <div style={{ fontSize: 10.5, color: SUB }}>{lbl}</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'monospace', color: col, marginTop: 2 }}>{fmtM(val)}</div>
+                          <div style={{ fontSize: 10, color: MUTED, fontFamily: 'monospace' }}>{fmt(val)} บาท</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : <div style={{ fontSize: 12, color: MUTED, padding: '4px 0' }}>ยังไม่มีข้อมูลเพียงพอ (ต้องมีสินทรัพย์ลงทุน + อายุ)</div>}
+                </div>
+              </div>
+            ))}
           </div>
         </Slide>
 
@@ -1369,7 +1354,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
           <SlideHead icon={PiggyBank} kicker="Retirement Projection" title="คาดการณ์มูลค่ากองทุนเกษียณ" accent={CY} />
           {retChart.data.length > 0 ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-              <div style={{ fontSize: 12, color: SUB, marginBottom: 8 }}>สะสมช่วงทำงาน → ใช้จ่ายหลังเกษียณ · เส้นประ = ไม่ออมเพิ่ม (ตัดที่จุดเงินหมด)</div>
+              <div style={{ fontSize: 12, color: SUB, marginBottom: 8 }}>สะสมช่วงทำงาน → ใช้จ่ายหลังเกษียณ · แท่ง = ไม่ออมเพิ่ม (ตัดที่จุดเงินหมด)</div>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={retChart.data} margin={{ top: 26, right: 16, left: 6, bottom: 6 }}>
                   <defs><linearGradient id="pdRetSelf" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={CY} stopOpacity={0.22} /><stop offset="100%" stopColor={CY} stopOpacity={0.04} /></linearGradient></defs>
@@ -1384,9 +1369,9 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                   {hasSpouse && retChart.depSpouse != null && <ReferenceLine x={retChart.depSpouse} stroke={VI} strokeDasharray="2 3" label={{ value: `เงินหมด ${retChart.depSpouse}`, position: 'insideTopRight', fill: VI, fontSize: 10, fontWeight: 700 }} />}
                   <Area type="monotone" dataKey="self" name={selfName} stroke={CY} strokeWidth={2.4} fill="url(#pdRetSelf)" dot={false} />
                   {hasSpouse && <Line type="monotone" dataKey="spouse" name={spouseName} stroke={VI} strokeWidth={2.2} dot={false} />}
-                  {/* สถานการณ์ "ไม่ออมเพิ่ม" — เส้นประ ตัดที่จุดเงินหมด (ไม่ connectNulls เพื่อให้จบที่ 0) */}
-                  <Line type="monotone" dataKey="selfNo" name={`${selfName} (ไม่ออมเพิ่ม)`} stroke={CY} strokeWidth={1.8} strokeDasharray="5 4" dot={false} />
-                  {hasSpouse && <Line type="monotone" dataKey="spouseNo" name={`${spouseName} (ไม่ออมเพิ่ม)`} stroke={VI} strokeWidth={1.8} strokeDasharray="5 4" dot={false} />}
+                  {/* สถานการณ์ "ไม่ออมเพิ่ม" — กราฟแท่ง (โปร่ง) ตัดที่จุดเงินหมด */}
+                  <Bar dataKey="selfNo" name={`${selfName} (ไม่ออมเพิ่ม)`} fill={`${CY}55`} stroke={CY} strokeWidth={0.5} maxBarSize={14} />
+                  {hasSpouse && <Bar dataKey="spouseNo" name={`${spouseName} (ไม่ออมเพิ่ม)`} fill={`${VI}55`} stroke={VI} strokeWidth={0.5} maxBarSize={14} />}
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -1431,6 +1416,16 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                   <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} labelFormatter={y => `ปี พ.ศ. ${y}`} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   {eduChart.types.map(t => <Line key={t.key} type="monotone" dataKey={t.key} name={`สถาบัน${t.label}`} stroke={t.color} strokeWidth={2.2} dot={false} connectNulls />)}
+                  {/* ป้ายมูลค่ากองทุน ณ ปีสุดท้ายที่ออม */}
+                  {(() => {
+                    const lastSaveYear = eduChart.chartData.length ? eduChart.chartData[0].year + eduChart.savingYears - 1 : null
+                    const row: any = lastSaveYear != null ? eduChart.chartData.find((r: any) => r.year === lastSaveYear) : null
+                    if (!row) return null
+                    return eduChart.types.map(t => toNum(row[t.key]) > 0 && (
+                      <ReferenceDot key={`peak-${t.key}`} x={row.year} y={row[t.key]} r={4} fill={t.color} stroke="#fff" strokeWidth={1.5}
+                        label={{ value: fmtM(row[t.key]), position: 'top', fill: t.color, fontSize: 11, fontWeight: 800 }} />
+                    ))
+                  })()}
                 </ComposedChart>
               </ResponsiveContainer>
               </div>
