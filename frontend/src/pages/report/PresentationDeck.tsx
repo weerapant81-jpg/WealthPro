@@ -1671,9 +1671,10 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
             const maxChars = fmt(Math.round(maxVal)).length + 1
             const colPx = (1040 - 150) / f.ages.length - 6
             const fzFit = colPx / (maxChars * 0.62)
-            const rowH = Math.max(9, Math.min(20, Math.floor(650 / totalRows)))
-            const padY = rowH >= 14 ? 2 : 1
-            const fz = Math.max(5, Math.min(10.5, rowH - 2 * padY - 3, fzFit))
+            const rowH = Math.max(9, Math.min(22, Math.floor(650 / totalRows)))
+            const fz = Math.max(5, Math.min(10.5, rowH - 5, fzFit))
+            // ฟอนต์ถูกจำกัดด้วยความกว้างคอลัมน์ → เกลี่ยความสูงที่เหลือเป็น padding ให้ตารางเต็มหน้า
+            const padY = Math.max(1, Math.floor((rowH - fz * 1.25) / 2))
             const num = (v: number, c?: string, b?: boolean): React.CSSProperties => ({ padding: `${padY}px 3px`, textAlign: 'right', fontFamily: 'monospace', fontSize: fz, lineHeight: 1.2, color: c ?? (v > 0 ? INK : '#c3ccd6'), fontWeight: b ? 800 : 400, whiteSpace: 'nowrap' })
             const lbl = (indent = false, b = false, c?: string): React.CSSProperties => ({ padding: `${padY}px 3px ${padY}px ${indent ? 10 : 3}px`, textAlign: 'left', fontSize: fz, lineHeight: 1.2, color: c ?? (b ? INK : SUB), fontWeight: b ? 800 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 150 })
             const SecRow = ({ title, color }: { title: string; color: string }) => (
