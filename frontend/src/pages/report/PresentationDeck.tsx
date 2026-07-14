@@ -853,7 +853,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   const hidOf = (k: string) => !!pres[k]?.hidden
   const SLIDE_LABEL: Record<string, string> = {
     family: 'ข้อมูลครอบครัว', work: 'ข้อมูลการทำงานและสวัสดิการ', goals: 'เป้าหมายการเงิน', insgoals: 'เป้าหมายด้านการประกัน', balance: 'งบดุล', cashflow: 'งบกระแสเงินสด',
-    cfmix: 'โครงสร้างกระแสเงินสด', ratios: 'อัตราส่วน/สุขภาพการเงิน',
+    ratios: 'อัตราส่วน/สุขภาพการเงิน',
     insurance: 'ความเสี่ยง & ประกัน', investment: 'การลงทุน', retirement: 'แผนเกษียณ',
     education: 'ทุนการศึกษาบุตร', edu2: 'กราฟทุนการศึกษา', tax: 'ภาษีเงินได้', estate: 'การจัดการมรดก', action: 'แผนปฏิบัติการ', retire2: 'กราฟเกษียณ', holistic: 'ไทม์ไลน์แผนดำเนินการ',
   }
@@ -1178,6 +1178,11 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                 ['ค่าใช้จ่ายรวม', totalExp, RD, true],
                 ['กระแสเงินสดสุทธิ', net, net >= 0 ? CY : RD, true],
               ]
+              // โครงสร้างกระแสเงินสด (กราฟเล็ก) — รวมในหน้าเดียว · ผันแปรหัก var_tax เพราะแยกก้อนภาษีต่างหาก
+              const cfTax = taxOf(p.key)
+              const cfVar = expAnnual('var_', p.key, 'var_tax')
+              const cfNet = Math.max(0, income - fixed - cfVar - saving - cfTax)
+              const pieData = [{ name: 'คงที่', value: fixed }, { name: 'ผันแปร', value: cfVar }, { name: 'ออม/ลงทุน', value: saving }, { name: 'ภาษี', value: cfTax }, { name: 'เงินสดสุทธิ', value: cfNet }].filter(d => d.value > 0)
               return (
                 <div key={p.key}>
                   <PersonHead name={p.name} tint={p.tint} />
@@ -1192,34 +1197,14 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                       ))}
                     </tbody>
                   </table>
+                  <div style={{ marginTop: 10, background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '8px 10px 4px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: MUTED, textTransform: 'uppercase', marginBottom: 2 }}>โครงสร้างกระแสเงินสด</div>
+                    {income > 0 ? <MiniPie data={pieData} height={130} radius={[30, 50]} /> : <Empty text="ยังไม่มีข้อมูลรายรับ-รายจ่าย" />}
+                  </div>
                 </div>
               )
             })}
           </TwoCol>
-        </Slide>
-
-        {/* ── 9. โครงสร้างกระแสเงินสด ── */}
-        <Slide slideId="cfmix" footer={commentFooter('cfmix')}>
-          <SlideHead icon={Banknote} kicker="Cash Flow Structure" title="โครงสร้างกระแสเงินสด" accent={GR} />
-          <TwoCol>
-            {people.map(p => {
-              const sm = p.ratios?.summary ?? {}
-              const income = toNum(sm.totalAnnualIncome)
-              const fixed = expAnnual('fixed_', p.key)
-              const variable = expAnnual('var_', p.key, 'var_tax')
-              const saving = expAnnual('saving_', p.key) || toNum(sm.annualSavings)
-              const tax = taxOf(p.key)
-              const net = Math.max(0, income - fixed - variable - saving - tax)
-              const data = [{ name: 'คงที่', value: fixed }, { name: 'ผันแปร', value: variable }, { name: 'ออม/ลงทุน', value: saving }, { name: 'ภาษี', value: tax }, { name: 'เงินสดสุทธิ', value: net }].filter(d => d.value > 0)
-              return (
-                <div key={p.key} style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: 14 }}>
-                  <PersonHead name={p.name} tint={p.tint} />
-                  {income > 0 ? <MiniPie data={data} /> : <Empty text="ยังไม่มีข้อมูลรายรับ-รายจ่าย" />}
-                </div>
-              )
-            })}
-          </TwoCol>
-          <div style={{ fontSize: 11.5, color: MUTED, textAlign: 'center', marginTop: 6 }}>* ภาษีประมาณจากแผนภาษี · รายจ่ายจากงบค่าใช้จ่าย (รายการร่วมแบ่งครึ่ง)</div>
         </Slide>
 
         {/* ── 10. อัตราส่วน + Health Score ── */}
