@@ -6,6 +6,10 @@ import { useIsCompact } from '../hooks/useViewport'
 import { PageHeader } from '../components/ui'
 import PresentationDeck, { type SlideEl, type CustomSlide } from './report/PresentationDeck'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { useRetirementReadiness } from '../hooks/useRetirementReadiness'
+import { useInsuranceReadiness } from '../hooks/useInsuranceReadiness'
+import { useEducationReadiness } from '../hooks/useEducationReadiness'
+import { calc as calcTaxCalc, defaultState as defaultTaxState } from '../lib/tax'
 
 const fmt = (n: number) => (isFinite(n) ? Math.round(n) : 0).toLocaleString('th-TH')
 const toNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
@@ -75,7 +79,8 @@ function calcRetire(p: any, asset: number) {
 interface Sec { k: string; t: string; lvl: 1 | 2; auto?: string }
 const SECTIONS: Sec[] = [
   { k: 'service', t: 'ข้อตกลงในการให้บริการ', lvl: 1 },
-  { k: 'exec', t: 'บทสรุปผู้บริหาร', lvl: 1 },
+  { k: 'exec', t: 'บทสรุปผู้บริหาร', lvl: 1, auto: 'exec' },
+  { k: 'domains', t: 'บทวิเคราะห์การวางแผนการเงิน 6 ด้าน', lvl: 1, auto: 'domains' },
   { k: 'reco', t: 'ข้อเสนอแนะ', lvl: 1 },
   { k: 'action', t: 'แผนปฏิบัติการ', lvl: 1 },
   { k: 'personal', t: 'สรุปผลการวิเคราะห์ข้อมูลส่วนบุคคลเบื้องต้น', lvl: 1, auto: 'personal' },
@@ -109,6 +114,11 @@ export default function ReportPage() {
   const { data: eduPlan } = useQuery({ queryKey: ['education-plan'], queryFn: () => api.get('/education-plan').then(r => r.data), retry: false })
   const { data: insPlan } = useQuery({ queryKey: ['insurance-plan'], queryFn: () => api.get('/insurance-plan').then(r => r.data), retry: false })
   const { data: saved, isFetched } = useQuery({ queryKey: ['report-plan'], queryFn: () => api.get('/report-plan').then(r => r.data), retry: false })
+  const { data: taxPlanQ } = useQuery({ queryKey: ['tax-plan'], queryFn: () => api.get('/tax-plan').then(r => r.data), retry: false })
+  // readiness กลาง (สูตรเดียวกับหน้าแผน/แผนปฏิบัติการ — กัน drift)
+  const retR = useRetirementReadiness('client')
+  const insR = useInsuranceReadiness('client')
+  const eduR = useEducationReadiness()
 
   const [title, setTitle] = useState('แผนการเงินส่วนบุคคล')
   const [mode, setMode] = useState<'full' | 'pres'>('full')
@@ -205,7 +215,123 @@ export default function ReportPage() {
     )
   }
 
+  /* ── ชิ้นส่วนดีไซน์รายงาน (สไตล์มืออาชีพ) ── */
+  const TEAL = '#00cfc1', AMBERR = '#d97706', REDR = '#dc2626', GREENR = '#059669'
+  const Chip = ({ label, tone }: { label: string; tone: 'good' | 'warn' | 'bad' }) => {
+    const c = tone === 'good' ? GREENR : tone === 'warn' ? AMBERR : REDR
+    return <span style={{ padding: '3px 10px', borderRadius: 6, background: `${c}14`, color: c, fontSize: 10, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{label}</span>
+  }
+  const PBar = ({ pct, tone }: { pct: number; tone: 'good' | 'warn' | 'bad' }) => (
+    <div style={{ width: '100%', height: 6, borderRadius: 999, background: '#f1f5f9', margin: '10px 0 12px', overflow: 'hidden' }}>
+      <div style={{ height: '100%', width: `${Math.max(3, Math.min(100, pct))}%`, borderRadius: 999, background: tone === 'good' ? TEAL : tone === 'warn' ? '#f59e0b' : '#ef4444' }} />
+    </div>
+  )
+  const MiniRow = ({ l, v, strong }: { l: string; v: string; strong?: boolean }) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px', borderBottom: '1px solid #f8fafc', fontSize: 12.5 }}>
+      <span style={{ color: '#64748b' }}>{l}</span>
+      <span style={{ fontWeight: strong ? 800 : 700, color: '#0f172a', fontFamily: 'monospace' }}>{v}</span>
+    </div>
+  )
+  const DomainCard = ({ no, title, status, pct, rows, advice }: { no: number; title: string; status: { label: string; tone: 'good' | 'warn' | 'bad' }; pct: number; rows: [string, string][]; advice?: string }) => (
+    <div style={{ border: '1px solid #f1f5f9', borderRadius: 12, padding: '16px 18px', breakInside: 'avoid' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>
+          <span style={{ color: TEAL, marginRight: 6 }}>{no}.</span>{title}
+        </div>
+        <Chip label={status.label} tone={status.tone} />
+      </div>
+      <PBar pct={pct} tone={status.tone} />
+      {rows.map(([l, v], i) => <MiniRow key={i} l={l} v={v} strong={i === rows.length - 1} />)}
+      {advice && <div style={{ fontSize: 11, color: '#64748b', marginTop: 8, lineHeight: 1.6, fontStyle: 'italic' }}>“{advice}”</div>}
+    </div>
+  )
+
   function autoNode(kind: string) {
+    if (kind === 'exec') {
+      const score: number | null = ratios?.healthScore ?? null
+      const scoreLabel: string = ratios?.healthLabel ?? ''
+      const emMonths = sm.totalMonthlyExp > 0 ? sm.liquidAssets / sm.totalMonthlyExp : 0
+      const gaps: string[] = []
+      if (sm.totalMonthlyExp > 0 && emMonths < 6) gaps.push(`เงินสำรองฉุกเฉินครอบคลุม ~${emMonths.toFixed(1)} เดือน ต่ำกว่าเกณฑ์ 6 เดือน`)
+      if (insR && insR.gap > 0) gaps.push(`ทุนประกันชีวิตยังขาดอีก ${fmt(insR.gap)} บาท จากทุนที่แนะนำ ${fmt(insR.need)} บาท`)
+      if (retR && retR.gap > 0) gaps.push(`ทุนเกษียณยังขาดอีก ${fmt(retR.gap)} บาท (ควรออมเพิ่ม ~${fmt(retR.annualSavings)} บาท/ปี)`)
+      if (eduR && eduR.childCount > 0) gaps.push(`ทุนการศึกษาบุตร ${eduR.childCount} คน ต้องเตรียมรวม ${fmt(eduR.totalNominal)} บาท (~${fmt(eduR.monthlySaving)} บาท/เดือน)`)
+      if (!gaps.length) gaps.push('ไม่พบช่องว่างสำคัญ — สถานะการเงินโดยรวมอยู่ในเกณฑ์ดี')
+      const circ = 2 * Math.PI * 52
+      return (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '215px 1fr', gap: 16, marginBottom: 16 }}>
+            {/* Health score ring */}
+            <div style={{ background: '#f8fafc', borderRadius: 12, padding: '20px 14px', textAlign: 'center' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 12 }}>Financial Health Score</div>
+              <div style={{ position: 'relative', width: 120, height: 120, margin: '0 auto' }}>
+                <svg width={120} height={120} style={{ transform: 'rotate(-90deg)' }}>
+                  <circle cx={60} cy={60} r={52} fill="none" stroke="#e2e8f0" strokeWidth={9} />
+                  <circle cx={60} cy={60} r={52} fill="none" stroke={TEAL} strokeWidth={9} strokeLinecap="round"
+                    strokeDasharray={circ} strokeDashoffset={circ * (1 - Math.max(0, Math.min(100, score ?? 0)) / 100)} />
+                </svg>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, fontWeight: 800, color: '#0f172a' }}>{score ?? '—'}</div>
+              </div>
+              <div style={{ marginTop: 10, fontSize: 13, fontWeight: 800, color: TEAL, textTransform: 'uppercase', letterSpacing: 1 }}>{scoreLabel || 'สุขภาพการเงิน'}</div>
+            </div>
+            {/* Key gaps */}
+            <div style={{ border: '1px solid #f1f5f9', borderRadius: 12, padding: '16px 18px' }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 10 }}>⚠ ประเด็นสำคัญที่ตรวจพบ</div>
+              {gaps.map((g, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, fontSize: 12.5, color: '#475569', lineHeight: 1.7 }}>
+                  <span style={{ color: TEAL, fontWeight: 800 }}>•</span>{g}
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* stat cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+            {([['สินทรัพย์รวม', sm.totalAssets], ['หนี้สินรวม', sm.totalDebtBalance], ['ความมั่งคั่งสุทธิ', sm.netWorth]] as const).map(([l, v]) => (
+              <div key={l} style={{ border: '1px solid #f1f5f9', borderRadius: 12, padding: '14px 16px' }}>
+                <div style={{ fontSize: 11, color: '#94a3b8' }}>{l}</div>
+                <div style={{ fontSize: 19, fontWeight: 800, color: l === 'หนี้สินรวม' ? AMBERR : '#0f172a', fontFamily: 'monospace', marginTop: 4 }}>{fmt(toNum(v))} ฿</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
+    if (kind === 'domains') {
+      const emMonths = sm.totalMonthlyExp > 0 ? sm.liquidAssets / sm.totalMonthlyExp : 0
+      const savingsRate = sm.monthlyIncome > 0 ? (sm.annualSavings / (sm.monthlyIncome * 12)) * 100 : 0
+      const debtToAsset = sm.totalAssets > 0 ? (sm.totalDebtBalance / sm.totalAssets) * 100 : 0
+      const tp = taxPlanQ?.self
+      const tc = tp ? calcTaxCalc({ ...defaultTaxState(), ...tp }) : null
+      const liqOk = emMonths >= 6 && debtToAsset <= 50 && savingsRate >= 10
+      return (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+          <DomainCard no={1} title="การบริหารสภาพคล่อง/หนี้สิน"
+            status={liqOk ? { label: 'เพียงพอ', tone: 'good' } : { label: 'ควรปรับปรุง', tone: 'warn' }}
+            pct={Math.min(100, emMonths / 6 * 100)}
+            rows={[['เงินสำรองฉุกเฉิน (เดือน)', `${emMonths.toFixed(1)} / 6.0`], ['อัตราการออม', `${savingsRate.toFixed(0)}%`], ['หนี้สินต่อสินทรัพย์', `${debtToAsset.toFixed(0)}%`]]} />
+          <DomainCard no={2} title="การวางแผนการลงทุน/เป้าหมาย"
+            status={totalInv > 0 ? { label: 'ดำเนินการอยู่', tone: 'good' } : { label: 'เริ่มวางแผน', tone: 'warn' }}
+            pct={totalInv > 0 ? 80 : 15}
+            rows={[['สินทรัพย์ลงทุนรวม', `${fmt(totalInv)} ฿`], ['ผลตอบแทนพอร์ต (เฉลี่ย)', `${portRet.toFixed(1)}%`]]} />
+          <DomainCard no={3} title="การวางแผนประกัน & ความเสี่ยง"
+            status={insR ? (insR.gap > 0 ? { label: `ขาด ${fmt(insR.gap)} ฿`, tone: 'warn' } : { label: 'เพียงพอ', tone: 'good' }) : { label: 'รอข้อมูล', tone: 'warn' }}
+            pct={insR && insR.need > 0 ? insR.have / insR.need * 100 : 0}
+            rows={[['ทุนประกันที่แนะนำ', insR ? `${fmt(insR.need)} ฿` : '—'], ['ความคุ้มครองที่มี', insR ? `${fmt(insR.have)} ฿` : '—'], ['ส่วนที่ยังขาด', insR && insR.gap > 0 ? `${fmt(insR.gap)} ฿` : 'เพียงพอ']]} />
+          <DomainCard no={4} title="การวางแผนเกษียณอายุ"
+            status={retR ? (retR.gap > 0 ? { label: `ขาด ${fmt(retR.gap)} ฿`, tone: 'warn' } : { label: 'พร้อมเกษียณ', tone: 'good' }) : { label: 'รอข้อมูล', tone: 'warn' }}
+            pct={retR?.readinessPct ?? 0}
+            rows={[['ทุนเกษียณที่ต้องการ', retR ? `${fmt(retR.needed)} ฿` : '—'], ['ทรัพย์สินที่เตรียมแล้ว', retR ? `${fmt(retR.have)} ฿` : '—'], ['ต้องออมเพิ่ม/ปี', retR && retR.gap > 0 ? `${fmt(retR.annualSavings)} ฿` : '—']]} />
+          <DomainCard no={5} title="การวางแผนภาษี"
+            status={tc ? { label: 'วางแผนแล้ว', tone: 'good' } : { label: 'ยังไม่วางแผน', tone: 'warn' }}
+            pct={tc ? 75 : 10}
+            rows={[['เงินได้สุทธิ', tc ? `${fmt(tc.ni)} ฿` : '—'], ['ภาษีที่ต้องชำระ', tc ? `${fmt(tc.netTax)} ฿` : '—'], ['อัตราภาษีที่แท้จริง', tc ? `${tc.eff.toFixed(1)}%` : '—']]} />
+          <DomainCard no={6} title="การวางแผนส่งมอบมรดก"
+            status={profile?.estatePlan ? { label: 'มีแผนแล้ว', tone: 'good' } : { label: 'ควรจัดทำ', tone: 'warn' }}
+            pct={profile?.estatePlan ? 70 : 15}
+            rows={[['ความมั่งคั่งสุทธิ (กองมรดก)', `${fmt(toNum(sm.netWorth))} ฿`], ['สถานะแผนมรดก/พินัยกรรม', profile?.estatePlan ? 'จัดทำแล้ว' : 'ยังไม่จัดทำ']]} />
+        </div>
+      )
+    }
     if (kind === 'personal') return (
       <div style={{ background: '#f8fafc', borderRadius: 8, padding: '12px 16px', marginBottom: 14 }}>
         {[
@@ -530,28 +656,60 @@ export default function ReportPage() {
 
         {/* Paper preview */}
         <div id="report-paper" style={{ display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
-          {/* Cover */}
+          {/* Cover — สไตล์มืออาชีพ (โลโก้ · แถบชื่อเรื่อง · แบนเนอร์ · ข้อมูลลูกค้า/ที่ปรึกษา) */}
           <Page>
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
-              <div style={{ textAlign: 'center', marginTop: 80 }}>
-                <div style={{ fontSize: 14, color: '#64748b', letterSpacing: 2 }}>FINANCIAL PLAN</div>
-                <h1 style={{ fontSize: 32, fontWeight: 800, color: '#0f2a43', margin: '16px 0' }}>{title}</h1>
-                <div style={{ fontSize: 18, color: '#334155', marginTop: 8 }}>จัดทำเพื่อ คุณ{clientName}</div>
-                <div style={{ fontSize: 13, color: '#64748b', marginTop: 6 }}>{today}</div>
-              </div>
-              {/* Advisor card */}
-              <div style={{ borderTop: '2px solid #e2e8f0', paddingTop: 18, display: 'flex', alignItems: 'center', gap: 16 }}>
-                {advisor?.photo
-                  ? <img src={advisor.photo} alt="" style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', border: '2px solid #0284c7' }} />
-                  : <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#e2e8f0' }} />}
-                <div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#0f2a43' }}>{advisor?.fullName || 'ที่ปรึกษาการเงิน'}</div>
-                  {advisor?.position && <div style={{ fontSize: 12.5, color: '#475569' }}>{advisor.position}</div>}
-                  <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 3 }}>
-                    {[advisor?.phone, advisor?.email].filter(Boolean).join(' · ')}
-                  </div>
-                  {advisor?.address && <div style={{ fontSize: 11, color: '#64748b' }}>{advisor.address}</div>}
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 950, justifyContent: 'space-between' }}>
+              {/* brand row */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ fontSize: 24, fontWeight: 800 }}>
+                  <span style={{ color: '#0f172a' }}>Wealth</span><span style={{ color: '#00cfc1' }}>Pro</span>
+                  <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: 3, color: '#94a3b8', marginTop: 2 }}>FINANCIAL PLANNING</div>
                 </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: '#94a3b8', textTransform: 'uppercase' }}>Confidential Financial Document</div>
+                  <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 2 }}>Ref: WP-{new Date().getFullYear()}-{(client?.firstName || 'CL').slice(0, 2).toUpperCase()}</div>
+                </div>
+              </div>
+              {/* title */}
+              <div style={{ margin: '36px 0 24px' }}>
+                <h1 style={{ fontSize: 34, fontWeight: 800, color: '#0f172a', borderLeft: '8px solid #00cfc1', paddingLeft: 22, lineHeight: 1.35, margin: 0 }}>{title}</h1>
+                <div style={{ height: 4, width: 120, background: '#00cfc1', opacity: .45, marginTop: 14, marginLeft: 30 }} />
+              </div>
+              {/* hero band (gradient — print-safe ไม่พึ่งรูปภายนอก) */}
+              <div style={{ position: 'relative', width: '100%', height: 300, borderRadius: 14, overflow: 'hidden', background: 'linear-gradient(135deg, #0f172a 0%, #134e4a 55%, #00cfc1 130%)' }}>
+                <div style={{ position: 'absolute', right: -70, top: -70, width: 260, height: 260, borderRadius: '50%', background: 'rgba(0,207,193,0.16)' }} />
+                <div style={{ position: 'absolute', right: 60, bottom: -90, width: 210, height: 210, borderRadius: '50%', background: 'rgba(254,183,0,0.10)' }} />
+                <div style={{ position: 'absolute', left: -40, bottom: -60, width: 190, height: 190, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.10)' }} />
+                <div style={{ position: 'absolute', left: 34, bottom: 30 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 3, color: 'rgba(255,255,255,0.55)' }}>HOLISTIC FINANCIAL PLANNING</div>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: '#fff', marginTop: 6 }}>แผนการเงินแบบองค์รวม 6 ด้าน ตามมาตรฐานวิชาชีพ CFP®</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 4 }}>สภาพคล่อง · การลงทุน · ประกัน & ความเสี่ยง · เกษียณอายุ · ภาษี · มรดก</div>
+                </div>
+              </div>
+              {/* prepared for / advisor */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, padding: '30px 0', borderTop: '1px solid #f1f5f9', marginTop: 28 }}>
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 8 }}>จัดทำเพื่อ</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a' }}>คุณ{clientName}</div>
+                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>เอกสารเฉพาะบุคคล · ห้ามเผยแพร่</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: '#94a3b8', textTransform: 'uppercase', margin: '18px 0 4px' }}>วันที่จัดทำรายงาน</div>
+                  <div style={{ fontSize: 14, color: '#334155' }}>{today}</div>
+                </div>
+                <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', justifyContent: 'flex-end' }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 8 }}>นักวางแผนการเงิน</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>{advisor?.fullName || 'ที่ปรึกษาการเงิน'}</div>
+                    {advisor?.position && <div style={{ fontSize: 12, color: '#475569' }}>{advisor.position}</div>}
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>{[advisor?.phone, advisor?.email].filter(Boolean).join(' · ')}</div>
+                    {advisor?.address && <div style={{ fontSize: 10.5, color: '#94a3b8' }}>{advisor.address}</div>}
+                  </div>
+                  {advisor?.photo
+                    ? <img src={advisor.photo} alt="" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', border: '2px solid #00cfc1', flexShrink: 0 }} />
+                    : <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#e2e8f0', flexShrink: 0 }} />}
+                </div>
+              </div>
+              <div style={{ textAlign: 'center', paddingTop: 16, borderTop: '1px solid #f1f5f9', fontSize: 10.5, color: '#94a3b8' }}>
+                © {new Date().getFullYear()} WealthPro Financial Planning · Proprietary and Confidential
               </div>
             </div>
           </Page>
@@ -568,9 +726,14 @@ export default function ReportPage() {
           </Page>
 
           {/* Content sections */}
-          {included.map(s => (
+          {included.map((s, idx) => (
             <Page key={s.k}>
-              <h2 style={{ fontSize: s.lvl === 1 ? 20 : 16, fontWeight: 700, color: '#0f2a43', borderBottom: '2px solid #0284c7', paddingBottom: 6, marginBottom: 14 }}>{s.t}</h2>
+              {/* running header — แบรนด์ + เลขหน้า */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid #f1f5f9', paddingBottom: 10, marginBottom: 22 }}>
+                <span style={{ fontSize: 13, fontWeight: 800 }}><span style={{ color: '#0f172a' }}>Wealth</span><span style={{ color: '#00cfc1' }}>Pro</span></span>
+                <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: 1, color: '#94a3b8' }}>{title} • หน้า {idx + 3}</span>
+              </div>
+              <h2 style={{ fontSize: s.lvl === 1 ? 20 : 16, fontWeight: 800, color: '#0f172a', borderLeft: '5px solid #00cfc1', paddingLeft: 12, marginBottom: 16 }}>{s.t}</h2>
               {s.auto && autoNode(s.auto)}
               {(secs[s.k]?.text || '').split('\n').map((p, i) => (
                 <p key={i} style={{ fontSize: 14, color: '#1e293b', lineHeight: 1.8, marginBottom: 8 }}>{p || ' '}</p>
