@@ -832,11 +832,17 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
     })
     // ทุนการศึกษาบุตร
     if (edu && edu.totalNominal > 0) items.push({ name: `ทุนการศึกษาบุตร (${edu.childCount} คน)`, when: 'ตามช่วงวัยการศึกษา', amount: edu.totalNominal, cat: 'edu' })
-    // ประกันชีวิต (ทุนที่ควรมี · needs) + ประกันสุขภาพ (ค่ารักษาที่ควรมี) ต่อคน
+    // ประกัน (ต่อคน): ชีวิตตามวิธีที่เลือก · ทุพพลภาพ · สุขภาพขั้นต่ำ 5 ล้าน · โรคร้ายแรงขั้นต่ำ 3 ล้าน (เสนอส่วนที่ขาด)
     people.forEach(p => {
-      if (p.ins && p.ins.need > 0) items.push({ name: `ทุนประกันชีวิต · ${p.name}`, when: 'คุ้มครองครอบครัว', amount: p.ins.need, cat: 'ins' })
-      const ipd = p.cov?.radarData?.find((d: any) => d.key === 'ipd')?.recommended ?? 0
-      if (ipd > 0) items.push({ name: `ความคุ้มครองสุขภาพ · ${p.name}`, when: 'ค่ารักษาพยาบาล', amount: ipd, cat: 'ins' })
+      const methodName = p.ins?.method === 'hlv' ? 'Human Life Value' : 'Needs-Based'
+      if (p.ins && p.ins.need > 0) items.push({ name: `ทุนประกันชีวิต (${methodName}) · ${p.name}`, when: 'คุ้มครองครอบครัว', amount: p.ins.need, cat: 'ins' })
+      if (p.ins && (p.ins as any).disNeed > 0) items.push({ name: `ทุนประกันทุพพลภาพ · ${p.name}`, when: 'คุ้มครองรายได้กรณีทุพพลภาพ', amount: (p.ins as any).disNeed, cat: 'ins' })
+      // สุขภาพ (IPD) ขั้นต่ำ 5,000,000
+      const ipdRec = p.cov?.radarData?.find((d: any) => d.key === 'ipd')?.recommended ?? 0
+      items.push({ name: `ความคุ้มครองสุขภาพ · ${p.name}`, when: 'ค่ารักษาพยาบาล (ขั้นต่ำ 5 ล้าน)', amount: Math.max(ipdRec, 5_000_000), cat: 'ins' })
+      // โรคร้ายแรงลุกลาม — หากมีความคุ้มครองน้อยกว่า 3,000,000 เสนอเพิ่มส่วนที่ขาด
+      const ciHave = toNum(p.cov?.radarData?.find((d: any) => d.key === 'criticalH')?.amount)
+      if (ciHave < 3_000_000) items.push({ name: `ประกันโรคร้ายแรง (เพิ่มส่วนที่ขาด) · ${p.name}`, when: `มีแล้ว ${fmt(ciHave)} · เกณฑ์ 3 ล้าน`, amount: 3_000_000 - ciHave, cat: 'ins' })
     })
     return items
   }, [client, people, retPlan, edu])
@@ -1042,10 +1048,11 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><HeartPulse size={19} color={RD} /><span style={{ fontSize: 15.5, fontWeight: 800, color: INK }}>บิดา / มารดา (ในอุปการะ)</span></div>
                       {careExpense > 0 && <span style={{ fontSize: 12, color: SUB }}>ค่าดูแล <b style={{ color: AM }}>{fmt(careExpense)}</b>/เดือน</span>}
                     </div>
-                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    {/* grid 2 คอลัมน์ — บิดา/มารดา จับคู่กันทุกแถว ขนาดเท่ากัน */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                       {dependents.map((d, i) => (
-                        <div key={i} style={{ background: '#fff', border: `1px solid ${LINE}`, borderRadius: 10, padding: '9px 14px' }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: INK }}>{d.rel}{d.name ? ` · ${d.name}` : ''}{hasSpouse ? <span style={{ fontSize: 11, color: MUTED, fontWeight: 400 }}> (ของ{d.owner})</span> : ''}</div>
+                        <div key={i} style={{ background: '#fff', border: `1px solid ${LINE}`, borderRadius: 10, padding: '9px 14px', minWidth: 0 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.rel}{d.name ? ` · ${d.name}` : ''}{hasSpouse ? <span style={{ fontSize: 11, color: MUTED, fontWeight: 400 }}> (ของ{d.owner})</span> : ''}</div>
                           <div style={{ fontSize: 12, color: SUB }}>อายุ {toNum(d.age) || '—'} ปี{d.health ? ` · ${d.health}` : ''}</div>
                         </div>
                       ))}
@@ -1121,18 +1128,30 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
           <TwoCol>
             {people.map(p => {
               const sm = p.ratios?.summary ?? {}
-              const income = toNum(sm.totalAnnualIncome), net = toNum(sm.netAnnualCashFlow), sav = toNum(sm.annualSavings)
-              const expense = Math.max(0, income - net)
+              const income = toNum(sm.totalAnnualIncome)
+              const fixed = expAnnual('fixed_', p.key)
+              const variable = expAnnual('var_', p.key)
+              const saving = expAnnual('saving_', p.key) || toNum(sm.annualSavings)
+              const totalExp = fixed + variable + saving
+              const net = income - totalExp
+              const rows: [string, number, string, boolean?][] = [
+                ['กระแสเงินสดรับ', income, GR],
+                ['ค่าใช้จ่ายคงที่', fixed, AM],
+                ['ค่าใช้จ่ายผันแปร', variable, RD],
+                ['ค่าใช้จ่ายเพื่อการออม/ลงทุน', saving, VI],
+                ['ค่าใช้จ่ายรวม', totalExp, RD, true],
+                ['กระแสเงินสดสุทธิ', net, net >= 0 ? CY : RD, true],
+              ]
               return (
                 <div key={p.key}>
                   <PersonHead name={p.name} tint={p.tint} />
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                     <tbody>
-                      {[['รายได้รวม', income, GR], ['รายจ่ายรวม (รวมออม/ภาษี)', expense, RD], ['เงินออม/ลงทุน', sav, VI], ['กระแสเงินสดสุทธิ', net, net >= 0 ? CY : RD]].map(([l, v, c]: any, i) => (
-                        <tr key={i} style={{ borderBottom: `1px solid ${LINE}`, fontWeight: l === 'กระแสเงินสดสุทธิ' ? 800 : 400 }}>
-                          <td style={{ padding: '10px 4px', color: SUB }}>{l}</td>
-                          <td style={{ padding: '10px 4px', textAlign: 'right', fontFamily: 'monospace', color: c, fontWeight: 700 }}>{fmt(v)}</td>
-                          <td style={{ padding: '10px 4px', textAlign: 'right', color: MUTED, width: 52 }}>{income > 0 ? `${pct(v, income)}%` : ''}</td>
+                      {rows.map(([l, v, c, strong], i) => (
+                        <tr key={i} style={{ borderBottom: `1px solid ${LINE}`, fontWeight: strong ? 800 : 400 }}>
+                          <td style={{ padding: '9px 4px', color: strong ? INK : SUB }}>{l}</td>
+                          <td style={{ padding: '9px 4px', textAlign: 'right', fontFamily: 'monospace', color: c, fontWeight: 700 }}>{fmt(v)}</td>
+                          <td style={{ padding: '9px 4px', textAlign: 'right', color: MUTED, width: 52 }}>{income > 0 ? `${pct(v, income)}%` : ''}</td>
                         </tr>
                       ))}
                     </tbody>
