@@ -1296,8 +1296,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                       {([['ดี (P90)', iv.atRet.p90, GR], ['ค่ากลาง (P50)', iv.atRet.p50, INK], ['แย่ (P10)', iv.atRet.p10, RD]] as const).map(([lbl, val, col]) => (
                         <div key={lbl} style={{ background: '#fff', border: `1px solid ${LINE}`, borderRadius: 10, padding: '8px 10px', textAlign: 'center' }}>
                           <div style={{ fontSize: 10.5, color: SUB }}>{lbl}</div>
-                          <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'monospace', color: col, marginTop: 2 }}>{fmtM(val)}</div>
-                          <div style={{ fontSize: 10, color: MUTED, fontFamily: 'monospace' }}>{fmt(val)} บาท</div>
+                          <div style={{ fontSize: 14.5, fontWeight: 800, fontFamily: 'monospace', color: col, marginTop: 2 }}>{fmt(val)}</div>
                         </div>
                       ))}
                     </div>
@@ -1416,15 +1415,18 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                   <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} labelFormatter={y => `ปี พ.ศ. ${y}`} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   {eduChart.types.map(t => <Line key={t.key} type="monotone" dataKey={t.key} name={`สถาบัน${t.label}`} stroke={t.color} strokeWidth={2.2} dot={false} connectNulls />)}
-                  {/* ป้ายมูลค่ากองทุน ณ ปีสุดท้ายที่ออม */}
+                  {/* เส้นประ + ป้ายมูลค่ากองทุน (เต็มจำนวน) ณ ปีสุดท้ายที่ออม */}
                   {(() => {
                     const lastSaveYear = eduChart.chartData.length ? eduChart.chartData[0].year + eduChart.savingYears - 1 : null
                     const row: any = lastSaveYear != null ? eduChart.chartData.find((r: any) => r.year === lastSaveYear) : null
                     if (!row) return null
-                    return eduChart.types.map(t => toNum(row[t.key]) > 0 && (
-                      <ReferenceDot key={`peak-${t.key}`} x={row.year} y={row[t.key]} r={4} fill={t.color} stroke="#fff" strokeWidth={1.5}
-                        label={{ value: fmtM(row[t.key]), position: 'top', fill: t.color, fontSize: 11, fontWeight: 800 }} />
-                    ))
+                    return <>
+                      <ReferenceLine x={row.year} stroke={MUTED} strokeDasharray="4 4" label={{ value: `ปีสุดท้ายที่ออม ${row.year}`, position: 'top', fill: SUB, fontSize: 10, fontWeight: 700 }} />
+                      {eduChart.types.map(t => toNum(row[t.key]) > 0 && (
+                        <ReferenceDot key={`peak-${t.key}`} x={row.year} y={row[t.key]} r={4} fill={t.color} stroke="#fff" strokeWidth={1.5}
+                          label={{ value: fmt(row[t.key]), position: 'top', fill: t.color, fontSize: 11, fontWeight: 800 }} />
+                      ))}
+                    </>
                   })()}
                 </ComposedChart>
               </ResponsiveContainer>
