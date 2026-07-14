@@ -1230,7 +1230,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                         <RadarChart data={p.cov.radarData} outerRadius="70%">
                           <PolarGrid stroke={HAIR} />
                           <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9.5, fill: SUB }} />
-                          <Radar name="เกณฑ์ที่ควรมี" dataKey="benchmark" stroke={MUTED} strokeDasharray="4 3" fill={MUTED} fillOpacity={0.08} />
+                          {/* เกณฑ์ = ขอบนอก 100% — พล็อตเฉพาะความคุ้มครองที่มี */}
                           <Radar name="ความคุ้มครองที่มี" dataKey="actual" stroke={p.tint} strokeWidth={2} fill={p.tint} fillOpacity={0.28} />
                           <Legend wrapperStyle={{ fontSize: 10 }} />
                           <Tooltip />

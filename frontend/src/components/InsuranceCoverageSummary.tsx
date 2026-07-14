@@ -66,10 +66,10 @@ export function useInsuranceCoverage(person: 'self' | 'spouse' = 'self') {
     const planVal = planRef[a.key]
     const refVal = planVal ?? a.ref ?? (stdAmount > 0 ? stdAmount : 1)
     const actual = Math.min(100, Math.round((raw[a.key] / refVal) * 100))
-    const benchmark = planVal != null ? 100 : (a.ref == null ? 100 : Math.min(100, Math.round((stdAmount / refVal) * 100)))
     // จำนวนที่ควรมี = ค่าจากแผนประกัน (ถ้ามี) → ref มาตรฐาน → ค่าตามรายได้
     const recommended = planVal ?? a.ref ?? stdAmount
-    return { key: a.key, subject: a.label, actual, benchmark, amount: raw[a.key], recommended }
+    // เกณฑ์มาตรฐาน = ขอบ 100% ทุกแกน (refVal คือตัวเกณฑ์เอง)
+    return { key: a.key, subject: a.label, actual, benchmark: 100, amount: raw[a.key], recommended }
   })
   const avg = Math.round(radarData.reduce((s, d) => s + d.actual, 0) / radarData.length)
   return { radarData, avg, personName, hasPolicies: fPolicies.length > 0 }

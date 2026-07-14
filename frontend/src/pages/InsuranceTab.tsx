@@ -679,8 +679,8 @@ function InsuranceRadarChart() {
     const planVal = planRef[a.key]
     const refVal = planVal ?? a.ref ?? (stdAmount > 0 ? stdAmount : 1)
     const actual = Math.min(100, Math.round((raw[a.key] / refVal) * 100))
-    const benchmark = planVal != null ? 100 : (a.ref == null ? 100 : Math.min(100, Math.round((stdAmount / refVal) * 100)))
-    return { subject: a.label, actual, benchmark, fullMark: 100, amount: raw[a.key], recommended: planVal ?? a.ref ?? stdAmount }
+    // เกณฑ์มาตรฐาน = ขอบ 100% ทุกแกน (refVal คือตัวเกณฑ์เอง)
+    return { subject: a.label, actual, benchmark: 100, fullMark: 100, amount: raw[a.key], recommended: planVal ?? a.ref ?? stdAmount }
   })
 
   const total = radarData.reduce((s, d) => s + d.actual, 0)
@@ -710,8 +710,8 @@ function InsuranceRadarChart() {
         <RadarChart data={radarData} outerRadius="100%" margin={{ top: 40, right: 50, bottom: 40, left: 50 }}>
           <PolarGrid stroke="rgba(255,255,255,0.1)" />
           <PolarAngleAxis dataKey="subject" tick={<CustomRadarTick />} />
-          <Radar name="เกณฑ์มาตรฐาน" dataKey="benchmark" stroke="#22d3ee" fill="#22d3ee" fillOpacity={0.15} strokeWidth={2} dot={{ r: 3, fill: '#22d3ee' }} />
-          <Radar name="ความคุ้มครองปัจจุบัน" dataKey="actual" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.12} strokeWidth={1.5} strokeDasharray="4 3" dot={false} />
+          {/* เกณฑ์ = ขอบนอก 100% อยู่แล้ว — พล็อตเฉพาะความคุ้มครองที่มี */}
+          <Radar name="ความคุ้มครองปัจจุบัน" dataKey="actual" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.22} strokeWidth={2} dot={{ r: 3, fill: '#f59e0b' }} />
           <Legend iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
           <Tooltip formatter={(v: any, name: any) => [`${v} / 100`, name]} contentStyle={{ background: 'var(--navy-950)', border: '1px solid var(--card-border)', borderRadius: 8, fontSize: 11 }} />
         </RadarChart>
