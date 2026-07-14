@@ -900,7 +900,7 @@ export default function ActionPlanPage() {
               ))}
             </div>
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 460px), 1fr))', gap: 20, alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 460px), 1fr))', gap: 20, alignItems: 'stretch' }}>
             {visible.map((sec, si) => {
               const st = sectionStatus(sec.key)
               const secItems = itemsFor(sec)
