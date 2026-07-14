@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import { useRetirementReadiness } from '../hooks/useRetirementReadiness'
 import { useInsuranceReadiness } from '../hooks/useInsuranceReadiness'
 import { useEducationReadiness } from '../hooks/useEducationReadiness'
+import { calc as calcTax, defaultState as defaultTaxState } from '../lib/tax'
 import {
   ClipboardCheck, Plus, Trash2, CalendarClock, Target, ShieldCheck,
   GraduationCap, Wallet, Landmark, Receipt, ScrollText, Sparkles, Flag, User, Users, Check,
@@ -519,7 +520,7 @@ function ItemCard({ it, index, metricCtx, items, onPatch, onRemove }: {
 // ── 6 ด้านหลัก CFP (Holistic Financial Planning) ──
 const PLAN_SECTIONS: { key: string; title: string; sub: string; icon: React.ElementType; color: string; cats: string[] }[] = [
   { key: 'liquidity', title: 'การบริหารสภาพคล่อง/หนี้สิน', sub: 'สภาพคล่อง · หนี้สิน · การออม/ลงทุน', icon: Wallet, color: '#06b6d4', cats: ['liquidity', 'savings', 'debt'] },
-  { key: 'investment', title: 'การวางแผนการลงทุน', sub: 'จัดพอร์ตให้สอดคล้องเป้าหมาย ผลตอบแทน และความเสี่ยง', icon: TrendingUp, color: '#10b981', cats: ['investment', 'other'] },
+  { key: 'investment', title: 'เป้าหมายการเงินเฉพาะ', sub: 'เป้าหมายและระยะเวลาที่ต้องการบรรลุ', icon: TrendingUp, color: '#10b981', cats: ['investment', 'other'] },
   { key: 'education', title: 'ทุนการศึกษาบุตร', sub: 'เตรียมทุนการศึกษาสำหรับบุตร', icon: GraduationCap, color: '#ffb800', cats: ['education'] },
   { key: 'insurance', title: 'การวางแผนประกัน & ความเสี่ยง', sub: 'ป้องกันความเสี่ยงไม่ให้เป้าหมายทางการเงินสะดุด', icon: ShieldCheck, color: '#3b82f6', cats: ['insurance'] },
   { key: 'retirement', title: 'การวางแผนเกษียณอายุ', sub: 'เงินก้อนหลังเกษียณ & แผนสะสมเงิน', icon: Target, color: '#00cfc1', cats: ['retirement'] },
@@ -599,6 +600,7 @@ export default function ActionPlanPage() {
 
   const { data, isLoading } = useQuery({ queryKey: ['action-items', person], queryFn: () => api.get(`/action-items?person=${person}`).then(r => r.data) })
   const { data: ratios } = useQuery({ queryKey: ['financial-ratios', ratioPerson], queryFn: () => api.get(`/financial-ratios?person=${ratioPerson}`).then(r => r.data) })
+  const { data: taxPlan } = useQuery({ queryKey: ['tax-plan'], queryFn: () => api.get('/tax-plan').then(r => r.data), retry: false })
   const ret = useRetirementReadiness(ratioPerson)
   const ins = useInsuranceReadiness(ratioPerson)
   const edu = useEducationReadiness()
@@ -700,25 +702,45 @@ export default function ActionPlanPage() {
     }
     if (key === 'insurance') {
       if (!ins) return null
+      const methodName = ins.method === 'hlv' ? 'Human Life Value' : 'Needs-Based'
       return <>
-        <MetricBar label="ทุนประกันชีวิต (HLV)" valueText={`${money(ins.have)} / ${money(ins.need)}`}
+        <MetricBar label={`ประกันชีวิต · ${methodName}`} valueText={`${money(ins.have)} / ${money(ins.need)}`}
           pct={ins.need > 0 ? ins.have / ins.need * 100 : 0} color={ins.gap > 0 ? AMBER : 'var(--cyan)'} />
+        <MetricBar label="ประกันทุพพลภาพ" valueText={`${money(ins.disHave)} / ${money(ins.disNeed)}`}
+          pct={ins.disNeed > 0 ? ins.disHave / ins.disNeed * 100 : 0} color={ins.disGap > 0 ? '#fb7185' : 'var(--cyan)'} />
         <StatRow>
-          <StatBox label="ทุนแนะนำ (Needs)" value={money(ins.needsNeed)} />
-          <StatBox label="ส่วนที่ขาด" value={ins.gap > 0 ? money(ins.gap) : 'เพียงพอ'} color={ins.gap > 0 ? AMBER : GREEN} />
+          <StatBox label="ชีวิต — ส่วนที่ขาด" value={ins.gap > 0 ? money(ins.gap) : 'เพียงพอ'} color={ins.gap > 0 ? AMBER : GREEN} />
+          <StatBox label="ทุพพลภาพ — ส่วนที่ขาด" value={ins.disGap > 0 ? money(ins.disGap) : 'เพียงพอ'} color={ins.disGap > 0 ? '#fb7185' : GREEN} />
         </StatRow>
       </>
     }
     if (key === 'retirement') {
       if (!ret) return null
       const need = (ret as any).needed ?? 0
+      const level = (ret as any).annualSavings ?? 0
+      const grad = (ret as any).gradFirst ?? 0
+      const growth = (ret as any).savingsGrowthRate ?? 0
+      const saveBox = { background: 'var(--navy-950)', padding: '9px 11px', borderRadius: 10, border: '1px solid var(--card-border)' } as React.CSSProperties
       return <>
         <MetricBar label="ทุนเกษียณที่ต้องการ" valueText={`${money(ret.have ?? 0)} / ${money(need)}`}
           pct={need > 0 ? (ret.have ?? 0) / need * 100 : 0} color={ret.gap > 0 ? AMBER : 'var(--cyan)'} />
-        <StatRow>
+        <div style={{ marginBottom: 12 }}>
           <StatBox label="ส่วนที่ขาด" value={ret.gap > 0 ? money(ret.gap) : 'เพียงพอ'} color={ret.gap > 0 ? AMBER : GREEN} />
-          <StatBox label="ต้องออม/เดือน" value={(ret as any).annualSavings > 0 ? money((ret as any).annualSavings / 12) : '—'} />
-        </StatRow>
+        </div>
+        {ret.gap > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+            <div style={saveBox}>
+              <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginBottom: 3 }}>ออมคงที่ (เท่ากันทุกปี)</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--cyan)', fontFamily: 'monospace' }}>{money(level)}<span style={{ fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 400 }}>/ปี</span></div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{money(level / 12)}<span style={{ fontSize: 10, color: 'var(--text-muted)' }}>/เดือน</span></div>
+            </div>
+            <div style={saveBox}>
+              <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginBottom: 3 }}>ออมเพิ่มขึ้นทุกปี{growth > 0 ? ` (+${growth}%/ปี)` : ''}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#22c55e', fontFamily: 'monospace' }}>{money(grad)}<span style={{ fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 400 }}>/ปี</span></div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{money(grad / 12)}<span style={{ fontSize: 10, color: 'var(--text-muted)' }}>/เดือน · ปีแรก</span></div>
+            </div>
+          </div>
+        ) : <div style={{ fontSize: 12, color: GREEN, marginBottom: 16 }}>ทุนเพียงพอ ไม่ต้องออมเพิ่ม ✓</div>}
       </>
     }
     if (key === 'investment') {
@@ -730,8 +752,10 @@ export default function ActionPlanPage() {
         {goalRows.length > 0 && (
           <div style={{ marginBottom: 16 }}>
             {goalRows.slice(0, 5).map((gr: any, i: number) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, padding: '3px 0', color: 'var(--text-secondary)' }}>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{gr.name || 'เป้าหมาย'}</span>
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, padding: '4px 0', color: 'var(--text-secondary)', borderTop: i > 0 ? '1px solid var(--divider)' : 'none' }}>
+                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {gr.name || 'เป้าหมาย'}{gr.targetDate ? <span style={{ color: 'var(--text-muted)' }}> · {gr.targetDate}</span> : ''}
+                </span>
                 <span style={{ fontFamily: 'monospace', color: 'var(--text-primary)', flexShrink: 0 }}>{money(Number(String(gr.targetAmount || '').replace(/,/g, '')) || 0)}</span>
               </div>
             ))}
@@ -742,15 +766,48 @@ export default function ActionPlanPage() {
     if (key === 'education') {
       if (!edu || edu.childCount <= 0) return null
       return <>
-        <MetricBar label="ทุนการศึกษาบุตร (เป้าหมาย)" valueText={money(edu.totalNominal)} pct={0} color="#ffb800" />
+        <MetricBar label={`ทุนการศึกษาที่ต้องการ (บุตร ${edu.childCount} คน)`} valueText={money(edu.totalNominal)} pct={0} color="#ffb800" />
         <StatRow>
-          <StatBox label="จำนวนบุตร" value={`${edu.childCount} คน`} />
+          <StatBox label="ต้องออม/ปี" value={money(edu.annualSaving)} color="#ffb800" />
           <StatBox label="ต้องออม/เดือน" value={money(edu.monthlySaving)} color="#ffb800" />
         </StatRow>
       </>
     }
     if (key === 'tax') {
-      return <div style={{ marginBottom: 14 }}><TaxDeductionSummary items={items} hideHeader /></div>
+      const tp = taxPlan?.[person]
+      if (!tp) return <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>ยังไม่มีข้อมูลภาษี — กรอกที่หน้าวางแผนภาษี</div>
+      const ts: any = { ...defaultTaxState(), ...tp }
+      const tc = calcTax(ts)
+      const dedTotal = tc.allD - tc.expD
+      const net1 = tc.ti - tc.expD
+      const roomLifeHealth = Math.max(0, 100000 - Math.min(ts.lifeIns || 0, 100000) - Math.min(ts.healthIns || 0, 25000))
+      const grpUsed = Math.min(ts.rmf || 0, net1 * 0.3) + Math.min(ts.annuityIns || 0, Math.min(net1 * 0.15, 200000)) + Math.min(ts.pvd || 0, 500000) + Math.min(ts.govPension || 0, 500000) + Math.min(ts.nsf || 0, 30000)
+      const roomRetire = Math.max(0, 500000 - grpUsed)
+      const roomEsg = Math.max(0, Math.min(net1 * 0.3, 300000) - (ts.thaiesg || 0))
+      const rooms = [
+        { label: 'ประกันชีวิต/สุขภาพ', v: roomLifeHealth },
+        { label: 'กลุ่มเกษียณ (RMF/SSF/PVD/บำนาญ)', v: roomRetire },
+        { label: 'Thai ESG', v: roomEsg },
+      ].filter(r => r.v > 0)
+      const TL = ({ label, value, color, strong }: { label: string; value: string; color?: string; strong?: boolean }) => (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, padding: '3px 0' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{label}</span>
+          <span style={{ fontSize: 12.5, fontWeight: strong ? 700 : 600, fontFamily: 'monospace', color: color ?? 'var(--text-primary)' }}>{value}</span>
+        </div>
+      )
+      return <div style={{ marginBottom: 14 }}>
+        <TL label="เงินได้พึงประเมิน" value={money(tc.ti)} />
+        <TL label="(−) ค่าใช้จ่าย" value={money(tc.expD)} />
+        <TL label="(−) ค่าลดหย่อนรวม" value={money(dedTotal)} />
+        <div style={{ borderTop: '1px solid var(--divider)', margin: '3px 0' }} />
+        <TL label="เงินได้สุทธิ" value={money(tc.ni)} strong />
+        <TL label="ภาษีที่ต้องชำระ" value={money(tc.netTax)} color={AMBER} strong />
+        <TL label="อัตราภาษีที่แท้จริง" value={`${tc.eff.toFixed(1)}%`} />
+        {rooms.length > 0 && <>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: .5, textTransform: 'uppercase', color: 'var(--text-muted)', margin: '10px 0 4px' }}>เพิ่มค่าลดหย่อนได้อีก</div>
+          {rooms.map(r => <TL key={r.label} label={r.label} value={`+${money(r.v)}`} color="var(--cyan)" />)}
+        </>}
+      </div>
     }
     return null
   }

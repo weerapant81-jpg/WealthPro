@@ -35,8 +35,18 @@ export function useRetirementReadiness(person: 'client' | 'spouse') {
   const have = assetAtRetirement + extraAssets
   const needed = res.totalNeeded
   if (!(needed > 0)) return null
+  // ออมแบบเพิ่มขึ้นทุกปี (growing annuity) — เงินออมปีแรก ให้ FV เท่ากับ gap (สูตรเดียวกับหน้าแผนเกษียณ)
+  const savingsGrowthRate = (data as any).savingsGrowthRate ?? 0
+  const gradFirst = (() => {
+    const n = res.saveYears, gap = res.gap
+    const i = (data.preRetirementReturn ?? 0) / 100, gr = savingsGrowthRate / 100
+    if (n <= 0 || gap <= 0) return 0
+    const x = (1 + gr) / (1 + i)
+    const factor = (Math.abs(x - 1) < 1e-9 ? n * Math.pow(1 + i, n - 1) : Math.pow(1 + i, n - 1) * (1 - Math.pow(x, n)) / (1 - x)) * (1 + i)
+    return factor > 0 ? gap / factor : 0
+  })()
   return {
-    needed, have, gap: res.gap, annualSavings: res.annualSavings,
+    needed, have, gap: res.gap, annualSavings: res.annualSavings, gradFirst, savingsGrowthRate,
     readinessPct: Math.max(0, Math.min(100, Math.round((have / needed) * 100))),
     sources: { asset: assetAtRetirement, sso: ssoPV, pvd: pvdAtRetire, severance: sevNet },
     retireAge, projectionRows: res.projectionRows, projectionRowsNoSave: resNoSave.projectionRows,

@@ -16,7 +16,7 @@ export function useInsuranceReadiness(person: 'client' | 'spouse') {
   const { data: liabilities } = useQuery({ queryKey: ['liabilities', key], queryFn: () => api.get('/liabilities', { params: { person: key } }).then(r => r.data), retry: false })
   const { data: invProfile } = useQuery({ queryKey: ['investment-profile'], queryFn: () => api.get('/investment-profile').then(r => r.data), retry: false })
   const { data: lifePolicies } = useQuery({ queryKey: ['life-insurances'], queryFn: () => api.get('/life-insurances').then(r => r.data), retry: false })
-  const { data: sevPlan } = useQuery({ queryKey: ['severance-plan'], queryFn: () => api.get('/severance-plan').then(r => r.data), retry: false })
+  const { data: allRiders } = useQuery({ queryKey: ['all-riders'], queryFn: () => api.get('/all-riders').then(r => r.data), retry: false })
   const { data: expenses } = useQuery({ queryKey: ['expenses', key], queryFn: () => api.get('/expenses', { params: { person: key } }).then(r => r.data), retry: false })
   const { data: taxPlan } = useQuery({ queryKey: ['tax-plan'], queryFn: () => api.get('/tax-plan').then(r => r.data), retry: false })
 
@@ -46,9 +46,13 @@ export function useInsuranceReadiness(person: 'client' | 'spouse') {
   const autoDeposit = Array.isArray(invSrc?.savingsAccounts) ? invSrc.savingsAccounts.reduce((s: number, a: any) => s + toNum(a.currentValue), 0) : 0
   const personName = key === 'self' ? (clientProfile?.firstName ?? '') : (clientProfile?.spouseProfile?.firstName ?? '###')
   const personPolicies = Array.isArray(lifePolicies) ? lifePolicies.filter((p: any) => (p.insuredPerson || '').includes(personName)) : []
+  const personPolicyIds = new Set(personPolicies.map((p: any) => p.id))
   const autoInsurance = personPolicies.reduce((s: number, p: any) => s + toNum(p.sumAssured), 0)
-  const autoSeverance = toNum(sevPlan?.[key]?.netSeverance)
-  const autoAssets = { investment: autoInvestment, deposit: autoDeposit, insurance: autoInsurance, severance: autoSeverance }
+  // ความคุ้มครองทุพพลภาพเดิม (rider disabled) ของกรมธรรม์บุคคลนั้น
+  const autoTPD = Array.isArray(allRiders)
+    ? allRiders.filter((r: any) => personPolicyIds.has(r.policyId) && (r.riderType === 'disabled' || (r.planName || '').includes('ทุพพลภาพ')))
+        .reduce((s: number, r: any) => s + toNum(r.coverageAmount), 0)
+    : 0
 
   // ค่าหักอัตโนมัติ 5 รายการ (ปกส/PVD/กองทุนออม/เบี้ยประกันตนเอง/ภาษี)
   const toAnnual = (amount: number, freq: string) => freq === 'MONTHLY' ? amount * 12 : amount
@@ -68,6 +72,13 @@ export function useInsuranceReadiness(person: 'client' | 'spouse') {
         .reduce((s: number, e: any) => s + toAnnual(e.amount, e.frequency), 0) : 0
   const autoDeduct = { ss: autoSS, pvd: autoPVD, savings: autoSavings, insurance: lifePremiumAnnual + healthPremiumAnnual, tax: autoTax, personal: autoPersonalExpense }
 
+  // เงินชดเชยประกันสังคม (กรณีเสียชีวิต) = ค่าทำศพ + เงินสงเคราะห์กรณีตาย + บำเหน็จชราภาพสะสม (มิเรอร์หน้าวางแผนประกัน)
+  const ssoAvgWage = Math.min(monthlySalary, 15000)
+  const ssoMonths = toNum(welfare?.socialSecurityYears) * 12
+  const ssoSurvivor = ssoMonths >= 120 ? ssoAvgWage * 6 : ssoMonths >= 36 ? ssoAvgWage * 2 : 0
+  const autoSSCompensation = welfare?.hasSocialSecurity ? (50000 + ssoSurvivor + toNum(welfare?.socialSecurityValue)) : 0
+  const autoAssets = { investment: autoInvestment, deposit: autoDeposit, insurance: autoInsurance, severance: autoSSCompensation }
+
   // ระยะเวลาความคุ้มครอง (จนบุตรคนเล็กพึ่งตัวเองได้ 22 − อายุ · ไม่มีบุตร → ปีทำงาน)
   const children = Array.isArray(clientProfile?.children) ? clientProfile.children : []
   const childAges = children.map((c: any) => toNum(c.age)).filter((a: number) => a > 0)
@@ -75,7 +86,7 @@ export function useInsuranceReadiness(person: 'client' | 'spouse') {
   const autoYears = youngestAge != null ? Math.max(1, 22 - youngestAge) : (workingYears || 20)
 
   const plan: PersonPlan = { ...defaultPlan(), ...(saved?.[key] ?? {}) }
-  const C = computeInsurance(plan, { autoIncome, workingYears, autoDebt, autoAssets, autoDeduct, autoYears, preRetReturn })
+  const C = computeInsurance(plan, { autoIncome, workingYears, autoDebt, autoAssets, autoDeduct, autoYears, preRetReturn, autoTPD })
 
   if (!(C.income > 0) || !(C.recommendedNeed > 0)) return null
   return {
@@ -85,6 +96,7 @@ export function useInsuranceReadiness(person: 'client' | 'spouse') {
     method: C.method,
     hlvNeed: C.hlvCoverage, hlvGap: C.hlvNet,
     needsNeed: C.coverageNeed, needsGap: C.netNeed,
+    disNeed: C.disTotal, disHave: C.disOffset, disGap: C.disNet,
     existingInsurance: autoInsurance,
     coveragePct: Math.max(0, Math.min(100, Math.round((C.sumAssets / C.recommendedNeed) * 100))),
   }

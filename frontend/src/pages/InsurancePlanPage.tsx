@@ -90,6 +90,7 @@ export interface InsuranceAutos {
   autoDeduct: { ss: number; pvd: number; savings: number; insurance: number; tax: number; personal: number }
   autoYears: number
   preRetReturn: number
+  autoTPD: number   // ความคุ้มครองทุพพลภาพเดิม (rider) สำหรับกรณีทุพพลภาพ
 }
 const INS_AUTO_LABELS = /ประกันสังคม|สำรองเลี้ยงชีพ|เงินออม|RMF|SSF|ThaiESG|เบี้ยประกัน|ภาษี/i
 
@@ -129,11 +130,22 @@ export function computeInsurance(plan: PersonPlan, a: InsuranceAutos) {
   const recommendedNeed = method === 'hlv' ? hlvCoverage : coverageNeed   // "ทุนที่ควรมี" ตามวิธีที่เลือก
   const recommendedNet = method === 'hlv' ? hlvNet : netNeed
 
+  // ── กรณีทุพพลภาพ ── หักเฉพาะค่าใช้จ่ายจากการทำงาน (ยังมีชีวิต ยังต้องใช้จ่ายส่วนตัว)
+  const disNetIncome = Math.max(0, income - hlvAuto)
+  const disIncomeLossPV = pvAnnuity(realRate, a.workingYears, disNetIncome)
+  const disCarePV = pvAnnuity(realRate, toNum(plan.disCareYears), toNum(plan.disCareAnnual))
+  const ssoDisMonthly = 0.5 * Math.min(income / 12, 15000)   // เงินทดแทนทุพพลภาพ ปกส. 50% ค่าจ้าง (เพดาน 15,000)
+  const ssoDisPV = pvAnnuity(realRate, a.workingYears, ssoDisMonthly * 12)
+  const disTotal = disIncomeLossPV + disCarePV + toNum(plan.disHomeMod) + sumDebt
+  const disOffset = sumAssets + a.autoTPD + ssoDisPV
+  const disNet = Math.max(0, disTotal - disOffset)
+
   return {
     income, coverageYears, hlvAuto, hlvSelf, hlvNetIncome, hlvReal, hlv,
     familyExpense, realRate, familyIncomePV, manualDebt, sumDebt, coverageNeed,
     manualAssets, severancePV, autoAssetTotal, sumAssets, hlvCoverage, hlvNet, netNeed,
     method, recommendedNeed, recommendedNet,
+    disNetIncome, disIncomeLossPV, disCarePV, ssoDisPV, disTotal, disOffset, disNet,
   }
 }
 
@@ -258,24 +270,13 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
   const set = <K extends keyof PersonPlan>(k: K, v: PersonPlan[K]) => onChange({ ...plan, [k]: v })
 
   // สูตรคำนวณกลาง (ใช้ร่วมกับ useInsuranceReadiness/สไลด์นำเสนอ กัน drift)
-  const C = computeInsurance(plan, { autoIncome, workingYears, autoDebt, autoAssets, autoDeduct, autoYears, preRetReturn })
+  const C = computeInsurance(plan, { autoIncome, workingYears, autoDebt, autoAssets, autoDeduct, autoYears, preRetReturn, autoTPD })
   const {
-    income, coverageYears, hlvAuto, hlvNetIncome, hlvReal, hlv, hlvSelf,
+    income, coverageYears, hlvNetIncome, hlvReal, hlv, hlvSelf,
     familyExpense, realRate, familyIncomePV, sumDebt, coverageNeed,
     severancePV, sumAssets, hlvCoverage, hlvNet, netNeed,
+    disNetIncome, disIncomeLossPV, disCarePV, ssoDisPV, disTotal, disOffset, disNet,
   } = C
-
-  // ── กรณีทุพพลภาพ ── หักเฉพาะค่าใช้จ่ายจากการทำงาน (เหมือน HLV) แต่ไม่หักค่าใช้จ่ายส่วนตัว
-  //   (ทุพพลภาพยังมีชีวิต ยังต้องใช้จ่ายส่วนตัว → รายได้ที่สูญเสีย = รายได้ − ค่าใช้จ่ายจากการทำงานเท่านั้น)
-  const disNetIncome = Math.max(0, income - hlvAuto)   // hlvAuto = ปกส+PVD+กองทุนลดหย่อน+เบี้ยประกันตนเอง+ภาษี
-  const disIncomeLossPV = pvAnnuity(realRate, workingYears, disNetIncome)
-  const disCarePV = pvAnnuity(realRate, toNum(plan.disCareYears), toNum(plan.disCareAnnual))
-  // เงินทดแทนทุพพลภาพประกันสังคม = 50% ของค่าจ้าง (เพดาน 15,000/เดือน) → PV จนถึงเกษียณ
-  const ssoDisMonthly = 0.5 * Math.min(income / 12, 15000)
-  const ssoDisPV = pvAnnuity(realRate, workingYears, ssoDisMonthly * 12)
-  const disTotal = disIncomeLossPV + disCarePV + toNum(plan.disHomeMod) + sumDebt
-  const disOffset = sumAssets + autoTPD + ssoDisPV
-  const disNet = Math.max(0, disTotal - disOffset)
 
   const compact = useIsCompact()
   const selectedMethod = plan.selectedMethod ?? 'needs'
