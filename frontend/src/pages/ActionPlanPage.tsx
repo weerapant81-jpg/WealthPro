@@ -8,8 +8,9 @@ import { calc as calcTax, defaultState as defaultTaxState } from '../lib/tax'
 import {
   ClipboardCheck, Plus, Trash2, CalendarClock, Target, ShieldCheck,
   GraduationCap, Wallet, Landmark, Receipt, ScrollText, Sparkles, Flag, User, Users, Check,
-  ChevronDown, ListChecks, TrendingUp,
+  ChevronDown, ListChecks, TrendingUp, GripVertical, X, Eye,
 } from 'lucide-react'
+import { useClient } from '../context/ClientContext'
 
 const fmt = (n: number) => Math.round(n || 0).toLocaleString('th-TH')
 const baht = (n: number) => `${fmt(n)} บาท`
@@ -598,6 +599,39 @@ export default function ActionPlanPage() {
   const spouseName = cp?.spouseProfile?.firstName ? `คุณ${cp.spouseProfile.firstName}` : 'คู่สมรส'
   const hasSpouse = /สมรส|แต่งงาน/.test(cp?.maritalStatus || '') || !!(cp?.spouseProfile?.firstName || cp?.spouseName)
 
+  // ── ลำดับ/ซ่อนการ์ด (เก็บใน localStorage ต่อลูกค้า+บุคคล) ──
+  const { selectedClient } = useClient()
+  const ALL_KEYS = PLAN_SECTIONS.map(s => s.key)
+  const layoutKey = `apLayout:${selectedClient?.id ?? 'me'}:${person}`
+  const [order, setOrder] = useState<string[]>(ALL_KEYS)
+  const [hidden, setHidden] = useState<string[]>([])
+  const layoutLoaded = useRef(false)
+  const dragKey = useRef<string | null>(null)
+  useEffect(() => {
+    layoutLoaded.current = false
+    try {
+      const raw = localStorage.getItem(layoutKey)
+      const p = raw ? JSON.parse(raw) : null
+      setOrder(Array.isArray(p?.order) && p.order.length ? p.order : ALL_KEYS)
+      setHidden(Array.isArray(p?.hidden) ? p.hidden : [])
+    } catch { setOrder(ALL_KEYS); setHidden([]) }
+    layoutLoaded.current = true
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layoutKey])
+  useEffect(() => {
+    if (!layoutLoaded.current) return
+    try { localStorage.setItem(layoutKey, JSON.stringify({ order, hidden })) } catch { /* ignore */ }
+  }, [order, hidden, layoutKey])
+  // ลำดับที่ใช้จริง = order ที่กรองคีย์ปัจจุบัน + เติมคีย์ใหม่ที่ยังไม่มี
+  const cleanOrder = [...order.filter(k => ALL_KEYS.includes(k)), ...ALL_KEYS.filter(k => !order.includes(k))]
+  const moveCard = (from: string, to: string) => setOrder(() => {
+    const arr = [...cleanOrder]
+    const fi = arr.indexOf(from), ti = arr.indexOf(to)
+    if (fi < 0 || ti < 0 || fi === ti) return arr
+    arr.splice(ti, 0, arr.splice(fi, 1)[0])
+    return arr
+  })
+
   const { data, isLoading } = useQuery({ queryKey: ['action-items', person], queryFn: () => api.get(`/action-items?person=${person}`).then(r => r.data) })
   const { data: ratios } = useQuery({ queryKey: ['financial-ratios', ratioPerson], queryFn: () => api.get(`/financial-ratios?person=${ratioPerson}`).then(r => r.data) })
   const { data: taxPlan } = useQuery({ queryKey: ['tax-plan'], queryFn: () => api.get('/tax-plan').then(r => r.data), retry: false })
@@ -684,16 +718,12 @@ export default function ActionPlanPage() {
             : fails.map((r: any) => {
               const m = RATIO_INFO[r.key]
               const col = r.state === 'danger' ? '#f43f5e' : AMBER
-              const adv = ratios?.advice?.[r.key]
               return (
-                <div key={r.key} style={{ padding: '6px 0', borderTop: '1px solid var(--divider)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-                    <span style={{ fontSize: 12, color: 'var(--text-primary)' }}>
-                      {m.name} <span style={{ fontSize: 9.5, color: 'var(--text-muted)', background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 5, padding: '1px 5px' }}>{m.group}</span>
-                    </span>
-                    <span style={{ fontSize: 12.5, fontWeight: 700, fontFamily: 'monospace', color: col, whiteSpace: 'nowrap', flexShrink: 0 }}>{fmtRatio(r.value, m.unit)}</span>
-                  </div>
-                  <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 1 }}>เกณฑ์ {m.standard}{adv ? ` · ${adv}` : ''}</div>
+                <div key={r.key} style={{ padding: '6px 0', borderTop: '1px solid var(--divider)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-primary)' }}>
+                    {m.name} <span style={{ fontSize: 9.5, color: 'var(--text-muted)', background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 5, padding: '1px 5px' }}>{m.group}</span>
+                  </span>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, fontFamily: 'monospace', color: col, whiteSpace: 'nowrap', flexShrink: 0 }}>{fmtRatio(r.value, m.unit)}</span>
                 </div>
               )
             })}
@@ -848,17 +878,34 @@ export default function ActionPlanPage() {
         const KNOWN = new Set(PLAN_SECTIONS.flatMap(x => x.cats))
         const itemsFor = (sec: typeof PLAN_SECTIONS[number]) => items.filter(it => sec.cats.includes(it.category) || (sec.key === 'investment' && !KNOWN.has(it.category)))
         const warnSecs = PLAN_SECTIONS.filter(x => sectionStatus(x.key).color === AMBER)
+        const visible = cleanOrder
+          .map(k => PLAN_SECTIONS.find(s => s.key === k)!)
+          .filter(sec => sec && !hidden.includes(sec.key) && !(sec.key === 'education' && !(edu && edu.childCount > 0)))
+        const hiddenSecs = PLAN_SECTIONS.filter(s => hidden.includes(s.key) && !(s.key === 'education' && !(edu && edu.childCount > 0)))
         return <>
+          {hiddenSecs.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>การ์ดที่ซ่อน:</span>
+              {hiddenSecs.map(s => (
+                <button key={s.key} onClick={() => setHidden(h => h.filter(x => x !== s.key))}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 11px', borderRadius: 999, border: `1px solid ${s.color}55`, background: `${s.color}14`, color: s.color, fontSize: 12, cursor: 'pointer' }}>
+                  <Eye size={13} /> {s.title}
+                </button>
+              ))}
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 460px), 1fr))', gap: 20, alignItems: 'start' }}>
-            {PLAN_SECTIONS.map((sec, si) => {
-              // ซ่อนการ์ดทุนการศึกษาเมื่อไม่มีบุตร
-              if (sec.key === 'education' && !(edu && edu.childCount > 0)) return null
+            {visible.map((sec, si) => {
               const st = sectionStatus(sec.key)
               const secItems = itemsFor(sec)
               return (
-                <div key={sec.key} style={{ ...card, display: 'flex', flexDirection: 'column', minHeight: 440 }}>
+                <div key={sec.key} style={{ ...card, display: 'flex', flexDirection: 'column', minHeight: 440 }}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={e => { e.preventDefault(); if (dragKey.current && dragKey.current !== sec.key) moveCard(dragKey.current, sec.key); dragKey.current = null }}>
                   {/* header */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 16 }}>
+                    <span draggable onDragStart={() => { dragKey.current = sec.key }} onDragEnd={() => { dragKey.current = null }}
+                      title="ลากเพื่อย้ายตำแหน่ง" style={{ cursor: 'grab', color: 'var(--text-muted)', flexShrink: 0, display: 'flex' }}><GripVertical size={16} /></span>
                     <div style={{ width: 40, height: 40, borderRadius: 11, background: `${sec.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <sec.icon size={20} style={{ color: sec.color }} />
                     </div>
@@ -867,6 +914,8 @@ export default function ActionPlanPage() {
                       <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{sec.title}</div>
                     </div>
                     {st.color !== 'var(--text-muted)' && <span style={{ fontSize: 11, fontWeight: 700, color: st.color, whiteSpace: 'nowrap' }}>{st.label}</span>}
+                    <button onClick={() => setHidden(h => [...h, sec.key])} title="ซ่อนการ์ดนี้"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2, flexShrink: 0, display: 'flex' }}><X size={16} /></button>
                   </div>
 
                   {/* ① ตัวชี้วัด (คำนวณ) */}
