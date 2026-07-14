@@ -48,6 +48,25 @@ const SUBPLAN_CONFIG: Record<string, SubConfig> = {
       { key: 'schedule', label: 'กำหนดการ', type: 'date' },
     ],
   },
+  investment: {
+    title: 'แผนดำเนินการเพื่อการลงทุน/เป้าหมาย', accent: '#10b981',
+    cols: [
+      { key: 'desc', label: 'แผนปฏิบัติการ', type: 'text', placeholder: 'เช่น ทยอยลงทุนกองทุนรวม · DCA รายเดือน', flex: true },
+      { key: 'assetType', label: 'ประเภทสินทรัพย์', type: 'text', placeholder: 'หุ้น / กองทุนรวม / ตราสารหนี้' },
+      { key: 'amount', label: 'จำนวนเงิน', type: 'money' },
+      ownerCol,
+      { key: 'schedule', label: 'กำหนดการ', type: 'date' },
+    ],
+  },
+  other: {
+    title: 'แผนดำเนินการ', accent: '#8b9198',
+    cols: [
+      { key: 'desc', label: 'แผนปฏิบัติการ', type: 'text', placeholder: 'ระบุสิ่งที่ต้องทำ', flex: true },
+      { key: 'amount', label: 'จำนวนเงิน', type: 'money' },
+      ownerCol,
+      { key: 'schedule', label: 'กำหนดการ', type: 'date' },
+    ],
+  },
   insurance: {
     title: 'แผนดำเนินการเรื่องการประกัน', accent: '#3b82f6',
     cols: [
@@ -185,7 +204,6 @@ function progressOf(item: Item, m: MetricCtx): Progress {
   }
   return { pct: Math.max(0, Math.min(100, pct)), conf, liveVal, curVal, target, sysTarget, targetFromSystem, usingManual, hasTarget: true, unit }
 }
-const fmtVal = (conf: (typeof METRICS)[string] | null, v: number) => conf ? conf.fmt(v) : baht(v)
 
 // ช่องกรอกตัวเลข: คั่นหลักพัน · เว้นว่าง = null · commit ตอน blur (กันยิง API ทุกคีย์)
 function NumBox({ value, onChange, placeholder, width = 108 }: {
@@ -366,20 +384,6 @@ function TaxDeductionSummary({ items, hideHeader }: { items: Item[]; hideHeader?
   )
 }
 
-// slider เลื่อนความคืบหน้า 0→100% (ซ้าย=ค่าเดิม, ขวา=เป้าหมาย) · commit ตอนปล่อย
-function ProgressSlider({ pct, color, onCommit }: { pct: number; color: string; onCommit: (pct: number) => void }) {
-  const [val, setVal] = useState(Math.round(pct))
-  const [drag, setDrag] = useState(false)
-  useEffect(() => { if (!drag) setVal(Math.round(pct)) }, [pct, drag])
-  const commit = () => { if (drag) { setDrag(false); onCommit(val) } }
-  return (
-    <input type="range" min={0} max={100} value={val}
-      onChange={e => { setDrag(true); setVal(Number(e.target.value)) }}
-      onMouseUp={commit} onTouchEnd={commit} onKeyUp={commit} onBlur={commit}
-      style={{ flex: 1, accentColor: color, cursor: 'pointer', height: 4 }} />
-  )
-}
-
 // เกจครึ่งวงกลมแสดงความคืบหน้า
 function Gauge({ pct, color, caption }: { pct: number; color: string; caption?: string }) {
   const r = 44, cx = 56, cy = 50, sw = 9
@@ -420,14 +424,7 @@ function ItemCard({ it, index, metricCtx, items, onPatch, onRemove }: {
   const rowCount = Array.isArray(it.subPlan) ? it.subPlan.length : 0
   const [open, setOpen] = useState(false)
   const gaugeColor = prog >= 100 ? '#10b981' : c.color
-  const microLabel: React.CSSProperties = { fontSize: 9.5, fontWeight: 700, letterSpacing: .6, textTransform: 'uppercase', color: 'var(--text-muted)' }
   const chip: React.CSSProperties = { fontSize: 11, padding: '3px 9px', borderRadius: 7, cursor: 'pointer' }
-  const numField = (label: string, node: React.ReactNode) => (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{label}</span>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>{node}<span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{p.unit}</span></div>
-    </label>
-  )
 
   return (
     <div style={{ position: 'relative', borderRadius: 14, background: 'var(--card-bg)', border: `1px solid ${done ? '#10b98140' : 'var(--card-border)'}`, overflow: 'hidden', opacity: it.status === 'deferred' ? 0.72 : 1, animation: 'apItemIn .4s ease both', animationDelay: `${Math.min(index, 8) * 45}ms` }}>
@@ -463,35 +460,6 @@ function ItemCard({ it, index, metricCtx, items, onPatch, onRemove }: {
         </div>
 
         {/* ติดตามผล */}
-        {showTracking && (
-          <div style={{ background: 'var(--navy-950)', border: '1px solid var(--card-border)', borderRadius: 11, padding: '12px 14px' }}>
-            <div style={{ ...microLabel, marginBottom: 10 }}>ติดตามผล</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '10px 20px' }}>
-              {numField('ปัจจุบัน', <NumBox value={it.current} placeholder={p.liveVal != null ? Math.round(p.liveVal).toLocaleString('en-US') : '0'} onChange={v => onPatch(it.id, { current: v })} />)}
-              {numField('เป้าหมาย', <NumBox value={it.target} placeholder={p.sysTarget != null ? Math.round(p.sysTarget).toLocaleString('en-US') : undefined} onChange={v => onPatch(it.id, { target: v })} />)}
-              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, paddingBottom: 3 }}>
-                {it.autoKey === 'emergency-excess'
-                  ? (p.curVal != null && p.target != null && (() => { const ex = p.curVal - p.target; const over = ex >= 0; return (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 7, background: over ? '#10b98118' : '#ef444418', color: over ? '#10b981' : '#ef4444' }}>
-                      {over ? 'สภาพคล่องส่วนเกิน' : 'สภาพคล่องขาด'} {fmt(Math.abs(ex))} บาท
-                    </span>) })())
-                  : <>
-                    {p.liveVal != null && !p.usingManual && <span style={{ fontSize: 10.5, color: 'var(--cyan)' }}>ปัจจุบันใช้ค่าจากระบบ ({fmtVal(p.conf, p.liveVal)})</span>}
-                    {p.targetFromSystem && <span style={{ fontSize: 10.5, color: '#ffb800' }}>{it.autoKey === 'education-fund' ? 'เป้าหมายจากแผนการศึกษา' : 'เป้าหมายจากระบบ'} ({fmtVal(p.conf, p.sysTarget!)})</span>}
-                  </>}
-                {p.usingManual && p.liveVal != null && <button onClick={() => onPatch(it.id, { current: null })} style={{ fontSize: 10.5, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>ใช้ค่าจากระบบแทน</button>}
-              </div>
-            </div>
-            {p.target != null && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 13 }}>
-                <span style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>ค่าเดิม {fmtVal(p.conf, it.baseline ?? 0)}</span>
-                <ProgressSlider pct={p.pct} color={gaugeColor} onCommit={pctv => { const base = it.baseline ?? 0; const cur = base + (p.target! - base) * (pctv / 100); onPatch(it.id, { current: Math.round(cur * 100) / 100 }) }} />
-                <span style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>เป้าหมาย {fmtVal(p.conf, p.target)}</span>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* แผนดำเนินการ (พับได้) */}
         {hasTable && (
           <div style={{ border: '1px solid var(--card-border)', borderRadius: 11, overflow: 'hidden' }}>
@@ -549,7 +517,7 @@ function AdviceBox({ value, color, onSave }: { value: string; color: string; onS
   )
 }
 
-const money = (n: number) => n >= 1e6 ? `฿${(n / 1e6).toFixed(1)}M` : `฿${fmt(n)}`
+const money = (n: number) => `฿${fmt(n)}`
 
 // อัตราส่วนทางการเงิน + เกณฑ์มาตรฐาน (ตรงกับหน้าอัตราส่วนทางการเงิน) — ใช้แสดงตัวที่ไม่ผ่านเกณฑ์
 const RATIO_INFO: Record<string, { name: string; standard: string; unit: 'times' | 'months' | 'pct'; group: string }> = {
