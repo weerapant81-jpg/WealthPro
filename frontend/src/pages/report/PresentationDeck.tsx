@@ -1493,8 +1493,8 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                         <Stat label="อัตราภาษีเฉลี่ย" value={`${r.eff.toFixed(1)}%`} color={INK} />
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <Stat label="เงินได้สุทธิ" value={fmtM(r.ni)} color={INK} />
-                        <Stat label="ค่าลดหย่อนรวม" value={fmtM(r.allD)} color={GR} />
+                        <Stat label="เงินได้สุทธิ" value={fmt(r.ni)} color={INK} />
+                        <Stat label="ค่าลดหย่อนรวม" value={fmt(r.allD)} color={GR} />
                       </div>
                     </div>
                   ) : <Empty text="ยังไม่มีข้อมูลแผนภาษี" />}
