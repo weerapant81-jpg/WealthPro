@@ -7,8 +7,8 @@ import { useEducationReadiness } from '../hooks/useEducationReadiness'
 import { calc as calcTax, defaultState as defaultTaxState } from '../lib/tax'
 import {
   ClipboardCheck, Plus, Trash2, CalendarClock, Target, ShieldCheck,
-  GraduationCap, Wallet, Landmark, Receipt, ScrollText, Sparkles, Flag, User, Users, Check,
-  ChevronDown, ListChecks, TrendingUp, GripVertical, X, Eye, FileText,
+  GraduationCap, Wallet, Receipt, ScrollText, Sparkles, User, Users,
+  ListChecks, TrendingUp, GripVertical, X, Eye, FileText,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useClient } from '../context/ClientContext'
@@ -117,93 +117,18 @@ const SUBPLAN_CONFIG: Record<string, SubConfig> = {
     ],
   },
 }
+// เพิ่มคอลัมน์ "ลำดับความสำคัญ" เป็นคอลัมน์สุดท้ายของทุกตาราง
+const PRIORITY_OPTIONS = ['สูง', 'กลาง', 'ต่ำ']
+const priorityCol: SubCol = { key: 'priority', label: 'ลำดับความสำคัญ', type: 'select', options: PRIORITY_OPTIONS }
+Object.values(SUBPLAN_CONFIG).forEach(cfg => { if (!cfg.cols.some(c => c.key === 'priority')) cfg.cols.push(priorityCol) })
 const emptySub = (cfg: SubConfig): SubRow => Object.fromEntries(cfg.cols.map(c => [c.key, c.type === 'money' ? null : '']))
 
-const CAT: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-  liquidity: { label: 'สภาพคล่อง', icon: Wallet, color: '#06b6d4' },
-  debt: { label: 'หนี้สิน', icon: Landmark, color: '#ef4444' },
-  savings: { label: 'การออม', icon: Wallet, color: '#10b981' },
-  insurance: { label: 'ประกัน', icon: ShieldCheck, color: '#3b82f6' },
-  retirement: { label: 'เกษียณ', icon: Target, color: '#00cfc1' },
-  education: { label: 'การศึกษา', icon: GraduationCap, color: '#ffb800' },
-  tax: { label: 'ภาษี', icon: Receipt, color: '#f59e0b' },
-  estate: { label: 'มรดก', icon: ScrollText, color: '#a78bfa' },
-  other: { label: 'อื่นๆ', icon: Flag, color: '#8b9198' },
-}
-const catOf = (c: string) => CAT[c] || CAT.other
-
-const STATUS: Record<string, { label: string; color: string }> = {
-  todo: { label: 'ยังไม่เริ่ม', color: '#8b9198' },
-  doing: { label: 'กำลังทำ', color: '#3b82f6' },
-  done: { label: 'เสร็จแล้ว', color: '#10b981' },
-  deferred: { label: 'เลื่อนออกไป', color: '#f59e0b' },
-}
 const PRIORITY: Record<string, { label: string; color: string }> = {
   high: { label: 'สูง', color: '#ef4444' }, medium: { label: 'กลาง', color: '#f59e0b' }, low: { label: 'ต่ำ', color: '#8b9198' },
 }
 
 // ค่าปัจจุบันของ metric (คำนวณสด) + ทิศทางเป้าหมาย
 type MetricCtx = { emergencyMonths: number; insHave: number; retHave: number; debtToAsset: number; savingsRate: number; eduTotal: number; liquidAssets: number; sixMonthReserve: number }
-const METRICS: Record<string, { unit: string; dir: 'up' | 'down'; live: (m: MetricCtx) => number; fmt: (v: number) => string }> = {
-  emergencyMonths: { unit: 'เดือน', dir: 'up', live: m => m.emergencyMonths, fmt: v => `${v.toFixed(1)} เดือน` },
-  insuranceCoverage: { unit: 'บาท', dir: 'up', live: m => m.insHave, fmt: baht },
-  retirementAssets: { unit: 'บาท', dir: 'up', live: m => m.retHave, fmt: baht },
-  debtToAsset: { unit: '%', dir: 'down', live: m => m.debtToAsset, fmt: v => `${v.toFixed(0)}%` },
-  savingsRate: { unit: '%', dir: 'up', live: m => m.savingsRate, fmt: v => `${v.toFixed(0)}%` },
-  liquidAssets: { unit: 'บาท', dir: 'down', live: m => m.liquidAssets, fmt: baht },
-}
-// map autoKey → metricKey (ให้รายการเก่าที่ยังไม่มี metricKey ดึงค่าได้ย้อนหลัง)
-const AUTO_METRIC: Record<string, string> = {
-  'emergency-fund': 'emergencyMonths',
-  'emergency-excess': 'liquidAssets',
-  'reduce-debt': 'debtToAsset',
-  'raise-savings': 'savingsRate',
-  'insurance-gap': 'insuranceCoverage',
-  'retirement-gap': 'retirementAssets',
-}
-
-type Progress = {
-  pct: number; conf: (typeof METRICS)[string] | null
-  liveVal: number | null   // ค่าปัจจุบันจากระบบ (ถ้ามี metric)
-  curVal: number | null     // ค่าที่ใช้จริง (กรอกเอง > ระบบ)
-  target: number | null     // เป้าหมายที่ใช้จริง (กรอกเอง > ระบบ)
-  sysTarget: number | null  // เป้าหมายจากระบบ (เช่น ค่าเล่าเรียนรวม)
-  targetFromSystem: boolean
-  usingManual: boolean; hasTarget: boolean; unit: string
-}
-// เป้าหมายที่ดึงจากระบบตาม autoKey (การศึกษา → ค่าเล่าเรียนรวมอนาคต)
-function systemTargetOf(item: Item, m: MetricCtx): number | null {
-  if (item.autoKey === 'education-fund') return m.eduTotal > 0 ? m.eduTotal : null
-  if (item.autoKey === 'emergency-excess') return m.sixMonthReserve > 0 ? m.sixMonthReserve : null
-  return null
-}
-function progressOf(item: Item, m: MetricCtx): Progress {
-  const metricKey = item.metricKey ?? (item.autoKey ? AUTO_METRIC[item.autoKey] : undefined)
-  const conf = metricKey ? METRICS[metricKey] : null
-  const dir = conf?.dir ?? 'up'
-  const unit = conf?.unit ?? 'บาท'
-  const liveVal = conf ? conf.live(m) : null
-  const usingManual = item.current != null
-  const curVal = usingManual ? item.current! : liveVal
-  const sysTarget = systemTargetOf(item, m)
-  const target = item.target != null ? item.target : sysTarget
-  const targetFromSystem = item.target == null && sysTarget != null
-  if (target == null || curVal == null) {
-    const pct = item.status === 'done' ? 100 : item.status === 'doing' ? 50 : 0
-    return { pct, conf, liveVal, curVal, target, sysTarget, targetFromSystem, usingManual, hasTarget: target != null, unit }
-  }
-  let pct: number
-  if (item.baseline == null) {
-    // ไม่มีจุดตั้งต้น → วัดเทียบเป้าโดยตรง
-    if (dir === 'up') pct = target > 0 ? (curVal / target) * 100 : 0
-    else pct = curVal <= target ? 100 : (target / curVal) * 100
-  } else {
-    const base = item.baseline
-    if (dir === 'up') pct = target <= base ? (curVal >= target ? 100 : 0) : ((curVal - base) / (target - base)) * 100
-    else pct = base <= target ? (curVal <= target ? 100 : 0) : ((base - curVal) / (base - target)) * 100
-  }
-  return { pct: Math.max(0, Math.min(100, pct)), conf, liveVal, curVal, target, sysTarget, targetFromSystem, usingManual, hasTarget: true, unit }
-}
 
 // ช่องกรอกตัวเลข: คั่นหลักพัน · เว้นว่าง = null · commit ตอน blur (กันยิง API ทุกคีย์)
 function NumBox({ value, onChange, placeholder, width = 108 }: {
@@ -300,192 +225,9 @@ function SubPlanTable({ value, config, onSave, hideHeader }: { value: SubRow[] |
   )
 }
 
-// สรุปสิทธิลดหย่อนภาษี — ดึงยอดจากตารางแผน (subPlan) ของเป้าหมายอื่น
-const DEDUCTS: { key: string; label: string; cap: number; match: (s: string) => boolean }[] = [
-  { key: 'pension', label: 'ประกันบำนาญ', cap: 200000, match: s => /บำนาญ/.test(s) },
-  { key: 'health', label: 'ประกันสุขภาพ', cap: 25000, match: s => /สุขภาพ/.test(s) },
-  { key: 'life', label: 'ประกันชีวิต', cap: 100000, match: s => /ชีวิต|สะสมทรัพย์|pay ?life/i.test(s) },
-  { key: 'rmf', label: 'กองทุน RMF', cap: 500000, match: s => /\brmf\b/i.test(s) },
-  { key: 'ssf', label: 'กองทุน SSF', cap: 200000, match: s => /\bssf\b/i.test(s) },
-  { key: 'esg', label: 'กองทุน Thai ESG', cap: 300000, match: s => /thai ?esg|thaiesg|\besg\b/i.test(s) },
-]
-function classify(text: string): string | null {
-  for (const d of DEDUCTS) if (d.match(text)) return d.key
-  return null
-}
-function TaxDeductionSummary({ items, hideHeader }: { items: Item[]; hideHeader?: boolean }) {
-  const buckets: Record<string, number> = {}
-  let unclassified = 0
-  for (const it of items) {
-    if (it.category === 'tax' || !Array.isArray(it.subPlan)) continue
-    for (const row of it.subPlan) {
-      const amt = Number(row?.premium ?? row?.amount ?? 0) || 0
-      if (amt <= 0) continue
-      const key = classify(`${row?.desc || ''} ${row?.assetType || ''}`)
-      if (key) buckets[key] = (buckets[key] || 0) + amt
-      else unclassified += amt
-    }
-  }
-  const val = (k: string) => buckets[k] || 0
-  // ใช้สิทธิ (ประมาณ) ตามเพดานเดี่ยว + เพดานรวม
-  const life = Math.min(val('life'), 100000)
-  const health = Math.min(val('health'), 25000)
-  const lifeHealth = Math.min(life + health, 100000)          // ชีวิต+สุขภาพ รวม ≤ 100,000
-  const pension = Math.min(val('pension'), 200000)
-  const rmf = Math.min(val('rmf'), 500000)
-  const ssf = Math.min(val('ssf'), 200000)
-  const retireGroup = Math.min(pension + rmf + ssf, 500000)   // กลุ่มเกษียณรวม ≤ 500,000
-  const esg = Math.min(val('esg'), 300000)
-  const totalUsed = lifeHealth + retireGroup + esg
-  const totalPlanned = DEDUCTS.reduce((a, d) => a + val(d.key), 0)
-  const has = totalPlanned > 0
 
-  const th: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', padding: '4px 8px' }
-  const gridCols = 'minmax(140px,1fr) 120px 120px'
-  const money = (n: number): React.CSSProperties => ({ fontSize: 12.5, textAlign: 'right', fontFamily: 'monospace', color: n > 0 ? 'var(--text-primary)' : 'var(--text-muted)' })
-
-  return (
-    <div style={hideHeader ? undefined : { marginTop: 12, border: '1px solid var(--card-border)', borderRadius: 10, overflow: 'hidden' }}>
-      {!hideHeader && (
-        <div style={{ padding: '8px 12px', background: 'var(--navy-800)', borderBottom: '1px solid var(--card-border)' }}>
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>สรุปสิทธิลดหย่อน (ดึงจากแผนเป้าหมายอื่น)</span>
-        </div>
-      )}
-      <div style={{ padding: hideHeader ? '4px 0 0' : 10, overflowX: 'auto' }}>
-        {!has
-          ? <div style={{ fontSize: 12.5, color: 'var(--text-muted)', padding: '8px 4px' }}>ยังไม่มีข้อมูล — เพิ่มเบี้ยประกัน/เงินลงทุนกองทุน (RMF/SSF/Thai ESG) ในตารางแผนของเป้าหมายประกัน · เกษียณ · การศึกษา แล้วยอดจะมาสรุปที่นี่อัตโนมัติ</div>
-          : <div style={{ minWidth: 420 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 6 }}>
-              <div style={th}>ประเภทลดหย่อน</div>
-              <div style={{ ...th, textAlign: 'right' }}>ตามแผน</div>
-              <div style={{ ...th, textAlign: 'right' }}>เพดาน</div>
-            </div>
-            {DEDUCTS.filter(d => val(d.key) > 0).map(d => (
-              <div key={d.key} style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 6, alignItems: 'center', marginTop: 6 }}>
-                <div style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>{d.label}</div>
-                <div style={money(val(d.key))}>{fmt(val(d.key))}</div>
-                <div style={{ ...money(0), color: 'var(--text-muted)' }}>{fmt(d.cap)}</div>
-              </div>
-            ))}
-            <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 6, alignItems: 'center', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--card-border)' }}>
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>รวมสิทธิลดหย่อน (ประมาณ)</div>
-              <div style={{ fontSize: 13.5, fontWeight: 700, textAlign: 'right', fontFamily: 'monospace', color: '#f59e0b' }}>{fmt(totalUsed)}</div>
-              <div />
-            </div>
-            {unclassified > 0 && (
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>* มีรายการที่ระบุประเภทไม่ได้ {fmt(unclassified)} บาท (ใส่คำว่า ชีวิต/สุขภาพ/บำนาญ/RMF/SSF/ESG ในช่องแผนหรือประเภทสินทรัพย์)</div>
-            )}
-            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>
-              ประมาณการตามเพดาน: ชีวิต+สุขภาพ รวม ≤ 100,000 · กลุ่มเกษียณ (บำนาญ+RMF+SSF) รวม ≤ 500,000 · Thai ESG ≤ 300,000 · เพดานบางรายการอิง % ของเงินได้ ควรตรวจสอบก่อนยื่นจริง
-            </div>
-          </div>}
-      </div>
-    </div>
-  )
-}
-
-// เกจครึ่งวงกลมแสดงความคืบหน้า
-function Gauge({ pct, color, caption }: { pct: number; color: string; caption?: string }) {
-  const r = 44, cx = 56, cy = 50, sw = 9
-  const d = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`
-  const clamped = Math.max(0, Math.min(100, pct))
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-      <svg width={112} height={62} viewBox="0 0 112 62" style={{ display: 'block' }}>
-        <path d={d} fill="none" stroke="var(--navy-700)" strokeWidth={sw} strokeLinecap="round" />
-        <path d={d} fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round"
-          pathLength={100} strokeDasharray="100" strokeDashoffset={100 - clamped}
-          style={{ transition: 'stroke-dashoffset .5s ease' }} />
-        <text x={cx} y={cy - 4} textAnchor="middle" fontSize="20" fontWeight="800" fill={color}>{Math.round(clamped)}</text>
-        <text x={cx} y={cy + 8} textAnchor="middle" fontSize="8" fontWeight="600" fill="var(--text-muted)">%</text>
-      </svg>
-      {caption && <div style={{ fontSize: 10, color: clamped >= 100 ? '#10b981' : 'var(--text-muted)', marginTop: -2, fontWeight: 600 }}>{caption}</div>}
-    </div>
-  )
-}
 
 const apKeyframes = `@keyframes apItemIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}`
-
-// การ์ดรายการเดียว — แยกโซน: identity / ติดตามผล / แผนดำเนินการ (พับได้)
-function ItemCard({ it, index, metricCtx, items, onPatch, onRemove }: {
-  it: Item; index: number; metricCtx: MetricCtx; items: Item[]
-  onPatch: (id: string, body: any) => void; onRemove: (id: string) => void
-}) {
-  const c = catOf(it.category)
-  const st = STATUS[it.status] || STATUS.todo
-  const pr = PRIORITY[it.priority] || PRIORITY.medium
-  const p = progressOf(it, metricCtx)
-  const prog = Math.round(p.pct)
-  const done = it.status === 'done'
-  const showTracking = it.category !== 'estate'
-  const hasSubTable = !!SUBPLAN_CONFIG[it.category]
-  const isTax = it.category === 'tax'
-  const hasTable = hasSubTable || isTax
-  const rowCount = Array.isArray(it.subPlan) ? it.subPlan.length : 0
-  const [open, setOpen] = useState(false)
-  const gaugeColor = prog >= 100 ? '#10b981' : c.color
-  const chip: React.CSSProperties = { fontSize: 11, padding: '3px 9px', borderRadius: 7, cursor: 'pointer' }
-
-  return (
-    <div style={{ position: 'relative', borderRadius: 14, background: 'var(--card-bg)', border: `1px solid ${done ? '#10b98140' : 'var(--card-border)'}`, overflow: 'hidden', opacity: it.status === 'deferred' ? 0.72 : 1, animation: 'apItemIn .4s ease both', animationDelay: `${Math.min(index, 8) * 45}ms` }}>
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: gaugeColor }} />
-      <div style={{ padding: '14px 16px 14px 19px', display: 'flex', flexDirection: 'column', gap: 13 }}>
-        {/* identity */}
-        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-          <button onClick={() => onPatch(it.id, { status: done ? 'todo' : 'done' })} title="ทำเครื่องหมายเสร็จ"
-            style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0, marginTop: 3, cursor: 'pointer', border: `2px solid ${done ? '#10b981' : 'var(--navy-500)'}`, background: done ? '#10b981' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {done && <Check size={14} color="#fff" />}
-          </button>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-              <div style={{ width: 27, height: 27, borderRadius: 8, background: `${c.color}1f`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <c.icon size={14} style={{ color: c.color }} />
-              </div>
-              <input value={it.title} onChange={e => onPatch(it.id, { title: e.target.value })}
-                style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: 14.5, fontWeight: 600, textDecoration: done ? 'line-through' : 'none', padding: 0 }} />
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10, alignItems: 'center' }}>
-              <select value={it.status} onChange={e => onPatch(it.id, { status: e.target.value })} style={{ ...chip, border: `1px solid ${st.color}55`, background: `${st.color}14`, color: st.color }}>
-                {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
-              <select value={it.priority} onChange={e => onPatch(it.id, { priority: e.target.value })} style={{ ...chip, border: `1px solid ${pr.color}55`, background: `${pr.color}14`, color: pr.color }}>
-                {Object.entries(PRIORITY).map(([k, v]) => <option key={k} value={k}>ความสำคัญ {v.label}</option>)}
-              </select>
-            </div>
-          </div>
-          {showTracking && <Gauge pct={p.pct} color={gaugeColor} caption={p.hasTarget && p.curVal != null ? (prog >= 100 ? 'สำเร็จ ✓' : 'คืบหน้า') : undefined} />}
-          <button onClick={() => onRemove(it.id)} title="ลบ" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', flexShrink: 0, padding: 2, marginTop: 2 }}>
-            <Trash2 size={15} />
-          </button>
-        </div>
-
-        {/* ติดตามผล */}
-        {/* แผนดำเนินการ (พับได้) */}
-        {hasTable && (
-          <div style={{ border: '1px solid var(--card-border)', borderRadius: 11, overflow: 'hidden' }}>
-            <button onClick={() => setOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 13px', background: open ? 'var(--navy-800)' : 'var(--navy-900)', border: 'none', cursor: 'pointer', color: 'var(--text-primary)' }}>
-              <ListChecks size={15} style={{ color: c.color }} />
-              <span style={{ fontSize: 12.5, fontWeight: 700 }}>{hasSubTable ? SUBPLAN_CONFIG[it.category].title : 'สรุปสิทธิลดหย่อนภาษี'}</span>
-              {hasSubTable && rowCount > 0 && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· {rowCount} รายการ</span>}
-              <ChevronDown size={16} style={{ marginLeft: 'auto', color: 'var(--text-muted)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .25s' }} />
-            </button>
-            <div style={{ maxHeight: open ? 2400 : 0, overflow: 'hidden', transition: 'max-height .35s ease' }}>
-              <div style={{ padding: '2px 13px 13px' }}>
-                {hasSubTable && <SubPlanTable value={it.subPlan} config={SUBPLAN_CONFIG[it.category]} hideHeader onSave={rows => onPatch(it.id, { subPlan: rows })} />}
-                {isTax && (
-                  <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--card-border)' }}>
-                    <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }}>สรุปสิทธิลดหย่อนภาษี</div>
-                    <TaxDeductionSummary items={items} hideHeader />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
 
 // ── 6 ด้านหลัก CFP (Holistic Financial Planning) ──
 const PLAN_SECTIONS: { key: string; title: string; sub: string; icon: React.ElementType; color: string; cats: string[] }[] = [
@@ -562,7 +304,6 @@ export default function ActionPlanPage() {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [person, setPerson] = useState<'self' | 'spouse'>('self')
-  const [expandedItem, setExpandedItem] = useState<string | null>(null)
   const ratioPerson = person === 'spouse' ? 'spouse' : 'client'
   const { data: cp } = useQuery({ queryKey: ['client-profile'], queryFn: () => api.get('/client-profile').then(r => r.data) })
   const clientName = cp?.firstName ? `คุณ${cp.firstName}` : 'ลูกค้า'
@@ -630,10 +371,6 @@ export default function ActionPlanPage() {
   })
   const update = useMutation({
     mutationFn: ({ id, body }: { id: string; body: any }) => api.patch(`/action-items/${id}`, body).then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['action-items'] }),
-  })
-  const remove = useMutation({
-    mutationFn: (id: string) => api.delete(`/action-items/${id}`).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['action-items'] }),
   })
   const saveReview = useMutation({
@@ -855,12 +592,13 @@ export default function ActionPlanPage() {
         const ownerLabel = (o: string) => o === 'client' ? 'ลูกค้า' : o === 'advisor' ? 'ที่ปรึกษา' : o === 'spouse' ? 'คู่สมรส' : (o || '—')
         const fmtDate = (d: string) => { if (!d) return '—'; const dt = new Date(d); return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: '2-digit' }) }
         const sectionOf = (cat: string) => PLAN_SECTIONS.find(x => x.cats.includes(cat)) ?? PLAN_SECTIONS.find(x => x.key === 'investment')!
+        const PR_THAI: Record<string, string> = { 'สูง': '#ef4444', 'กลาง': '#f59e0b', 'ต่ำ': '#8b9198' }
         const planLines = items.flatMap((it: Item) => {
           const sec = sectionOf(it.category)
           const rows = Array.isArray(it.subPlan) ? it.subPlan : []
-          const base = (plan: string, amount: number, schedule: string, owner: string) => ({ plan: plan || it.title, amount, schedule, owner: ownerLabel(owner), priority: it.priority, color: sec.color, done: it.status === 'done' })
-          if (!rows.length) return [base(it.title, Number(it.target) || 0, it.dueDate ? fmtDate(it.dueDate) : '', it.owner)]
-          return rows.map((r: any) => base(r.desc || r.method || r.who || '', Number(String(r.amount ?? r.sumInsured ?? r.premium ?? '').replace(/,/g, '')) || 0, r.schedule ? fmtDate(r.schedule) : '', r.owner || it.owner))
+          const base = (plan: string, amount: number, schedule: string, owner: string, priority: string) => ({ plan: plan || it.title, amount, schedule, owner: ownerLabel(owner), priority, color: sec.color, done: it.status === 'done' })
+          if (!rows.length) return [base(it.title, Number(it.target) || 0, it.dueDate ? fmtDate(it.dueDate) : '', it.owner, PRIORITY[it.priority]?.label ?? '')]
+          return rows.map((r: any) => base(r.desc || r.method || r.who || '', Number(String(r.amount ?? r.sumInsured ?? r.premium ?? '').replace(/,/g, '')) || 0, r.schedule ? fmtDate(r.schedule) : '', r.owner || it.owner, r.priority || ''))
         })
         const visible = cleanOrder
           .map(k => PLAN_SECTIONS.find(s => s.key === k)!)
@@ -908,39 +646,27 @@ export default function ActionPlanPage() {
                   {/* ② คำแนะนำนักวางแผน */}
                   <AdviceBox value={advice[sec.key] || ''} color={sec.color} onSave={t => saveAdvice.mutate({ section: sec.key, text: t })} />
 
-                  {/* ③ แผนดำเนินการ — checklist */}
-                  <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid var(--card-border)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: .4, textTransform: 'uppercase', color: sec.color, display: 'flex', alignItems: 'center', gap: 5 }}><ListChecks size={14} /> แผนดำเนินการ</span>
-                      <button onClick={() => create.mutate({ title: 'รายการใหม่', category: sec.cats[0], priority: 'medium', owner: 'advisor', source: 'manual' })}
-                        title="เพิ่มรายการ" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 9px', borderRadius: 7, border: '1px solid var(--card-border)', background: 'var(--navy-900)', color: 'var(--text-secondary)', fontSize: 11.5, cursor: 'pointer' }}>
-                        <Plus size={12} /> เพิ่ม
-                      </button>
-                    </div>
-                    {secItems.length === 0
-                      ? <div style={{ fontSize: 11.5, color: 'var(--text-muted)', padding: '4px 0' }}>ยังไม่มีรายการ — เพิ่มจากคำแนะนำหรือกด "เพิ่ม"</div>
-                      : secItems.map(it => {
-                        const done = it.status === 'done'
-                        const open = expandedItem === it.id
-                        return (
-                          <div key={it.id}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '5px 0' }}>
-                              <input type="checkbox" checked={done} onChange={() => update.mutate({ id: it.id, body: { status: done ? 'todo' : 'done' } })}
-                                style={{ width: 16, height: 16, accentColor: sec.color, cursor: 'pointer', flexShrink: 0 }} />
-                              <span onClick={() => setExpandedItem(open ? null : it.id)}
-                                style={{ flex: 1, minWidth: 0, fontSize: 12.5, cursor: 'pointer', color: done ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: done ? 'line-through' : 'none', opacity: done ? .65 : 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: open ? 'normal' : 'nowrap' }}>{it.title}</span>
-                              <ChevronDown size={14} onClick={() => setExpandedItem(open ? null : it.id)} style={{ color: 'var(--text-muted)', cursor: 'pointer', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
-                            </div>
-                            {open && (
-                              <div style={{ margin: '4px 0 10px' }}>
-                                <ItemCard it={it} index={0} metricCtx={metricCtx} items={items}
-                                  onPatch={(id, body) => update.mutate({ id, body })} onRemove={id => { remove.mutate(id); setExpandedItem(null) }} />
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                  </div>
+                  {/* ③ แผนดำเนินการ — ตารางโดยตรง (1 ตารางต่อการ์ด) */}
+                  {(() => {
+                    const cfg = SUBPLAN_CONFIG[sec.cats[0]]
+                    const planItem = secItems[0]
+                    return (
+                      <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid var(--card-border)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: .4, textTransform: 'uppercase', color: sec.color, display: 'flex', alignItems: 'center', gap: 5 }}><ListChecks size={14} /> แผนดำเนินการ</span>
+                          {!planItem && (
+                            <button onClick={() => create.mutate({ title: sec.title, category: sec.cats[0], priority: 'medium', owner: 'advisor', source: 'manual' })}
+                              title="เพิ่มแผนดำเนินการ" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 9px', borderRadius: 7, border: '1px solid var(--card-border)', background: 'var(--navy-900)', color: 'var(--text-secondary)', fontSize: 11.5, cursor: 'pointer' }}>
+                              <Plus size={12} /> เพิ่ม
+                            </button>
+                          )}
+                        </div>
+                        {planItem
+                          ? <SubPlanTable key={planItem.id} value={planItem.subPlan} config={cfg} hideHeader onSave={rows => update.mutate({ id: planItem.id, body: { subPlan: rows } })} />
+                          : <div style={{ fontSize: 11.5, color: 'var(--text-muted)', padding: '4px 0' }}>ยังไม่มีแผน — กด "+ เพิ่ม" เพื่อเริ่มบันทึกแผนดำเนินการ</div>}
+                      </div>
+                    )
+                  })()}
                 </div>
               )
             })}
@@ -967,7 +693,7 @@ export default function ActionPlanPage() {
                         ))}
                       </div>
                       {planLines.map((l, i) => {
-                        const pr = PRIORITY[l.priority] || PRIORITY.medium
+                        const prColor = PR_THAI[l.priority] || 'var(--text-muted)'
                         return (
                           <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,2.2fr) 118px 108px 108px 92px', gap: 10, alignItems: 'center', padding: '7px 0', borderBottom: '1px solid var(--divider)' }}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: l.done ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: l.done ? 'line-through' : 'none', minWidth: 0 }}>
@@ -977,7 +703,7 @@ export default function ActionPlanPage() {
                             <span style={{ fontSize: 12.5, fontFamily: 'monospace', textAlign: 'right', color: l.amount > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>{l.amount > 0 ? fmt(l.amount) : '—'}</span>
                             <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{l.schedule}</span>
                             <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{l.owner}</span>
-                            <span style={{ fontSize: 11.5, fontWeight: 700, color: pr.color }}>{pr.label}</span>
+                            <span style={{ fontSize: 11.5, fontWeight: 700, color: prColor }}>{l.priority || '—'}</span>
                           </div>
                         )
                       })}
