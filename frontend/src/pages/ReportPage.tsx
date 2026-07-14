@@ -58,7 +58,9 @@ function calcRetire(p: any, asset: number) {
   const yearsAfter = Math.max(0, (p.lifeExpectancy ?? 85) - (p.retirementAge ?? 60))
   const g = (p.inflationRate ?? 3) / 100, i = (p.preRetirementReturn ?? 8) / 100, r = (p.postRetirementReturn ?? 5) / 100
   const realRate = (1 + r) / (1 + g) - 1
-  const annualAtRet = ((p.monthlyLiving ?? 0) + (p.monthlyHealth ?? 0)) * 12 * Math.pow(1 + g, yearsTo)
+  const annualAtRet = p.needMethod === 'replacement'
+    ? (p.annualIncome ?? 0) * Math.pow(1 + (p.savingsGrowthRate ?? 0) / 100, yearsTo) * ((p.replacementRate ?? 70) / 100)
+    : ((p.monthlyLiving ?? 0) + (p.monthlyHealth ?? 0)) * 12 * Math.pow(1 + g, yearsTo)
   const pvLiving = pvAnnuity(realRate, yearsAfter, annualAtRet)
   const pvLegacy = (p.legacy ?? 0) / Math.pow(1 + r, yearsAfter)
   let pvGoals = 0

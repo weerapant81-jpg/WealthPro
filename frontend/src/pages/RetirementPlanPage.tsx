@@ -49,6 +49,10 @@ export interface Person {
   monthlyHealth: number
   legacy: number
   goals: Goal[]
+  // วิธีคำนวณความต้องการหลังเกษียณ: expense = ประเมินจากค่าใช้จ่าย (default) · replacement = รายได้ทดแทน
+  needMethod?: 'expense' | 'replacement'
+  annualIncome?: number       // รายได้ปัจจุบัน/ปี (auto จากรายรับ แก้ทับได้) — ใช้กับวิธีรายได้ทดแทน
+  replacementRate?: number    // % ความต้องการรายได้ ณ วันเกษียณ (default 70)
 }
 
 const defaultPerson = (
@@ -58,6 +62,7 @@ const defaultPerson = (
   name, currentAge, retirementAge, lifeExpectancy,
   inflationRate: 3, preRetirementReturn: 8, postRetirementReturn: 5,
   savingsGrowthRate: 5,
+  needMethod: 'expense', annualIncome: 0, replacementRate: 70,
   monthlyLiving, monthlyHealth: 2000,
   legacy: 1_000_000,
   goals: [
@@ -139,7 +144,12 @@ export function calcPerson(p: Person, assetAtRetirement: number, extraAssets = 0
   const realRate = (1 + r) / (1 + g) - 1
 
   const monthlyTotal = p.monthlyLiving + p.monthlyHealth
-  const annualAtRetirement = monthlyTotal * 12 * Math.pow(1 + g, yearsTo)
+  // ความต้องการ/ปี ณ วันเกษียณ — ตามวิธีที่เลือก
+  //  expense (default): ค่าใช้จ่ายปัจจุบัน โตด้วยเงินเฟ้อถึงปีเกษียณ
+  //  replacement: รายได้ปีสุดท้ายก่อนเกษียณ (รายได้ปัจจุบัน โตด้วยอัตราเพิ่มเงินเดือน) × replacement %
+  const annualAtRetirement = p.needMethod === 'replacement'
+    ? (p.annualIncome ?? 0) * Math.pow(1 + (p.savingsGrowthRate ?? 0) / 100, yearsTo) * ((p.replacementRate ?? 70) / 100)
+    : monthlyTotal * 12 * Math.pow(1 + g, yearsTo)
 
   // ค่าใช้จ่ายเริ่มถอน ณ ปีอายุเกษียณ (จ่ายต้นปี) → annuity-due
   const pvLiving = pvAnnuity(realRate, retYears, annualAtRetirement) * (1 + realRate)
@@ -502,6 +512,19 @@ function PersonPanel({ data, onChange, color, isSelf }: {
       filledRate.current = true
     }
   }, [clientProfile])
+  // Auto-fill annualIncome (สำหรับวิธีรายได้ทดแทน) จากรายรับทุกแหล่ง — เติมเมื่อยังว่าง (0)
+  useEffect(() => {
+    if (!clientProfile || (data.annualIncome ?? 0) > 0) return
+    const srcs: any[] = isSelf ? (clientProfile.incomeSources ?? []) : (clientProfile.spouseIncomeSources ?? [])
+    const toN = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
+    let annual = srcs.filter((s: any) => toN(s.amount) > 0)
+      .reduce((sum: number, s: any) => sum + (s.label === 'โบนัส' ? toN(s.amount) : toN(s.amount) * 12), 0)
+    if (annual <= 0) {
+      const spJob = Array.isArray(clientProfile.spouseJobs) ? clientProfile.spouseJobs[0] : null
+      annual = (isSelf ? toN(clientProfile.salary) : (toN(spJob?.salary) || toN(clientProfile.spouseIncome))) * 12
+    }
+    if (annual > 0) onChange({ ...data, annualIncome: Math.round(annual) })
+  }, [clientProfile, data.annualIncome])
 
   const projectedAsset = useProjectedAssetAtRetirement(retAgeSetting, isSelf)
   const portReturn = usePortfolioReturn(isSelf)   // อัตราผลตอบแทนพอร์ต (fallback เมื่อไม่มีข้อมูล Monte Carlo)
@@ -610,8 +633,28 @@ function PersonPanel({ data, onChange, color, isSelf }: {
         </div>
 
         <SectionLabel>ความต้องการหลังเกษียณ</SectionLabel>
-        <InputRow label="ค่าใช้จ่าย/เดือน" value={data.monthlyLiving} onChange={v => set('monthlyLiving', v)} unit="บาท" money />
-        <InputRow label="ค่าสุขภาพ/เดือน" value={data.monthlyHealth} onChange={v => set('monthlyHealth', v)} unit="บาท" money />
+        {/* สลับวิธีคำนวณ: ประเมินจากค่าใช้จ่าย ↔ รายได้ทดแทน */}
+        <div style={{ display: 'flex', gap: 4, background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 8, padding: 3, marginBottom: 8 }}>
+          {([['expense', 'จากค่าใช้จ่าย'], ['replacement', 'รายได้ทดแทน']] as const).map(([m, lbl]) => (
+            <button key={m} onClick={() => set('needMethod', m)}
+              style={{ flex: 1, padding: '5px 8px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 11.5, fontWeight: 700,
+                background: (data.needMethod ?? 'expense') === m ? `${color}22` : 'transparent', color: (data.needMethod ?? 'expense') === m ? color : 'var(--text-muted)' }}>
+              {lbl}
+            </button>
+          ))}
+        </div>
+        {(data.needMethod ?? 'expense') === 'expense' ? <>
+          <InputRow label="ค่าใช้จ่าย/เดือน" value={data.monthlyLiving} onChange={v => set('monthlyLiving', v)} unit="บาท" money />
+          <InputRow label="ค่าสุขภาพ/เดือน" value={data.monthlyHealth} onChange={v => set('monthlyHealth', v)} unit="บาท" money />
+        </> : <>
+          <InputRow label="รายได้ปัจจุบัน/ปี" value={data.annualIncome ?? 0} onChange={v => set('annualIncome', v)} unit="บาท" money />
+          <InputRow label="% ความต้องการรายได้" value={data.replacementRate ?? 70} onChange={v => set('replacementRate', v)} unit="%" step={5} pct />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
+            <span style={{ flex: 1, fontSize: 12.5, color: 'var(--text-secondary)' }}>รายได้ปีสุดท้ายก่อนเกษียณ</span>
+            <span style={{ fontFamily: 'monospace', fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)' }}>{fmt((data.annualIncome ?? 0) * Math.pow(1 + (data.savingsGrowthRate ?? 0) / 100, Math.max(0, retAgeSetting - currentAgeSetting)), 0)} <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>บาท</span></span>
+          </div>
+          <div style={{ fontSize: 10.5, color: 'var(--text-muted)', padding: '2px 0 4px' }}>โตด้วยอัตราเพิ่มเงินเดือน {data.savingsGrowthRate ?? 0}%/ปี · ความต้องการ = {data.replacementRate ?? 70}% ของรายได้ปีสุดท้าย</div>
+        </>}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
           <span style={{ flex: 1, fontSize: 12.5, color: 'var(--text-secondary)' }}>รวม ณ วันเกษียณ</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
