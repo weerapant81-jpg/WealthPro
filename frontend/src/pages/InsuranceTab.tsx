@@ -6,6 +6,7 @@ import { card, inp, sel, btn } from '../styles/dark'
 import { MoneyInputStr } from '../components/MoneyInput'
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts'
 import { ChartFrame, TableExcelButton } from '../components/exportable'
+import { useInsuranceReadiness } from '../hooks/useInsuranceReadiness'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -601,6 +602,10 @@ const AXES = [
 
 function InsuranceRadarChart() {
   const [selectedPerson, setSelectedPerson] = useState<string>('all')
+  // เกณฑ์ทุนชีวิต/ทุพพลภาพ = ทุนที่คำนวณจริงจากหน้าวางแผนประกัน (แหล่งเดียว)
+  const insSelf = useInsuranceReadiness('client')
+  const insSpouse = useInsuranceReadiness('spouse')
+  const { data: cpRadar } = useQuery({ queryKey: ['client-profile'], queryFn: () => api.get('/client-profile').then(r => r.data), retry: false })
   const { data: policies = [] } = useQuery<LifePolicy[]>({
     queryKey: ['life-insurances'],
     queryFn: () => api.get('/life-insurances').then(r => r.data),
@@ -653,12 +658,29 @@ function InsuranceRadarChart() {
     opd:       fRiders.filter(r => r.riderType === 'other' && ['OPD','opd','ผู้ป่วยนอก'].some(kw => (r.planName ?? '').includes(kw))).reduce((s, r) => s + (r.coverageAmount ?? 0), 0),
   }
 
+  // จับคู่ผู้เอาประกันที่เลือก → ทุนจากแผนประกัน (self/spouse); "ทุกคน" = รวมสองคน
+  const _norm2 = (s: any) => String(s ?? '').replace(/\s+/g, '').toLowerCase()
+  const _match = (a: string, b: string) => !!a && !!b && (a.includes(b) || b.includes(a))
+  const selfNm = _norm2(`${cpRadar?.firstName ?? ''}${cpRadar?.lastName ?? ''}`)
+  const spouseNm = _norm2(`${cpRadar?.spouseProfile?.firstName ?? ''}${cpRadar?.spouseProfile?.lastName ?? ''}`)
+  const actNm = _norm2(activePerson)
+  const planOf = activePerson === 'all'
+    ? { life: (insSelf?.need ?? 0) + (insSpouse?.need ?? 0), disabled: ((insSelf as any)?.disNeed ?? 0) + ((insSpouse as any)?.disNeed ?? 0) }
+    : _match(actNm, selfNm) ? { life: insSelf?.need ?? 0, disabled: (insSelf as any)?.disNeed ?? 0 }
+      : _match(actNm, spouseNm) ? { life: insSpouse?.need ?? 0, disabled: (insSpouse as any)?.disNeed ?? 0 }
+        : { life: 0, disabled: 0 }
+  const planRef: Record<string, number | undefined> = {
+    life: planOf.life > 0 ? planOf.life : undefined,
+    disabled: planOf.disabled > 0 ? planOf.disabled : undefined,
+  }
+
   const radarData = AXES.map(a => {
     const stdAmount = annualIncome > 0 ? a.stdFactor(annualIncome) : 0
-    const refVal = a.ref ?? (stdAmount > 0 ? stdAmount : 1)
+    const planVal = planRef[a.key]
+    const refVal = planVal ?? a.ref ?? (stdAmount > 0 ? stdAmount : 1)
     const actual = Math.min(100, Math.round((raw[a.key] / refVal) * 100))
-    const benchmark = a.ref == null ? 100 : Math.min(100, Math.round((stdAmount / refVal) * 100))
-    return { subject: a.label, actual, benchmark, fullMark: 100, amount: raw[a.key] }
+    const benchmark = planVal != null ? 100 : (a.ref == null ? 100 : Math.min(100, Math.round((stdAmount / refVal) * 100)))
+    return { subject: a.label, actual, benchmark, fullMark: 100, amount: raw[a.key], recommended: planVal ?? a.ref ?? stdAmount }
   })
 
   const total = radarData.reduce((s, d) => s + d.actual, 0)

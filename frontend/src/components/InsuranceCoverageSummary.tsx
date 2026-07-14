@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { useInsuranceReadiness } from '../hooks/useInsuranceReadiness'
 
 /* สรุปความคุ้มครองประกัน (8 มิติ) — ตรรกะเดียวกับ InsuranceRadarChart ในหน้าข้อมูลการประกัน
    จับคู่ผู้เอาประกันกับลูกค้า/คู่สมรสตามชื่อ · แสดงแบบกระชับสำหรับแดชบอร์ด */
@@ -22,6 +23,8 @@ export const AXES = [
 /** ตรรกะความคุ้มครองประกัน 8 มิติ — ใช้ร่วมกันระหว่างการ์ดสรุป (ธีมมืด) และสไลด์รายงาน (ธีมสว่าง)
  *  คืน { radarData, avg, personName, hasPolicies } เพื่อกัน drift */
 export function useInsuranceCoverage(person: 'self' | 'spouse' = 'self') {
+  // เกณฑ์ทุนชีวิต/ทุพพลภาพ = ทุนที่คำนวณจริงจากหน้าวางแผนประกัน (แหล่งเดียว) — fallback สูตรมาตรฐานเมื่อยังไม่มีข้อมูล
+  const insR = useInsuranceReadiness(person === 'spouse' ? 'spouse' : 'client')
   const { data: policies = [] } = useQuery<any[]>({ queryKey: ['life-insurances'], queryFn: () => api.get('/life-insurances').then(r => r.data), retry: false })
   const { data: riders = [] } = useQuery<any[]>({ queryKey: ['all-riders'], queryFn: () => api.get('/all-riders').then(r => r.data), retry: false })
   const { data: incomes = [] } = useQuery<any[]>({ queryKey: ['incomes'], queryFn: () => api.get('/incomes').then(r => r.data), retry: false })
@@ -53,13 +56,19 @@ export function useInsuranceCoverage(person: 'self' | 'spouse' = 'self') {
     opd: fRiders.filter(r => r.riderType === 'other' && ['OPD', 'opd', 'ผู้ป่วยนอก'].some(kw => (r.planName ?? '').includes(kw))).reduce((s, r) => s + (r.coverageAmount ?? 0), 0),
   }
 
+  // เกณฑ์จากแผนประกัน: ชีวิต = ทุนตามวิธีที่เลือก (HLV/Needs) · ทุพพลภาพ = ทุนคุ้มครองทุพพลภาพที่ต้องการ
+  const planRef: Record<string, number | undefined> = {
+    life: insR && insR.need > 0 ? insR.need : undefined,
+    disabled: insR && (insR as any).disNeed > 0 ? (insR as any).disNeed : undefined,
+  }
   const radarData = AXES.map(a => {
     const stdAmount = annualIncome > 0 ? a.stdFactor(annualIncome) : 0
-    const refVal = a.ref ?? (stdAmount > 0 ? stdAmount : 1)
+    const planVal = planRef[a.key]
+    const refVal = planVal ?? a.ref ?? (stdAmount > 0 ? stdAmount : 1)
     const actual = Math.min(100, Math.round((raw[a.key] / refVal) * 100))
-    const benchmark = a.ref == null ? 100 : Math.min(100, Math.round((stdAmount / refVal) * 100))
-    // จำนวนที่ควรมี (มาตรฐาน) = ref ถ้ากำหนดไว้ ไม่งั้นใช้ค่าตามรายได้
-    const recommended = a.ref ?? stdAmount
+    const benchmark = planVal != null ? 100 : (a.ref == null ? 100 : Math.min(100, Math.round((stdAmount / refVal) * 100)))
+    // จำนวนที่ควรมี = ค่าจากแผนประกัน (ถ้ามี) → ref มาตรฐาน → ค่าตามรายได้
+    const recommended = planVal ?? a.ref ?? stdAmount
     return { key: a.key, subject: a.label, actual, benchmark, amount: raw[a.key], recommended }
   })
   const avg = Math.round(radarData.reduce((s, d) => s + d.actual, 0) / radarData.length)
