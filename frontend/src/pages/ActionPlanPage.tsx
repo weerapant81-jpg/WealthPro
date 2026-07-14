@@ -618,33 +618,6 @@ export default function ActionPlanPage() {
     sixMonthReserve: s ? 6 * s.totalMonthlyExp : 0,
   }), [s, ins, ret, edu])
 
-  // ── คำแนะนำอัตโนมัติจากการวิเคราะห์ ──
-  const suggestions = useMemo(() => {
-    const out: Array<Partial<Item> & { autoKey: string; title: string; category: string; reason: string }> = []
-    if (s) {
-      // สภาพคล่อง — เกณฑ์ CFP ~3-6 เดือน: น้อยไป (เสี่ยง) หรือ มากไป (เงินจมเสียโอกาส)
-      const months = metricCtx.emergencyMonths
-      if (months < 6) out.push({ autoKey: 'emergency-fund', title: 'เพิ่มเงินสำรองฉุกเฉินให้ครบ 6 เดือน', category: 'liquidity', priority: 'high', owner: 'client', metricKey: 'emergencyMonths', baseline: months, target: 6, reason: `ปัจจุบันสำรอง ~${months.toFixed(1)} เดือน (ต่ำกว่าเกณฑ์ 3-6 เดือน)` })
-      else if (months > 6) {
-        const excess = Math.max(0, s.liquidAssets - 6 * s.totalMonthlyExp)
-        out.push({ autoKey: 'emergency-excess', title: 'จัดสรรเงินสำรองส่วนเกินไปลงทุนเพิ่มผลตอบแทน', category: 'liquidity', priority: 'medium', owner: 'client', metricKey: 'liquidAssets', baseline: s.liquidAssets, reason: `สำรอง ~${months.toFixed(0)} เดือน (เกิน 6 เดือน · เงินจมเสียโอกาส) · ส่วนเกิน ~${baht(excess)}` })
-      }
-      // หนี้ต่อสินทรัพย์ — สูงเกิน 50% เท่านั้นที่เป็นปัญหา
-      if (metricCtx.debtToAsset > 50) out.push({ autoKey: 'reduce-debt', title: 'ลดภาระหนี้ให้ต่ำกว่า 50% ของสินทรัพย์', category: 'debt', priority: 'high', owner: 'client', metricKey: 'debtToAsset', baseline: metricCtx.debtToAsset, target: 50, reason: `หนี้ต่อสินทรัพย์ ${metricCtx.debtToAsset.toFixed(0)}% (สูงกว่าเกณฑ์ 50%)` })
-      // การออม — น้อยไป (เตรียมไม่พอ) หรือ มากเกินจนกระทบคุณภาพชีวิต/ควรลงทุนให้งอกเงย
-      if (metricCtx.savingsRate < 10) out.push({ autoKey: 'raise-savings', title: 'เพิ่มอัตราการออมให้ถึง 10% ของรายได้', category: 'savings', priority: 'medium', owner: 'client', metricKey: 'savingsRate', baseline: metricCtx.savingsRate, target: 10, reason: `ออม ~${metricCtx.savingsRate.toFixed(0)}% ของรายได้ (ต่ำกว่าเกณฑ์ 10%)` })
-      else if (metricCtx.savingsRate > 40) out.push({ autoKey: 'savings-high', title: 'ทบทวนสมดุลการออม & จัดสรรไปลงทุนเพื่อการเติบโต', category: 'savings', priority: 'low', owner: 'client', reason: `ออมสูง ~${metricCtx.savingsRate.toFixed(0)}% ของรายได้ — ควรนำไปลงทุนให้งอกเงย/ดูแลคุณภาพชีวิต` })
-    }
-    if (ins && ins.gap > 0) out.push({ autoKey: 'insurance-gap', title: 'เพิ่มทุนประกันชีวิตให้เพียงพอตามความจำเป็น', category: 'insurance', priority: 'high', owner: 'client', metricKey: 'insuranceCoverage', baseline: ins.have, target: ins.need, reason: `ทุนประกันขาดอีก ${baht(ins.gap)}` })
-    if (ret && ret.gap > 0) out.push({ autoKey: 'retirement-gap', title: 'ออมเพื่อการเกษียณเพิ่มเติม', category: 'retirement', priority: 'high', owner: 'client', metricKey: 'retirementAssets', baseline: ret.have, target: ret.needed, reason: `เงินเกษียณขาดอีก ${baht(ret.gap)} (ออม ${fmt(ret.annualSavings)}/ปี)` })
-    if (edu && edu.childCount > 0) out.push({ autoKey: 'education-fund', title: 'เริ่มเก็บทุนการศึกษาบุตร', category: 'education', priority: 'medium', owner: 'client', baseline: 0, reason: `บุตร ${edu.childCount} คน · ค่าเล่าเรียนรวม ${baht(edu.totalNominal)} · ออม ~${fmt(edu.monthlySaving)}/เดือน` })
-    out.push({ autoKey: 'make-will', title: 'จัดทำพินัยกรรม & ตรวจสอบผู้รับผลประโยชน์', category: 'estate', priority: 'medium', owner: 'client', reason: 'ให้การส่งต่อมรดกเป็นไปตามความประสงค์' })
-    out.push({ autoKey: 'tax-deduction', title: 'ใช้สิทธิลดหย่อนภาษีให้เต็มเพดาน', category: 'tax', priority: 'low', owner: 'client', reason: 'RMF/SSF/ประกัน/บริจาค ฯลฯ' })
-
-    const existingKeys = new Set(items.map(i => i.autoKey).filter(Boolean))
-    return out.filter(o => !existingKeys.has(o.autoKey))
-  }, [s, ins, ret, edu, items, metricCtx])
-
   const create = useMutation({
     mutationFn: (body: any) => api.post('/action-items', { ...body, person }).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['action-items'] }),
@@ -817,7 +790,6 @@ export default function ActionPlanPage() {
       {isLoading ? <div style={{ ...card, color: 'var(--text-muted)', fontSize: 13 }}>กำลังโหลด...</div> : (() => {
         const KNOWN = new Set(PLAN_SECTIONS.flatMap(x => x.cats))
         const itemsFor = (sec: typeof PLAN_SECTIONS[number]) => items.filter(it => sec.cats.includes(it.category) || (sec.key === 'investment' && !KNOWN.has(it.category)))
-        const sugFor = (sec: typeof PLAN_SECTIONS[number]) => suggestions.filter(sg => sec.cats.includes(sg.category) || (sec.key === 'investment' && !KNOWN.has(sg.category)))
         const warnSecs = PLAN_SECTIONS.filter(x => sectionStatus(x.key).color === AMBER)
         return <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 460px), 1fr))', gap: 20, alignItems: 'start' }}>
@@ -826,7 +798,6 @@ export default function ActionPlanPage() {
               if (sec.key === 'education' && !(edu && edu.childCount > 0)) return null
               const st = sectionStatus(sec.key)
               const secItems = itemsFor(sec)
-              const secSug = sugFor(sec)
               return (
                 <div key={sec.key} style={{ ...card, display: 'flex', flexDirection: 'column', minHeight: 440 }}>
                   {/* header */}
@@ -846,21 +817,6 @@ export default function ActionPlanPage() {
 
                   {/* ② คำแนะนำนักวางแผน */}
                   <AdviceBox value={advice[sec.key] || ''} color={sec.color} onSave={t => saveAdvice.mutate({ section: sec.key, text: t })} />
-
-                  {/* คำแนะนำอัตโนมัติ */}
-                  {secSug.map(sg => (
-                    <div key={sg.autoKey} style={{ display: 'flex', gap: 9, alignItems: 'center', padding: '8px 11px', borderRadius: 10, background: 'var(--navy-900)', border: `1px dashed ${sec.color}44`, marginBottom: 8 }}>
-                      <Sparkles size={14} style={{ color: sec.color, flexShrink: 0 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{sg.title}</div>
-                        <div style={{ fontSize: 10.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(sg as any).reason}</div>
-                      </div>
-                      <button onClick={() => create.mutate({ ...sg, source: 'auto' })} disabled={create.isPending}
-                        title="เพิ่มเข้าแผน" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '4px 9px', borderRadius: 7, border: `1px solid ${sec.color}`, background: `${sec.color}18`, color: sec.color, fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                        <Plus size={11} /> เพิ่ม
-                      </button>
-                    </div>
-                  ))}
 
                   {/* ③ แผนดำเนินการ — checklist */}
                   <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid var(--card-border)' }}>
