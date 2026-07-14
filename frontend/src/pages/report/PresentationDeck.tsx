@@ -1663,9 +1663,9 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
             const cellW = `${(100 / (f.ages.length + 2)).toFixed(2)}%`
             // ย่อขนาดตามจำนวนแถวจริง ให้ตารางจบถึง "กระแสเงินสดสุทธิ" ใน 1 หน้าเสมอ
             const totalRows = f.incomeLines.length + f.fixedLines.length + f.varLines.length + f.savLines.length + f.goalLines.length + 15
-            const rowH = Math.max(9, Math.min(17, Math.floor(600 / totalRows)))
+            const rowH = Math.max(9, Math.min(20, Math.floor(650 / totalRows)))
             const padY = rowH >= 14 ? 2 : 1
-            const fz = Math.max(5.5, Math.min(8.5, rowH - 2 * padY - 3))
+            const fz = Math.max(5.5, Math.min(10.5, rowH - 2 * padY - 3))
             const num = (v: number, c?: string, b?: boolean): React.CSSProperties => ({ padding: `${padY}px 3px`, textAlign: 'right', fontFamily: 'monospace', fontSize: fz, lineHeight: 1.2, color: c ?? (v > 0 ? INK : '#c3ccd6'), fontWeight: b ? 800 : 400, whiteSpace: 'nowrap' })
             const lbl = (indent = false, b = false, c?: string): React.CSSProperties => ({ padding: `${padY}px 3px ${padY}px ${indent ? 10 : 3}px`, textAlign: 'left', fontSize: fz, lineHeight: 1.2, color: c ?? (b ? INK : SUB), fontWeight: b ? 800 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 150 })
             const SecRow = ({ title, color }: { title: string; color: string }) => (
