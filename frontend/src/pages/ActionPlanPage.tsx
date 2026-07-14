@@ -518,7 +518,7 @@ function ItemCard({ it, index, metricCtx, items, onPatch, onRemove }: {
 
 // ── 6 ด้านหลัก CFP (Holistic Financial Planning) ──
 const PLAN_SECTIONS: { key: string; title: string; sub: string; icon: React.ElementType; color: string; cats: string[] }[] = [
-  { key: 'liquidity', title: 'การวางแผนสภาพคล่อง', sub: 'เงินสำรองฉุกเฉิน & การจัดการสภาพคล่อง', icon: Wallet, color: '#06b6d4', cats: ['liquidity', 'savings', 'debt'] },
+  { key: 'liquidity', title: 'การบริหารสภาพคล่อง/หนี้สิน', sub: 'สภาพคล่อง · หนี้สิน · การออม/ลงทุน', icon: Wallet, color: '#06b6d4', cats: ['liquidity', 'savings', 'debt'] },
   { key: 'investment', title: 'การวางแผนการลงทุน', sub: 'จัดพอร์ตให้สอดคล้องเป้าหมาย ผลตอบแทน และความเสี่ยง', icon: TrendingUp, color: '#10b981', cats: ['investment', 'education', 'other'] },
   { key: 'insurance', title: 'การวางแผนประกัน & ความเสี่ยง', sub: 'ป้องกันความเสี่ยงไม่ให้เป้าหมายทางการเงินสะดุด', icon: ShieldCheck, color: '#3b82f6', cats: ['insurance'] },
   { key: 'retirement', title: 'การวางแผนเกษียณอายุ', sub: 'เงินก้อนหลังเกษียณ & แผนสะสมเงิน', icon: Target, color: '#00cfc1', cats: ['retirement'] },
@@ -546,6 +546,19 @@ function AdviceBox({ value, color, onSave }: { value: string; color: string; onS
 }
 
 const money = (n: number) => n >= 1e6 ? `฿${(n / 1e6).toFixed(1)}M` : `฿${fmt(n)}`
+
+// อัตราส่วนทางการเงิน + เกณฑ์มาตรฐาน (ตรงกับหน้าอัตราส่วนทางการเงิน) — ใช้แสดงตัวที่ไม่ผ่านเกณฑ์
+const RATIO_INFO: Record<string, { name: string; standard: string; unit: 'times' | 'months' | 'pct'; group: string }> = {
+  ratio1: { name: 'สภาพคล่อง', standard: '> 1 เท่า', unit: 'times', group: 'สภาพคล่อง' },
+  ratio2: { name: 'สภาพคล่องพื้นฐาน', standard: '3–6 เดือน', unit: 'months', group: 'สภาพคล่อง' },
+  ratio3: { name: 'สินทรัพย์สภาพคล่องต่อความมั่งคั่งสุทธิ', standard: '> 15%', unit: 'pct', group: 'สภาพคล่อง' },
+  ratio4: { name: 'หนี้สินต่อสินทรัพย์', standard: '< 50%', unit: 'pct', group: 'หนี้สิน' },
+  ratio5: { name: 'ภาระผ่อนหนี้ต่อรายได้', standard: '< 35–45%', unit: 'pct', group: 'หนี้สิน' },
+  ratio6: { name: 'หนี้ไม่จดจำนองต่อรายได้', standard: '< 15–20%', unit: 'pct', group: 'หนี้สิน' },
+  ratio7: { name: 'การออม', standard: '≥ 10%', unit: 'pct', group: 'ออม/ลงทุน' },
+  ratio8: { name: 'การลงทุน', standard: '≥ 50%', unit: 'pct', group: 'ออม/ลงทุน' },
+}
+const fmtRatio = (v: number, unit: string) => unit === 'times' ? `${v.toFixed(2)} เท่า` : unit === 'months' ? `${v.toFixed(1)} เดือน` : `${v.toFixed(0)}%`
 
 // แถบความคืบหน้า (label + ค่า + %)
 function MetricBar({ label, valueText, pct, color }: { label: string; valueText: string; pct: number; color: string }) {
@@ -680,6 +693,7 @@ export default function ActionPlanPage() {
   const renderMetrics = (key: string): React.ReactNode => {
     if (key === 'liquidity') {
       if (!s) return null
+      const fails = (ratios?.ratios ?? []).filter((r: any) => r.state !== 'good' && r.state !== 'nodata' && r.value != null && RATIO_INFO[r.key])
       return <>
         <MetricBar label="เงินสำรองฉุกเฉิน" valueText={`${money(metricCtx.liquidAssets)} / ${money(metricCtx.sixMonthReserve)}`}
           pct={metricCtx.sixMonthReserve > 0 ? metricCtx.liquidAssets / metricCtx.sixMonthReserve * 100 : 0} color="var(--cyan)" />
@@ -687,6 +701,27 @@ export default function ActionPlanPage() {
           <StatBox label="อัตราการออม" value={`${metricCtx.savingsRate.toFixed(0)}%`} color={metricCtx.savingsRate < 10 ? AMBER : GREEN} />
           <StatBox label="หนี้ / สินทรัพย์" value={`${metricCtx.debtToAsset.toFixed(0)}%`} color={metricCtx.debtToAsset > 50 ? AMBER : undefined} />
         </StatRow>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: .5, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6 }}>อัตราส่วนที่ต้องปรับปรุง</div>
+          {fails.length === 0
+            ? <div style={{ fontSize: 12, color: GREEN, padding: '2px 0' }}>ทุกอัตราส่วนผ่านเกณฑ์มาตรฐาน ✓</div>
+            : fails.map((r: any) => {
+              const m = RATIO_INFO[r.key]
+              const col = r.state === 'danger' ? '#f43f5e' : AMBER
+              const adv = ratios?.advice?.[r.key]
+              return (
+                <div key={r.key} style={{ padding: '6px 0', borderTop: '1px solid var(--divider)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-primary)' }}>
+                      {m.name} <span style={{ fontSize: 9.5, color: 'var(--text-muted)', background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 5, padding: '1px 5px' }}>{m.group}</span>
+                    </span>
+                    <span style={{ fontSize: 12.5, fontWeight: 700, fontFamily: 'monospace', color: col, whiteSpace: 'nowrap', flexShrink: 0 }}>{fmtRatio(r.value, m.unit)}</span>
+                  </div>
+                  <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 1 }}>เกณฑ์ {m.standard}{adv ? ` · ${adv}` : ''}</div>
+                </div>
+              )
+            })}
+        </div>
       </>
     }
     if (key === 'insurance') {
