@@ -31,12 +31,13 @@ const toMonthly = (a: number, f: string) => f === 'QUARTERLY' ? a / 3 : f === 'A
 const pct = (part: number, whole: number) => whole > 0 ? Math.round((part / whole) * 100) : 0
 
 // light palette — refined financial editorial (private-bank)
-const INK = '#0c2035', SUB = '#4b5a6b', MUTED = '#93a1b0', LINE = '#e9eef4'
+const INK = '#0f172a', SUB = '#4b5a6b', MUTED = '#93a1b0', LINE = '#e9eef4'
 const PAPER = '#f7fafd'            // พื้นการ์ดโทนเย็นบางๆ
 const HAIR = '#eef2f7'             // เส้นคั่นบางมาก
-const CY = '#0284c7', GR = '#10b981', AM = '#f59e0b', RD = '#f43f5e', VI = '#8b5cf6'
+// สีหลัก = teal เดียวกับรายงานฉบับเต็ม (ใช้เฉด 600 เพื่อ contrast บนพื้นขาว)
+const CY = '#0d9488', GR = '#10b981', AM = '#f59e0b', RD = '#f43f5e', VI = '#8b5cf6'
 // categorical — ลำดับคงที่ (validated CVD-safe, light mode) ห้ามสลับ/วนสี
-const PIE_COLORS = ['#0284c7', '#10b981', '#f59e0b', '#8b5cf6', '#f43f5e', '#0ea5e9', '#14b8a6', '#f97316']
+const PIE_COLORS = ['#0d9488', '#10b981', '#f59e0b', '#8b5cf6', '#f43f5e', '#0ea5e9', '#14b8a6', '#f97316']
 
 /* คอลัมน์ของ sub-plan (แผนดำเนินการ) ต่อด้าน — ตรงกับ SUBPLAN_CONFIG ใน ActionPlanPage */
 const SUBPLAN_COLS: Record<string, { key: string; label: string; type: 'text' | 'money' | 'date' }[]> = {
@@ -400,7 +401,7 @@ function AdvisorComment({ slideKey, label, comment, hidden, onEdit, onToggleHide
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, fontWeight: 800, letterSpacing: '0.16em', color: SUB, textTransform: 'uppercase' }}><span style={{ width: 12, height: 2, borderRadius: 2, background: CY }} />คำแนะนำของที่ปรึกษา</div>
         <div className="no-print" style={{ display: 'flex', gap: 6 }}>
           <button onClick={() => onEdit(slideKey)}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', background: '#eff6ff', border: `1px solid ${CY}`, borderRadius: 999, color: CY, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', background: '#f0fdfa', border: `1px solid ${CY}`, borderRadius: 999, color: CY, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
             <Pencil size={12} /> {comment ? 'แก้ไข' : 'เขียน'}
           </button>
           <button onClick={() => onToggleHide(slideKey)} title="ซ่อนคำแนะนำหน้านี้"
@@ -971,7 +972,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
               { s: 'Step 2', t: 'ความเสี่ยงและการประกันภัย', ic: ShieldCheck, c: VI },
               { s: 'Step 3', t: 'การออมและลงทุนเพื่อเป้าหมาย', ic: PiggyBank, c: GR },
               { s: 'Step 4', t: 'การเกษียณอายุ', ic: Wallet, c: AM },
-              { s: 'Step 5', t: 'ภาษีและมรดก', ic: Receipt, c: '#0ea5e9' },
+              { s: 'Step 5', t: 'ภาษีและมรดก', ic: Receipt, c: '#0d9488' },
               { s: 'Step 6', t: 'การวางแผนการเงินแบบองค์รวม', ic: Target, c: RD },
             ].map((x, i) => (
               <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'center', background: PAPER, border: `1px solid ${LINE}`, borderRadius: 14, padding: '18px 20px' }}>
@@ -1285,7 +1286,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                   {/* แท่งซ้าย = เงินที่ต้องการ · แท่งขวา = เงินที่มี (ซ้อนย่อยตามแหล่งเงิน) — สี categorical + คั่น 2px */}
                   <Bar dataKey="ต้องการ" fill="#f59e0b" radius={[4, 4, 0, 0]} name="เงินที่ต้องการ" maxBarSize={64} />
                   <Bar dataKey="สินทรัพย์" stackId="have" fill="#10b981" stroke="#fff" strokeWidth={1} maxBarSize={64} />
-                  <Bar dataKey="ปกส" stackId="have" fill="#0284c7" stroke="#fff" strokeWidth={1} maxBarSize={64} />
+                  <Bar dataKey="ปกส" stackId="have" fill="#0d9488" stroke="#fff" strokeWidth={1} maxBarSize={64} />
                   <Bar dataKey="PVD" stackId="have" fill="#8b5cf6" stroke="#fff" strokeWidth={1} maxBarSize={64} />
                   <Bar dataKey="ชดเชย" stackId="have" fill="#f43f5e" stroke="#fff" strokeWidth={1} radius={[4, 4, 0, 0]} maxBarSize={64} />
                 </BarChart>
@@ -1419,7 +1420,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
 
         {/* ── 15. ภาษีเงินได้ ── */}
         <Slide slideId="tax" footer={commentFooter('tax')}>
-          <SlideHead icon={Receipt} kicker="Income Tax" title="ภาษีเงินได้" accent="#0ea5e9" />
+          <SlideHead icon={Receipt} kicker="Income Tax" title="ภาษีเงินได้" accent={CY} />
           <TwoCol>
             {people.map(p => {
               const st = taxPlan?.[p.key]
