@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { calc, defaultState, type TaxState } from '../lib/tax'
+import { calc, calcTax, defaultState, type TaxState } from '../lib/tax'
 import { createPortal } from 'react-dom'
 import { Plus, Trash2, Check, Loader2, RefreshCw, X, Maximize2 } from 'lucide-react'
 import { ResponsiveContainer, ComposedChart, Bar, Line as RLine, XAxis, YAxis, Tooltip, CartesianGrid, Legend, Cell, ReferenceLine } from 'recharts'
@@ -14,8 +14,8 @@ const fmt0 = (n: number) => (isFinite(n) ? Math.round(n) : 0).toLocaleString('th
 const toMonthly = (amount: number, freq: string) => freq === 'QUARTERLY' ? amount / 3 : freq === 'ANNUALLY' ? amount / 12 : amount
 const uid = () => Math.random().toString(36).slice(2, 9)
 
-type Line = { id: string; label: string; base: number; growth: number; startAge: number; endAge: number; auto?: boolean; ov?: Record<string, number> }
-type CashflowData = {
+export type Line = { id: string; label: string; base: number; growth: number; startAge: number; endAge: number; auto?: boolean; ov?: Record<string, number> }
+export type CashflowData = {
   incomeWork: Line[]
   incomeAsset: Line[]
   expFixed: Line[]
@@ -25,13 +25,16 @@ type CashflowData = {
   goalRetire: Line[]
   goalInsurance: Line[]
   deductManual: Line[]
+  // override ภาษีรายปี: แก้ "ค่าใช้จ่าย"/"ค่าลดหย่อนรวม" ทับค่าคำนวณ (key = อายุ)
+  taxOv?: Record<string, { exp?: number; ded?: number }>
 }
+type LineKey = Exclude<keyof CashflowData, 'taxOv'>
 const emptyData = (): CashflowData => ({
   incomeWork: [], incomeAsset: [], expFixed: [], expVar: [], expSaving: [],
   goalEducation: [], goalRetire: [], goalInsurance: [], deductManual: [],
 })
 
-const lineAt = (l: Line, age: number, retireAge: number): number => {
+export const lineAt = (l: Line, age: number, retireAge: number): number => {
   const o = l.ov?.[String(age)]
   if (o != null) return o   // override รายช่อง (เช่น ที่อายุเกษียณ)
   if (age < l.startAge || age > l.endAge) return 0
@@ -42,7 +45,7 @@ const lineAt = (l: Line, age: number, retireAge: number): number => {
   const anchor = l.ov?.[String(retireAge)] ?? l.base * Math.pow(g, retireAge - l.startAge)
   return anchor * Math.pow(g, age - retireAge)
 }
-const sumAt = (lines: Line[], age: number, retireAge: number) => lines.reduce((s, l) => s + lineAt(l, age, retireAge), 0)
+export const sumAt = (lines: Line[], age: number, retireAge: number) => lines.reduce((s, l) => s + lineAt(l, age, retireAge), 0)
 
 /* ── รายการหักอัตโนมัติที่ไม่ได้อยู่ใน /expenses: ประกันสังคม / PVD / เบี้ยประกันชีวิต ── */
 const _norm = (s: any) => String(s ?? '').replace(/\s+/g, '').toLowerCase()
@@ -64,6 +67,21 @@ function autoFixedItems(isSelf: boolean, cp: any, lifeInsurances: any[], current
     .reduce((s, p) => s + (p.premium || 0), 0)
   if (lifeAnnual > 0) out.push({ id: uid(), label: 'เบี้ยประกันชีวิต', base: lifeAnnual, growth: 0, startAge: currentAge, endAge: retireAge - 1, auto: true })
   return out
+}
+
+/* ── ช่องแก้ไขภาษีรายปี (ค่าใช้จ่าย/ลดหย่อน) — เว้นว่าง = กลับไปใช้ค่าคำนวณ ── */
+function TaxCell({ value, overridden, onChange }: { value: number; overridden: boolean; onChange: (v: number | null) => void }) {
+  const disp = Math.round(value).toLocaleString('en-US')
+  const [text, setText] = useState(disp)
+  const [focus, setFocus] = useState(false)
+  useEffect(() => { if (!focus) setText(disp) }, [disp, focus])
+  const commit = () => { setFocus(false); const r = text.replace(/,/g, '').trim(); if (r === '') onChange(null); else if (/^\d+$/.test(r)) onChange(Number(r)) }
+  return (
+    <input value={text} inputMode="numeric" title="แก้ไขได้ — เว้นว่างเพื่อกลับไปใช้ค่าคำนวณ"
+      onFocus={() => setFocus(true)} onChange={e => setText(e.target.value)} onBlur={commit}
+      onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+      style={{ width: 88, padding: '2px 5px', textAlign: 'right', background: overridden ? 'rgba(245,158,11,0.12)' : 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 4, color: overridden ? '#fbbf24' : 'var(--text-primary)', fontSize: 11, fontFamily: 'monospace', outline: 'none' }} />
+  )
 }
 
 /* ── auto-seed from existing data ── */
@@ -147,7 +165,7 @@ function seedData(
 /* ── tax per year: สร้าง TaxState จากบรรทัด project แล้ว ── */
 // คีย์ที่เป็น "เงินได้" — เอาจากงบ (โปรเจกต์รายปี); ที่เหลือ (ค่าลดหย่อน/สถานะบุคคล) ดึงจากหน้าวางแผนภาษี
 const INCOME_KEYS = new Set(['income40_1', 'income40_2', 'income40_3', 'interest', 'dividend', 'prof40_6', 'prof40_6type', 'income40_7', 'rental', 'other40', 'prepaid'])
-function buildTaxState(d: CashflowData, age: number, cp: any, retireAge: number, taxPlan?: TaxState | null): TaxState {
+export function buildTaxState(d: CashflowData, age: number, cp: any, retireAge: number, taxPlan?: TaxState | null): TaxState {
   const t = defaultState()
   // รายได้ (จากงบ — โปรเจกต์รายปี)
   for (const l of d.incomeWork) {
@@ -222,7 +240,14 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
   const [spouseData, setSpouseData] = useState<CashflowData>(emptyData())
   const data = isSelf ? selfData : spouseData
   const setData = isSelf ? setSelfData : setSpouseData
-  const setSec = (k: keyof CashflowData, v: Line[]) => setData(p => ({ ...p, [k]: v }))
+  const setSec = (k: LineKey, v: Line[]) => setData(p => ({ ...p, [k]: v }))
+  const setTaxOv = (age: number, k: 'exp' | 'ded', v: number | null) => setData(p => {
+    const ov = { ...(p.taxOv ?? {}) }
+    const cur = { ...(ov[String(age)] ?? {}) }
+    if (v == null) delete cur[k]; else cur[k] = v
+    if (Object.keys(cur).length) ov[String(age)] = cur; else delete ov[String(age)]
+    return { ...p, taxOv: ov }
+  })
 
   const loadedRef = useRef(false)
   useEffect(() => {
@@ -288,7 +313,16 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
       const exFixed = sumAt(data.expFixed, age, retireAge)
       const exVar = sumAt(data.expVar, age, retireAge)
       const exSaving = sumAt(data.expSaving, age, retireAge)
-      const taxBreak = age <= retireAge ? calc(buildTaxState(data, age, cp, retireAge, taxPlan?.[person] ?? null)) : undefined
+      let taxBreak = age <= retireAge ? calc(buildTaxState(data, age, cp, retireAge, taxPlan?.[person] ?? null)) : undefined
+      // override ค่าใช้จ่าย/ค่าลดหย่อน รายปี (แก้ในตารางภาษี) → คำนวณภาษีใหม่
+      const ovT = taxBreak ? data.taxOv?.[String(age)] : undefined
+      if (taxBreak && ovT && (ovT.exp != null || ovT.ded != null)) {
+        const expD = ovT.exp ?? taxBreak.expD
+        const ded = ovT.ded ?? (taxBreak.allD - taxBreak.expD)
+        const ni = Math.max(0, taxBreak.ti - expD - ded)
+        const t = calcTax(ni)
+        taxBreak = { ...taxBreak, expD, allD: expD + ded, ni, tax: t, netTax: t, eff: taxBreak.ti > 0 ? (t / taxBreak.ti) * 100 : 0 }
+      }
       const tax = taxBreak ? taxBreak.netTax : 0
       const inTotal = inWork + inAsset + retIncome
       const outTotal = exFixed + exVar + exSaving + tax + retExpense
@@ -333,10 +367,10 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
   )
 
   // ── UI ──
-  const updateLine = (secKey: keyof CashflowData, id: string, patch: Partial<Line>) =>
+  const updateLine = (secKey: LineKey, id: string, patch: Partial<Line>) =>
     setSec(secKey, data[secKey].map(l => l.id === id ? { ...l, ...patch } : l))
-  const delLine = (secKey: keyof CashflowData, id: string) => setSec(secKey, data[secKey].filter(l => l.id !== id))
-  const addLine = (secKey: keyof CashflowData, isIncome: boolean) => {
+  const delLine = (secKey: LineKey, id: string) => setSec(secKey, data[secKey].filter(l => l.id !== id))
+  const addLine = (secKey: LineKey, isIncome: boolean) => {
     // ค่าเริ่มต้นของทุกรายการ = สิ้นสุดที่อายุเกษียณ − 1 (แก้ไขเป็น "ตลอด/∞" เองได้ที่ช่องจำนวนปี)
     const endAge = retireAge - 1
     setSec(secKey, [...data[secKey], { id: uid(), label: '', base: 0, growth: isIncome ? 5 : (prof?.inflationRate ?? 3), startAge: currentAge, endAge }])
@@ -365,7 +399,7 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
   )
   // แถวรายการแก้ไขได้ — ช่องปีแรกแก้ค่าตั้งต้น, ปีถัดไปคำนวณตาม %เติบโต
   const cellInp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '3px 5px', textAlign: 'right', background: 'var(--cyan-dim)', border: '1px solid var(--card-border)', borderRadius: 4, color: 'var(--cyan)', fontSize: 11, fontFamily: 'monospace', outline: 'none' }
-  const ELine = ({ secKey, line, color }: { secKey: keyof CashflowData; line: Line; color: string }) => (
+  const ELine = ({ secKey, line, color }: { secKey: LineKey; line: Line; color: string }) => (
     <tr key={line.id}>
       <td style={{ ...tdLabel, paddingLeft: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -388,7 +422,7 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
         : <td key={r.age} style={{ ...td, color: lineAt(line, r.age, retireAge) > 0 ? color : 'var(--text-muted)' }}>{(() => { const v = lineAt(line, r.age, retireAge); return v > 0 ? fmt0(v) : '–' })()}</td>)}
     </tr>
   )
-  const AddRow = ({ secKey, isIncome, accent }: { secKey: keyof CashflowData; isIncome: boolean; accent: string }) => (
+  const AddRow = ({ secKey, isIncome, accent }: { secKey: LineKey; isIncome: boolean; accent: string }) => (
     <tr><td style={{ ...tdLabel, paddingLeft: 22 }}>
       <button onClick={() => addLine(secKey, isIncome)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', background: 'none', border: `1px dashed ${accent}55`, borderRadius: 5, color: accent, fontSize: 10.5, cursor: 'pointer' }}><Plus size={11} /> เพิ่มรายการ</button>
     </td>{rows.map(r => <td key={r.age} style={td} />)}</tr>
@@ -568,8 +602,8 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
             </thead>
             <tbody>
               <tr><td style={tdLabel}>เงินได้พึงประเมิน</td>{taxRows.map(r => <td key={r.age} style={td}>{fmt0(r.taxBreak!.ti)}</td>)}</tr>
-              <tr><td style={tdLabel}>(−) ค่าใช้จ่าย</td>{taxRows.map(r => <td key={r.age} style={td}>{fmt0(r.taxBreak!.expD)}</td>)}</tr>
-              <tr><td style={tdLabel}>(−) ค่าลดหย่อนรวม</td>{taxRows.map(r => <td key={r.age} style={td}>{fmt0(r.taxBreak!.allD - r.taxBreak!.expD)}</td>)}</tr>
+              <tr><td style={tdLabel}>(−) ค่าใช้จ่าย <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>(แก้ไขได้)</span></td>{taxRows.map(r => <td key={r.age} style={{ ...td, padding: '3px 4px' }}><TaxCell value={r.taxBreak!.expD} overridden={data.taxOv?.[String(r.age)]?.exp != null} onChange={v => setTaxOv(r.age, 'exp', v)} /></td>)}</tr>
+              <tr><td style={tdLabel}>(−) ค่าลดหย่อนรวม <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>(แก้ไขได้)</span></td>{taxRows.map(r => <td key={r.age} style={{ ...td, padding: '3px 4px' }}><TaxCell value={r.taxBreak!.allD - r.taxBreak!.expD} overridden={data.taxOv?.[String(r.age)]?.ded != null} onChange={v => setTaxOv(r.age, 'ded', v)} /></td>)}</tr>
               <tr style={{ background: 'var(--hover)' }}><td style={{ ...tdLabel, fontWeight: 700, color: 'var(--text-primary)' }}>เงินได้สุทธิ</td>{taxRows.map(r => <td key={r.age} style={{ ...td, fontWeight: 700 }}>{fmt0(r.taxBreak!.ni)}</td>)}</tr>
               <tr><td style={{ ...tdLabel, fontWeight: 700, color: '#fb923c' }}>ภาษีที่ต้องชำระ</td>{taxRows.map(r => <td key={r.age} style={{ ...td, color: '#fb923c', fontWeight: 700 }}>{fmt0(r.taxBreak!.tax)}</td>)}</tr>
               <tr><td style={tdLabel}>อัตราภาษีที่แท้จริง</td>{taxRows.map(r => <td key={r.age} style={{ ...td, color: 'var(--text-muted)' }}>{r.taxBreak!.eff.toFixed(1)}%</td>)}</tr>

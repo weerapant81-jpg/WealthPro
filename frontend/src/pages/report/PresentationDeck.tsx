@@ -6,7 +6,8 @@ import { useInsuranceReadiness } from '../../hooks/useInsuranceReadiness'
 import { useEducationReadiness } from '../../hooks/useEducationReadiness'
 import { useInsuranceCoverage } from '../../components/InsuranceCoverageSummary'
 import { buildEduChart, type ChildSetting } from '../EducationPlanPage'
-import { calc, defaultState, type TaxState } from '../../lib/tax'
+import { calc, calcTax, defaultState, type TaxState } from '../../lib/tax'
+import { lineAt, sumAt, buildTaxState, type CashflowData, type Line as CfLine } from '../ForwardCashflowTab'
 import {
   ShieldCheck, TrendingUp, PiggyBank, GraduationCap, Landmark, ClipboardCheck,
   Activity, Pencil, X, Check, User, Users, GripVertical, EyeOff, Plus,
@@ -564,6 +565,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   const { data: invProfile } = useQuery({ queryKey: ['investment-profile'], queryFn: () => api.get('/investment-profile').then(r => r.data), retry: false })
   const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: () => api.get('/profile').then(r => r.data), retry: false })
   const { data: estatePlan } = useQuery({ queryKey: ['estate-plan'], queryFn: () => api.get('/estate-plan').then(r => r.data), retry: false })
+  const { data: cfPlan } = useQuery({ queryKey: ['cashflow-plan'], queryFn: () => api.get('/cashflow-plan').then(r => r.data), retry: false })
   const { data: actionItems = [] } = useQuery<any[]>({ queryKey: ['action-items'], queryFn: () => api.get('/action-items').then(r => Array.isArray(r.data) ? r.data : (r.data?.items ?? [])), retry: false })
   const { data: expenses = [] } = useQuery<any[]>({ queryKey: ['expenses'], queryFn: () => api.get('/expenses').then(r => r.data), retry: false })
   const { data: taxPlan } = useQuery({ queryKey: ['tax-plan'], queryFn: () => api.get('/tax-plan').then(r => r.data), retry: false })
@@ -747,6 +749,39 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   }
 
   // ── มรดก (ลูกค้าหลัก) ──
+  // ── งบการเงินล่วงหน้า (ลูกค้าหลัก) — อายุปัจจุบัน → อายุเกษียณ (บีบลง 1 สไลด์) ──
+  const forward = useMemo(() => {
+    const data: CashflowData | null = cfPlan?.self ?? null
+    const curAge = selfAge
+    const retAge = profile?.retirementAgeSelf ?? 60
+    if (!data || curAge == null || retAge <= curAge) return null
+    const ages: number[] = []
+    for (let a = curAge; a <= retAge; a++) ages.push(a)
+    const lineRows = (lines: CfLine[] | undefined) => (lines ?? [])
+      .map(l => ({ label: l.label || '—', vals: ages.map(a => lineAt(l, a, retAge)) }))
+      .filter(r => r.vals.some(v => v > 0))
+    const sumRow = (lines: CfLine[] | undefined) => ages.map(a => sumAt(lines ?? [], a, retAge))
+    const income = [...(data.incomeWork ?? []), ...(data.incomeAsset ?? [])]
+    const tax = ages.map(a => { try {
+      const tb = calc(buildTaxState(data, a, client, retAge, (taxPlan?.self as TaxState) ?? null))
+      const ov = data.taxOv?.[String(a)]
+      if (ov && (ov.exp != null || ov.ded != null)) {
+        const expD = ov.exp ?? tb.expD
+        const ded = ov.ded ?? (tb.allD - tb.expD)
+        return calcTax(Math.max(0, tb.ti - expD - ded))
+      }
+      return tb.netTax
+    } catch { return 0 } })
+    return {
+      ages,
+      incomeLines: lineRows(income), incomeTotal: sumRow(income),
+      fixedLines: lineRows(data.expFixed), fixedTotal: sumRow(data.expFixed),
+      varLines: lineRows(data.expVar), varTotal: sumRow(data.expVar),
+      savLines: lineRows(data.expSaving), savTotal: sumRow(data.expSaving),
+      tax,
+    }
+  }, [cfPlan, selfAge, profile, client, taxPlan])
+
   // มรดก 2 กรณี: ลูกค้าเสียชีวิต / คู่สมรสเสียชีวิต (สูตรเดียวกัน สลับกองมรดก+ผู้รอดชีวิต)
   const estate = useMemo(() => {
     const build = (who: 'self' | 'spouse') => {
@@ -864,7 +899,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
     family: 'ข้อมูลครอบครัว', work: 'ข้อมูลการทำงานและสวัสดิการ', goals: 'เป้าหมายการเงิน', insgoals: 'เป้าหมายด้านการประกัน', balance: 'งบดุล', cashflow: 'งบกระแสเงินสด',
     ratios: 'อัตราส่วน/สุขภาพการเงิน',
     insurance: 'ความเสี่ยง & ประกัน', investment: 'การลงทุน', retirement: 'แผนเกษียณ',
-    education: 'ทุนการศึกษาบุตร', edu2: 'กราฟทุนการศึกษา', tax: 'ภาษีเงินได้', estate: 'การจัดการมรดก', action: 'แผนปฏิบัติการ', retire2: 'กราฟเกษียณ', holistic: 'ไทม์ไลน์แผนดำเนินการ',
+    education: 'ทุนการศึกษาบุตร', edu2: 'กราฟทุนการศึกษา', tax: 'ภาษีเงินได้', estate: 'การจัดการมรดก', action: 'แผนปฏิบัติการ', retire2: 'กราฟเกษียณ', holistic: 'ไทม์ไลน์แผนดำเนินการ', forward: 'งบการเงินล่วงหน้า (ถึงเกษียณ)',
   }
   const labelOf = (key: string) => {
     const m = /^action-(\d+)$/.exec(key)
@@ -1616,6 +1651,67 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
               </div>
             )
           })() : <Empty text="ยังไม่มีกำหนดการในแผนดำเนินการ — กรอก 'กำหนดการ' ในหน้าแผนปฏิบัติการ" />}
+        </Slide>
+
+        {/* ── 19. งบการเงินล่วงหน้า (อายุปัจจุบัน → เกษียณ · บีบลง 1 หน้า) ── */}
+        <Slide slideId="forward" footer={commentFooter('forward')}>
+          <SlideHead icon={Banknote} kicker="Forward Cashflow" title={`งบการเงินล่วงหน้า · ${selfName} (อายุ ${forward ? forward.ages[0] : '—'}–${forward ? forward.ages[forward.ages.length - 1] : '—'})`} accent={CY} />
+          {forward ? (() => {
+            const f = forward
+            const cellW = `${(100 / (f.ages.length + 2)).toFixed(2)}%`
+            const fz = f.ages.length > 16 ? 7.5 : 8.5
+            const num = (v: number, c?: string, b?: boolean): React.CSSProperties => ({ padding: '2px 3px', textAlign: 'right', fontFamily: 'monospace', fontSize: fz, color: c ?? (v > 0 ? INK : '#c3ccd6'), fontWeight: b ? 800 : 400, whiteSpace: 'nowrap' })
+            const lbl = (indent = false, b = false, c?: string): React.CSSProperties => ({ padding: `2px 3px 2px ${indent ? 10 : 3}px`, textAlign: 'left', fontSize: fz, color: c ?? (b ? INK : SUB), fontWeight: b ? 800 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 150 })
+            const SecRow = ({ title, color }: { title: string; color: string }) => (
+              <tr><td colSpan={f.ages.length + 1} style={{ padding: '4px 3px 2px', fontSize: fz + 0.5, fontWeight: 800, color, borderBottom: `1px solid ${LINE}` }}>{title}</td></tr>
+            )
+            const LineRow = ({ r }: { r: { label: string; vals: number[] } }) => (
+              <tr style={{ borderBottom: `1px solid ${HAIR}` }}>
+                <td style={lbl(true)}>{r.label}</td>
+                {r.vals.map((v, i) => <td key={i} style={num(v)}>{v > 0 ? fmt(v) : '–'}</td>)}
+              </tr>
+            )
+            const TotalRow = ({ label, vals, color }: { label: string; vals: number[]; color: string }) => (
+              <tr style={{ borderBottom: `1px solid ${LINE}`, background: PAPER }}>
+                <td style={lbl(false, true, color)}>{label}</td>
+                {vals.map((v, i) => <td key={i} style={num(v, color, true)}>{fmt(v)}</td>)}
+              </tr>
+            )
+            const expTotal = f.ages.map((_, i) => f.fixedTotal[i] + f.varTotal[i] + f.savTotal[i] + f.tax[i])
+            const net = f.ages.map((_, i) => f.incomeTotal[i] - expTotal[i])
+            return (
+              <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1.5px solid #cbd5e1' }}>
+                      <th style={{ ...lbl(false, true), width: 150 }}>อายุ / ปี</th>
+                      {f.ages.map(a => <th key={a} style={{ ...num(1, SUB, true), width: cellW }}>{a}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <SecRow title="กระแสเงินสดรับ" color={GR} />
+                    {f.incomeLines.map((r, i) => <LineRow key={i} r={r} />)}
+                    <TotalRow label="รวมรายรับ" vals={f.incomeTotal} color={GR} />
+                    <SecRow title="ค่าใช้จ่ายคงที่" color={AM} />
+                    {f.fixedLines.map((r, i) => <LineRow key={i} r={r} />)}
+                    <TotalRow label="รวมค่าใช้จ่ายคงที่" vals={f.fixedTotal} color={AM} />
+                    <SecRow title="ค่าใช้จ่ายผันแปร + ภาษี" color={RD} />
+                    {f.varLines.map((r, i) => <LineRow key={i} r={r} />)}
+                    <LineRow r={{ label: 'ภาษีเงินได้', vals: f.tax }} />
+                    <TotalRow label="รวมผันแปร (รวมภาษี)" vals={f.ages.map((_, i) => f.varTotal[i] + f.tax[i])} color={RD} />
+                    <SecRow title="เงินออม/ลงทุน" color={VI} />
+                    {f.savLines.map((r, i) => <LineRow key={i} r={r} />)}
+                    <TotalRow label="รวมออม/ลงทุน" vals={f.savTotal} color={VI} />
+                    <TotalRow label="รวมกระแสเงินสดจ่าย" vals={expTotal} color={RD} />
+                    <tr style={{ borderTop: '1.5px solid #cbd5e1' }}>
+                      <td style={lbl(false, true)}>กระแสเงินสดสุทธิ</td>
+                      {net.map((v, i) => <td key={i} style={num(v, v >= 0 ? CY : RD, true)}>{fmt(v)}</td>)}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )
+          })() : <Empty text="ยังไม่มีข้อมูลงบการเงินล่วงหน้า — เปิดหน้างบการเงินล่วงหน้าเพื่อสร้างข้อมูลก่อน" />}
         </Slide>
 
         {/* ── หน้าที่ผู้ใช้เพิ่มเอง (custom slides) ── */}
