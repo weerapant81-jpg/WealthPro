@@ -692,7 +692,7 @@ export default function ActionPlanPage() {
                 : <div style={{ overflowX: 'auto' }}>
                     <div style={{ minWidth: 640 }}>
                       {/* หัวตาราง */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,2.2fr) 118px 108px 108px 92px', gap: 10, padding: '0 0 8px', borderBottom: '1px solid var(--card-border)' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,2.2fr) 118px 108px 108px 92px', columnGap: 26, rowGap: 10, padding: '0 0 8px', borderBottom: '1px solid var(--card-border)' }}>
                         {['แผนดำเนินการ', 'จำนวนเงิน', 'กำหนดการ', 'ผู้รับผิดชอบ', 'ความสำคัญ'].map((h, i) => (
                           <span key={h} style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textAlign: i === 1 ? 'right' : 'left' }}>{h}</span>
                         ))}
@@ -700,7 +700,7 @@ export default function ActionPlanPage() {
                       {planLines.map((l, i) => {
                         const prColor = PR_THAI[l.priority] || 'var(--text-muted)'
                         return (
-                          <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,2.2fr) 118px 108px 108px 92px', gap: 10, alignItems: 'center', padding: '7px 0', borderBottom: '1px solid var(--divider)' }}>
+                          <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,2.2fr) 118px 108px 108px 92px', columnGap: 26, rowGap: 10, alignItems: 'center', padding: '7px 0', borderBottom: '1px solid var(--divider)' }}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: l.done ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: l.done ? 'line-through' : 'none', minWidth: 0 }}>
                               <span style={{ width: 7, height: 7, borderRadius: 2, background: l.color, flexShrink: 0 }} />
                               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.plan}</span>
@@ -713,7 +713,7 @@ export default function ActionPlanPage() {
                         )
                       })}
                       {/* แถวรวมทุกเป้าหมาย */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,2.2fr) 118px 108px 108px 92px', gap: 10, alignItems: 'center', padding: '9px 0 2px', borderTop: '2px solid var(--card-border)' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,2.2fr) 118px 108px 108px 92px', columnGap: 26, rowGap: 10, alignItems: 'center', padding: '9px 0 2px', borderTop: '2px solid var(--card-border)' }}>
                         <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>รวมเงินสำหรับทุกเป้าหมาย</span>
                         <span style={{ fontSize: 13.5, fontWeight: 800, fontFamily: 'monospace', textAlign: 'right', color: 'var(--cyan-light)' }}>{fmt(planLines.reduce((a, l) => a + l.amount, 0))}</span>
                         <span /><span /><span />
