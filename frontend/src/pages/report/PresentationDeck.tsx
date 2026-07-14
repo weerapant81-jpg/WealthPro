@@ -9,7 +9,7 @@ import { buildEduChart, type ChildSetting } from '../EducationPlanPage'
 import { calc, defaultState, type TaxState } from '../../lib/tax'
 import {
   ShieldCheck, TrendingUp, PiggyBank, GraduationCap, Landmark, ClipboardCheck,
-  Activity, Pencil, X, Check, AlertTriangle, User, Users, GripVertical, EyeOff, Plus,
+  Activity, Pencil, X, Check, User, Users, GripVertical, EyeOff, Plus,
   Wallet, Scale, Receipt, ListChecks, Baby, Target, HeartPulse, Banknote, CalendarClock, Briefcase,
   Type as TypeIcon, ImagePlus, Trash2, ArrowUp, ArrowDown, Bold, AlignLeft, AlignCenter, AlignRight, FilePlus2,
   RotateCcw, RotateCw, BringToFront, SendToBack, Grid3x3,
@@ -48,7 +48,6 @@ const SUBPLAN_COLS: Record<string, { key: string; label: string; type: 'text' | 
   estate: [{ key: 'who', label: 'ใคร', type: 'text' }, { key: 'desc', label: 'ทำอะไร', type: 'text' }, { key: 'schedule', label: 'เมื่อไหร่', type: 'date' }],
 }
 const SUBPLAN_ACCENT: Record<string, string> = { liquidity: '#06b6d4', insurance: '#3b82f6', retirement: '#00cfc1', education: '#f59e0b', estate: '#8b5cf6' }
-const fmtSchedule = (v: any) => { if (!v) return '—'; const d = new Date(v); return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) }
 
 type Person = 'self' | 'spouse'
 
@@ -580,27 +579,34 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   const edu = useEducationReadiness()
 
   // ── แผนปฏิบัติการ: แบ่งหน้าอัตโนมัติ (เว้นที่ให้คอมเมนต์) ──
-  const PER_PAGE_ACTION = 10
-  const actionPages = useMemo(() => {
-    const its = Array.isArray(actionItems) ? actionItems : []   // กันกรณี query คืนค่าที่ไม่ใช่ array
-    if (its.length === 0) return [[]] as any[][]
-    const out: any[][] = []
-    for (let i = 0; i < its.length; i += PER_PAGE_ACTION) out.push(its.slice(i, i + PER_PAGE_ACTION))
+  const PER_PAGE_ACTION = 13
+  // รวมแผนดำเนินการจากทุกด้าน (sub-plan rows) → บรรทัด: แผน · จำนวนเงิน · กำหนดการ · ผู้รับผิดชอบ
+  const ACTION_CAT_COLOR: Record<string, string> = { liquidity: '#06b6d4', savings: '#10b981', debt: '#ef4444', investment: '#10b981', education: '#ffb800', insurance: '#3b82f6', retirement: '#00cfc1', tax: '#0ea5e9', estate: '#8b5cf6', other: '#8b9198' }
+  const actionLines = useMemo(() => {
+    const its = Array.isArray(actionItems) ? actionItems : []
+    const ownerTh = (o: string) => o === 'client' ? 'ลูกค้า' : o === 'advisor' ? 'ที่ปรึกษา' : o === 'spouse' ? 'คู่สมรส' : (o || '—')
+    const out: { plan: string; amount: number; schedule: string; owner: string; color: string; done: boolean }[] = []
+    for (const it of its) {
+      const rows = Array.isArray(it.subPlan) ? it.subPlan : []
+      const color = ACTION_CAT_COLOR[it.category] || ACTION_CAT_COLOR.other
+      const done = it.status === 'done' || !!it.completedAt
+      if (!rows.length) { out.push({ plan: it.title, amount: toNum(it.target), schedule: it.dueDate || '', owner: ownerTh(it.owner), color, done }); continue }
+      for (const r of rows) {
+        const plan = String(r?.desc || r?.method || r?.who || '').trim()
+        const amount = toNum(r?.amount ?? r?.premium)
+        if (!plan && amount <= 0 && !r?.schedule) continue
+        out.push({ plan: plan || it.title, amount, schedule: r?.schedule || '', owner: String(r?.owner || '').trim() || ownerTh(it.owner), color, done })
+      }
+    }
     return out
   }, [actionItems])
+  const actionPages = useMemo(() => {
+    if (actionLines.length === 0) return [[]] as typeof actionLines[]
+    const out: typeof actionLines[] = []
+    for (let i = 0; i < actionLines.length; i += PER_PAGE_ACTION) out.push(actionLines.slice(i, i + PER_PAGE_ACTION))
+    return out
+  }, [actionLines])
   const actionIds = actionPages.map((_, k) => (k === 0 ? 'action' : `action-${k + 1}`))
-
-  // ── แผนดำเนินการ (sub-plan) ต่อด้าน → สไลด์ละรายการที่มี sub-plan ──
-  const subPlanSlides = useMemo(() => {
-    const its = Array.isArray(actionItems) ? actionItems : []
-    return its.map((a: any) => {
-      const cols = SUBPLAN_COLS[a.category]
-      if (!cols) return null
-      const rows = (Array.isArray(a.subPlan) ? a.subPlan : []).filter((r: any) => cols.some(c => { const v = r?.[c.key]; return v != null && String(v).trim() !== '' }))
-      if (rows.length === 0) return null
-      return { id: `subplan-${a.id}`, title: a.title as string, category: a.category as string, cols, rows }
-    }).filter(Boolean) as { id: string; title: string; category: string; cols: typeof SUBPLAN_COLS[string]; rows: any[] }[]
-  }, [actionItems])
 
   // ── ไทม์ไลน์แผนดำเนินการ: รวมทุก sub-plan ที่มี "กำหนดการ" เรียงตามวันที่ ──
   const timelineItems = useMemo(() => {
@@ -741,35 +747,40 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   }
 
   // ── มรดก (ลูกค้าหลัก) ──
+  // มรดก 2 กรณี: ลูกค้าเสียชีวิต / คู่สมรสเสียชีวิต (สูตรเดียวกัน สลับกองมรดก+ผู้รอดชีวิต)
   const estate = useMemo(() => {
-    const inputs: any = estatePlan?.self ?? {}
-    const netWorth = toNum(rSelf?.summary?.netWorth)
-    const married = /สมรส/.test(String(client?.maritalStatus ?? '')) || hasSpouse
-    const spouseIsHeir = !!inputs.spouseAlive && married
-    const spouseHalf = spouseIsHeir ? netWorth * (toNum(inputs.maritalAssetPct ?? 100) / 100) / 2 : 0
-    const estateVal = Math.max(0, netWorth - spouseHalf)
-    const children: any[] = client?.children ?? []
-    const parentsAlive = (inputs.fatherAlive ? 1 : 0) + (inputs.motherAlive ? 1 : 0)
-    const wishes: any[] = inputs.wishes ?? []
-    const wishTotal = wishes.reduce((s, w) => s + (Number(w.pct) || 0), 0)
-    const useWill = !!inputs.hasWill && wishes.length > 0 && wishTotal > 0
-    const THRESH = 100_000_000
-    const heirTax = (share: number, rel: string) => rel === 'spouse' ? 0 : Math.max(0, share - THRESH) * (rel === 'lineal' ? 0.05 : 0.10)
-    let taxHeirs: { name: string; share: number; rel: string }[]
-    if (useWill) {
-      taxHeirs = wishes.filter(w => (Number(w.pct) || 0) > 0).map(w => ({ name: w.name || 'ผู้รับ', share: estateVal * (Number(w.pct) || 0) / 100, rel: w.rel || 'lineal' }))
-    } else {
-      const shares = children.length + (spouseIsHeir ? 1 : 0) + parentsAlive
-      const each = shares > 0 ? estateVal / shares : estateVal
-      taxHeirs = []
-      children.forEach((c, i) => taxHeirs.push({ name: c.name || `บุตรคนที่ ${i + 1}`, share: each, rel: 'lineal' }))
-      if (inputs.fatherAlive) taxHeirs.push({ name: 'บิดา', share: each, rel: 'lineal' })
-      if (inputs.motherAlive) taxHeirs.push({ name: 'มารดา', share: each, rel: 'lineal' })
-      if (spouseIsHeir) taxHeirs.push({ name: spouseName, share: each, rel: 'spouse' })
+    const build = (who: 'self' | 'spouse') => {
+      const inputs: any = estatePlan?.[who] ?? {}
+      const netWorth = toNum((who === 'self' ? rSelf : rSpouse)?.summary?.netWorth)
+      const married = /สมรส/.test(String(client?.maritalStatus ?? '')) || hasSpouse
+      const survivorName = who === 'self' ? spouseName : selfName
+      const spouseIsHeir = !!inputs.spouseAlive && married
+      const spouseHalf = spouseIsHeir ? netWorth * (toNum(inputs.maritalAssetPct ?? 100) / 100) / 2 : 0
+      const estateVal = Math.max(0, netWorth - spouseHalf)
+      const children: any[] = client?.children ?? []
+      const parentsAlive = (inputs.fatherAlive ? 1 : 0) + (inputs.motherAlive ? 1 : 0)
+      const wishes: any[] = inputs.wishes ?? []
+      const wishTotal = wishes.reduce((s, w) => s + (Number(w.pct) || 0), 0)
+      const useWill = !!inputs.hasWill && wishes.length > 0 && wishTotal > 0
+      const THRESH = 100_000_000
+      const heirTax = (share: number, rel: string) => rel === 'spouse' ? 0 : Math.max(0, share - THRESH) * (rel === 'lineal' ? 0.05 : 0.10)
+      let taxHeirs: { name: string; share: number; rel: string }[]
+      if (useWill) {
+        taxHeirs = wishes.filter(w => (Number(w.pct) || 0) > 0).map(w => ({ name: w.name || 'ผู้รับ', share: estateVal * (Number(w.pct) || 0) / 100, rel: w.rel || 'lineal' }))
+      } else {
+        const shares = children.length + (spouseIsHeir ? 1 : 0) + parentsAlive
+        const each = shares > 0 ? estateVal / shares : estateVal
+        taxHeirs = []
+        children.forEach((c, i) => taxHeirs.push({ name: c.name || `บุตรคนที่ ${i + 1}`, share: each, rel: 'lineal' }))
+        if (inputs.fatherAlive) taxHeirs.push({ name: 'บิดา', share: each, rel: 'lineal' })
+        if (inputs.motherAlive) taxHeirs.push({ name: 'มารดา', share: each, rel: 'lineal' })
+        if (spouseIsHeir) taxHeirs.push({ name: survivorName, share: each, rel: 'spouse' })
+      }
+      const totalTax = taxHeirs.reduce((s, h) => s + heirTax(h.share, h.rel), 0)
+      return { estateVal, useWill, taxHeirs, totalTax, hasWill: !!inputs.hasWill, willType: inputs.willType }
     }
-    const totalTax = taxHeirs.reduce((s, h) => s + heirTax(h.share, h.rel), 0)
-    return { estateVal, useWill, taxHeirs, totalTax, hasWill: !!inputs.hasWill, willType: inputs.willType }
-  }, [estatePlan, rSelf, client, hasSpouse, spouseName])
+    return { self: build('self'), spouse: hasSpouse ? build('spouse') : null }
+  }, [estatePlan, rSelf, rSpouse, client, hasSpouse, selfName, spouseName])
 
   // มูลค่ากองทุนเกษียณตามอายุ (สะสม→ถอน) ต่อคน จาก projectionRows
   const retChart = useMemo(() => {
@@ -858,8 +869,6 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   const labelOf = (key: string) => {
     const m = /^action-(\d+)$/.exec(key)
     if (m) return `แผนปฏิบัติการ (หน้า ${m[1]})`
-    const sp = subPlanSlides.find(s => s.id === key)
-    if (sp) return `แผนดำเนินการ · ${sp.title}`
     return SLIDE_LABEL[key] ?? key
   }
   const openDialog = (key: string) => setDialog({ key, title: labelOf(key) })
@@ -1487,14 +1496,6 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                         <Stat label="เงินได้สุทธิ" value={fmtM(r.ni)} color={INK} />
                         <Stat label="ค่าลดหย่อนรวม" value={fmtM(r.allD)} color={GR} />
                       </div>
-                      <div style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 10, padding: '10px 14px' }}>
-                        <div style={{ fontSize: 12, color: SUB, marginBottom: 6 }}>ค่าลดหย่อนหลักที่ใช้</div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px' }}>
-                          {r.deducts.slice(0, 8).map((d: any) => (
-                            <span key={d.l} style={{ fontSize: 11.5, color: INK, background: '#fff', border: `1px solid ${LINE}`, borderRadius: 999, padding: '2px 9px' }}>{d.l} {fmtM(d.v)}</span>
-                          ))}
-                        </div>
-                      </div>
                     </div>
                   ) : <Empty text="ยังไม่มีข้อมูลแผนภาษี" />}
                 </div>
@@ -1506,32 +1507,32 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         {/* ── 16. การจัดการมรดก ── */}
         <Slide slideId="estate" footer={commentFooter('estate')}>
           <SlideHead icon={Landmark} kicker="Estate" title="เป้าหมายและการจัดการมรดก" accent={VI} />
-          <div style={{ display: 'flex', gap: 22, flex: 1 }}>
-            <div style={{ width: 300, display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'center' }}>
-              <Stat label="กองมรดกสุทธิ (โดยประมาณ)" value={fmt(estate.estateVal)} sub="บาท" color={VI} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: estate.hasWill ? `${GR}0e` : `${AM}0e`, border: `1px solid ${estate.hasWill ? GR : AM}44`, borderRadius: 12, padding: '12px 16px' }}>
-                {estate.hasWill ? <Check size={20} color={GR} /> : <AlertTriangle size={20} color={AM} />}
-                <div><div style={{ fontSize: 14, fontWeight: 700, color: INK }}>{estate.hasWill ? 'มีพินัยกรรมแล้ว' : 'ยังไม่มีพินัยกรรม'}</div><div style={{ fontSize: 11.5, color: SUB }}>{estate.hasWill ? (estate.willType || '—') : 'แบ่งตามทายาทโดยธรรม'}</div></div>
+          <div style={{ display: 'grid', gridTemplateColumns: estate.spouse ? '1fr 1fr' : '1fr', gap: 16, flex: 1, alignContent: 'start' }}>
+            {([['self', `กรณี${selfName}เสียชีวิต`, CY, estate.self], ...(estate.spouse ? [['spouse', `กรณี${spouseName}เสียชีวิต`, VI, estate.spouse]] : [])] as any[]).map(([key, caption, tint, es]) => (
+              <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, borderBottom: `2px solid ${tint}33`, paddingBottom: 6 }}>
+                  <span style={{ fontSize: 14.5, fontWeight: 800, color: INK }}>{caption}</span>
+                  <span style={{ fontSize: 12, color: SUB }}>กองมรดกสุทธิ <b style={{ color: tint, fontFamily: 'monospace', fontSize: 14 }}>{fmt(es.estateVal)}</b> บาท</span>
+                </div>
+                <div style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '12px 14px' }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: INK, marginBottom: 6 }}>การกระจายมรดก · {es.useWill ? 'ตามพินัยกรรม' : 'ตามกฎหมาย'}</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                    <thead><tr style={{ borderBottom: `1px solid #cbd5e1` }}><th style={{ textAlign: 'left', padding: '5px 4px', color: SUB }}>ผู้รับมรดก</th><th style={{ textAlign: 'right', padding: '5px 4px', color: SUB }}>ส่วนแบ่ง</th><th style={{ textAlign: 'right', padding: '5px 4px', color: SUB }}>ภาษี</th></tr></thead>
+                    <tbody>
+                      {es.taxHeirs.length === 0 ? <tr><td colSpan={3} style={{ padding: 12, textAlign: 'center', color: MUTED }}>ยังไม่มีข้อมูลทายาท</td></tr>
+                        : es.taxHeirs.map((h: any, i: number) => {
+                          const tax = h.rel === 'spouse' ? 0 : Math.max(0, h.share - 100_000_000) * (h.rel === 'lineal' ? 0.05 : 0.10)
+                          return <tr key={i} style={{ borderBottom: `1px solid ${LINE}` }}>
+                            <td style={{ padding: '6px 4px', color: INK }}>{h.name}{h.rel === 'spouse' && <span style={{ fontSize: 10.5, color: MUTED }}> (ยกเว้น)</span>}</td>
+                            <td style={{ padding: '6px 4px', textAlign: 'right', fontFamily: 'monospace', color: INK }}>{fmt(h.share)}</td>
+                            <td style={{ padding: '6px 4px', textAlign: 'right', fontFamily: 'monospace', color: tax > 0 ? AM : GR }}>{fmt(tax)}</td>
+                          </tr>
+                        })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-              <Stat label="ภาษีมรดก (ประมาณ)" value={fmt(estate.totalTax)} sub="บาท" color={estate.totalTax > 0 ? AM : GR} />
-            </div>
-            <div style={{ flex: 1, background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: INK, marginBottom: 8 }}>การกระจายมรดก · {estate.useWill ? 'ตามพินัยกรรม' : 'ตามกฎหมาย'}</div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead><tr style={{ borderBottom: `1px solid #cbd5e1` }}><th style={{ textAlign: 'left', padding: '6px 4px', color: SUB }}>ผู้รับมรดก</th><th style={{ textAlign: 'right', padding: '6px 4px', color: SUB }}>ส่วนแบ่ง</th><th style={{ textAlign: 'right', padding: '6px 4px', color: SUB }}>ภาษี</th></tr></thead>
-                <tbody>
-                  {estate.taxHeirs.length === 0 ? <tr><td colSpan={3} style={{ padding: 12, textAlign: 'center', color: MUTED }}>ยังไม่มีข้อมูลทายาท</td></tr>
-                    : estate.taxHeirs.map((h, i) => {
-                      const tax = h.rel === 'spouse' ? 0 : Math.max(0, h.share - 100_000_000) * (h.rel === 'lineal' ? 0.05 : 0.10)
-                      return <tr key={i} style={{ borderBottom: `1px solid ${LINE}` }}>
-                        <td style={{ padding: '7px 4px', color: INK }}>{h.name}{h.rel === 'spouse' && <span style={{ fontSize: 10.5, color: MUTED }}> (ยกเว้น)</span>}</td>
-                        <td style={{ padding: '7px 4px', textAlign: 'right', fontFamily: 'monospace', color: INK }}>{fmt(h.share)}</td>
-                        <td style={{ padding: '7px 4px', textAlign: 'right', fontFamily: 'monospace', color: tax > 0 ? AM : GR }}>{fmt(tax)}</td>
-                      </tr>
-                    })}
-                </tbody>
-              </table>
-            </div>
+            ))}
           </div>
         </Slide>
 
@@ -1539,75 +1540,42 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         {actionPages.map((pageItems, k) => (
           <Slide key={actionIds[k]} slideId={actionIds[k]} footer={commentFooter(actionIds[k])}>
             <SlideHead icon={ClipboardCheck} kicker="Action Plan" title={`แผนปฏิบัติการที่แนะนำ${actionPages.length > 1 ? ` (${k + 1}/${actionPages.length})` : ''}`} accent={GR} />
-            {actionItems.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {k === 0 && (
-                  <div style={{ display: 'flex', gap: 10 }}>
-                    <Stat label="รายการทั้งหมด" value={`${actionItems.length}`} sub="รายการ" />
-                    <Stat label="เสร็จแล้ว" value={`${actionItems.filter(a => a.status === 'done' || a.completedAt).length}`} color={GR} />
-                    <Stat label="กำลังทำ/ค้าง" value={`${actionItems.filter(a => a.status !== 'done' && !a.completedAt).length}`} color={AM} />
-                  </div>
-                )}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  {pageItems.map((a, i) => {
-                    const done = a.status === 'done' || a.completedAt
-                    return (
-                      <div key={a.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: PAPER, border: `1px solid ${LINE}`, borderRadius: 10, padding: '9px 12px' }}>
-                        <div style={{ width: 20, height: 20, borderRadius: 6, background: done ? GR : '#fff', border: `2px solid ${done ? GR : '#cbd5e1'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{done && <Check size={12} color="#fff" />}</div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, color: INK, fontWeight: 600, lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</div>
-                          <div style={{ fontSize: 11, color: MUTED, lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{[a.owner, a.priority ? `ลำดับ ${a.priority}` : null, a.dueDate ? new Date(a.dueDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : null].filter(Boolean).join(' · ')}</div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
+            {actionLines.length > 0 ? (
+              <div style={{ flex: 1, minHeight: 0 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #cbd5e1' }}>
+                      <th style={{ textAlign: 'left', padding: '7px 4px', color: SUB, fontWeight: 700 }}>แผนดำเนินการ</th>
+                      <th style={{ textAlign: 'right', padding: '7px 4px', color: SUB, fontWeight: 700, width: 130 }}>จำนวนเงิน</th>
+                      <th style={{ textAlign: 'left', padding: '7px 14px', color: SUB, fontWeight: 700, width: 130 }}>กำหนดการ</th>
+                      <th style={{ textAlign: 'left', padding: '7px 4px', color: SUB, fontWeight: 700, width: 110 }}>ผู้รับผิดชอบ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pageItems.map((l: any, i: number) => (
+                      <tr key={i} style={{ borderBottom: `1px solid ${LINE}` }}>
+                        <td style={{ padding: '8px 4px', color: l.done ? MUTED : INK, textDecoration: l.done ? 'line-through' : 'none' }}>
+                          <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: l.color, marginRight: 8 }} />{l.plan}
+                        </td>
+                        <td style={{ padding: '8px 4px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: l.amount > 0 ? INK : MUTED }}>{l.amount > 0 ? fmt(l.amount) : '—'}</td>
+                        <td style={{ padding: '8px 14px', color: SUB }}>{l.schedule ? new Date(l.schedule).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) : '—'}</td>
+                        <td style={{ padding: '8px 4px', color: SUB }}>{l.owner}</td>
+                      </tr>
+                    ))}
+                    {/* แถวรวม (หน้าสุดท้าย) */}
+                    {k === actionPages.length - 1 && (
+                      <tr style={{ borderTop: '2px solid #cbd5e1' }}>
+                        <td style={{ padding: '9px 4px', fontWeight: 800, color: INK }}>รวมเงินสำหรับทุกแผน</td>
+                        <td style={{ padding: '9px 4px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: CY }}>{fmt(actionLines.reduce((s, l) => s + l.amount, 0))}</td>
+                        <td /><td />
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             ) : <Empty text="ยังไม่มีแผนปฏิบัติการ — สร้างที่หน้าแผนปฏิบัติการ" />}
           </Slide>
         ))}
-
-        {/* ── 17b. แผนดำเนินการต่อด้าน (sub-plan) — สไลด์ละรายการ ── */}
-        {subPlanSlides.map(sp => {
-          const accent = SUBPLAN_ACCENT[sp.category] ?? GR
-          const moneyKeys = sp.cols.filter(c => c.type === 'money').map(c => c.key)
-          const totals: Record<string, number> = {}
-          moneyKeys.forEach(k => { totals[k] = sp.rows.reduce((s, r) => s + toNum(r[k]), 0) })
-          return (
-            <Slide key={sp.id} slideId={sp.id} footer={commentFooter(sp.id)}>
-              <SlideHead icon={ClipboardCheck} kicker="Action Detail" title={`แผนดำเนินการ · ${sp.title}`} accent={accent} />
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
-                <thead>
-                  <tr style={{ borderBottom: `2px solid ${LINE}` }}>
-                    {sp.cols.map(c => <th key={c.key} style={{ textAlign: c.type === 'money' ? 'right' : 'left', padding: '9px 8px', color: SUB, fontWeight: 700 }}>{c.label}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {sp.rows.map((r, i) => (
-                    <tr key={i} style={{ borderBottom: `1px solid ${LINE}` }}>
-                      {sp.cols.map(c => (
-                        <td key={c.key} style={{ padding: '10px 8px', textAlign: c.type === 'money' ? 'right' : 'left', color: INK, fontFamily: c.type === 'money' ? 'monospace' : 'inherit', fontWeight: c.type === 'money' ? 700 : 400 }}>
-                          {c.type === 'money' ? fmt(toNum(r[c.key])) : c.type === 'date' ? fmtSchedule(r[c.key]) : (r[c.key] || '—')}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-                {moneyKeys.length > 0 && (
-                  <tfoot>
-                    <tr style={{ borderTop: `2px solid ${LINE}` }}>
-                      {sp.cols.map((c, ci) => (
-                        <td key={c.key} style={{ padding: '10px 8px', textAlign: c.type === 'money' ? 'right' : 'left', fontWeight: 800, fontFamily: c.type === 'money' ? 'monospace' : 'inherit', color: c.type === 'money' ? accent : INK }}>
-                          {ci === 0 ? 'รวม' : c.type === 'money' ? fmt(totals[c.key]) : ''}
-                        </td>
-                      ))}
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
-            </Slide>
-          )
-        })}
 
         {/* ── 18. ไทม์ไลน์แผนดำเนินการ ── */}
         <Slide slideId="holistic" footer={commentFooter('holistic')}>
