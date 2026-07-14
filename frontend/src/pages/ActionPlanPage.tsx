@@ -8,8 +8,9 @@ import { calc as calcTax, defaultState as defaultTaxState } from '../lib/tax'
 import {
   ClipboardCheck, Plus, Trash2, CalendarClock, Target, ShieldCheck,
   GraduationCap, Wallet, Landmark, Receipt, ScrollText, Sparkles, Flag, User, Users, Check,
-  ChevronDown, ListChecks, TrendingUp, GripVertical, X, Eye,
+  ChevronDown, ListChecks, TrendingUp, GripVertical, X, Eye, FileText,
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useClient } from '../context/ClientContext'
 
 const fmt = (n: number) => Math.round(n || 0).toLocaleString('th-TH')
@@ -591,6 +592,7 @@ const StatRow = ({ children }: { children: React.ReactNode }) => (
 
 export default function ActionPlanPage() {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const [person, setPerson] = useState<'self' | 'spouse'>('self')
   const [expandedItem, setExpandedItem] = useState<string | null>(null)
   const ratioPerson = person === 'spouse' ? 'spouse' : 'client'
@@ -864,6 +866,10 @@ export default function ActionPlanPage() {
             ))}
           </div>
         )}
+        <button onClick={() => navigate('/report')} title="ไปหน้ารายงานเพื่อสร้าง/ดาวน์โหลด PDF"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', background: 'var(--cyan)', color: '#00201d', fontSize: 13, fontWeight: 700 }}>
+          <FileText size={15} /> สร้างรายงาน PDF
+        </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <CalendarClock size={16} style={{ color: 'var(--text-muted)' }} />
           <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>นัดทบทวน</span>
