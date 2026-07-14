@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { loginUser, registerUser, googleLogin, appleLogin, forgotPassword, resendVerify } from '../lib/auth'
 import { useAuth } from '../context/AuthContext'
+import { useClient } from '../context/ClientContext'
 import { Mail, Eye, EyeOff, ArrowRight, ShieldCheck, User, Phone } from 'lucide-react'
 
 const field: React.CSSProperties = {
@@ -34,7 +35,15 @@ export default function LoginPage() {
   const [twoFaCode, setTwoFaCode] = useState('')
   const [loading, setLoading] = useState(false)
   const { setUser } = useAuth()
+  const { setSelectedClient } = useClient()
   const navigate = useNavigate()
+  // ล็อกอินสำเร็จ → เคลียร์ลูกค้าที่เลือกค้าง ให้เข้าหน้า "ภาพรวมนักวางแผน" เสมอ
+  const finishLogin = (u: any) => {
+    sessionStorage.removeItem('selected_client_id')
+    setSelectedClient(null)
+    setUser(u)
+    navigate('/')
+  }
 
   // แสดงผลการยืนยันอีเมลจากลิงก์ในเมล (?verify=success|expired|invalid)
   useEffect(() => {
@@ -65,7 +74,7 @@ export default function LoginPage() {
     setError(''); setInfo(''); setNeedVerify(false); setLoading(true)
     try {
       const user = await googleLogin(credential)
-      setUser(user); navigate('/')
+      finishLogin(user)
     } catch (err: any) {
       const d = err.response?.data
       if (d?.pending) setInfo('บัญชี Google ของคุณถูกสร้างแล้ว — กรุณารอผู้ให้บริการอนุมัติก่อนเข้าใช้งาน')
@@ -131,7 +140,7 @@ export default function LoginPage() {
       const nm = resp?.user?.name ? `${resp.user.name.firstName ?? ''} ${resp.user.name.lastName ?? ''}`.trim() : undefined
       setLoading(true)
       const user = await appleLogin(idToken, nm)
-      setUser(user); navigate('/')
+      finishLogin(user)
     } catch (err: any) {
       if (err?.error === 'popup_closed_by_user' || err?.error === 'user_cancelled_authorize') return // ผู้ใช้ปิดเอง
       const d = err.response?.data
@@ -147,7 +156,7 @@ export default function LoginPage() {
       if (mode === 'login') {
         const res = await loginUser(email, password, twoFa ? twoFaCode : undefined)
         if (typeof res === 'object' && 'twoFactorRequired' in res) { setTwoFa(true); setLoading(false); return }
-        setUser(res); navigate('/')
+        finishLogin(res)
       } else if (mode === 'forgot') {
         const msg = await forgotPassword(email)
         setInfo(msg)
@@ -157,7 +166,7 @@ export default function LoginPage() {
         if (result.pending || !result.access) {
           setMode('login')
           setInfo('สมัครสำเร็จ! เราได้ส่งลิงก์ยืนยันไปที่อีเมลของคุณ — กรุณายืนยันอีเมล จากนั้นรอผู้ให้บริการอนุมัติบัญชี')
-        } else { setUser(result.user); navigate('/') }
+        } else { finishLogin(result.user) }
       }
     } catch (err: any) {
       setError(err.response?.data?.error || 'เกิดข้อผิดพลาด')
