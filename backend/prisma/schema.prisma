@@ -188,6 +188,7 @@ model Profile {
   cashflowPlan         Json?
   estatePlan           Json?
   planReviewDate       DateTime?  // นัดทบทวนแผนครั้งถัดไป
+  actionPlanAdvice     Json?      // คำแนะนำนักวางแผน รายด้าน/รายคน { self: {liquidity,insurance,...}, spouse: {...} }
 
   pvdReturnRate        Float?   // อัตราผลตอบแทนเฉลี่ย 5 ปี กองทุนสำรองเลี้ยงชีพ (%)
   pvdReturnAsOf        String?  // ข้อมูล ณ ...

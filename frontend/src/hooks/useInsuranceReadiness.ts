@@ -82,6 +82,9 @@ export function useInsuranceReadiness(person: 'client' | 'spouse') {
     need: C.recommendedNeed,
     have: C.sumAssets,
     gap: C.recommendedNet,
+    method: C.method,
+    hlvNeed: C.hlvCoverage, hlvGap: C.hlvNet,
+    needsNeed: C.coverageNeed, needsGap: C.netNeed,
     existingInsurance: autoInsurance,
     coveragePct: Math.max(0, Math.min(100, Math.round((C.sumAssets / C.recommendedNeed) * 100))),
   }

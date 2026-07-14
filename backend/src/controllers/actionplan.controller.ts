@@ -12,9 +12,30 @@ export async function listActionItems(req: AuthRequest, res: Response, next: Nex
     })
     const profile = await prisma.profile.findUnique({
       where: { userId: req.effectiveUserId! },
-      select: { planReviewDate: true },
+      select: { planReviewDate: true, actionPlanAdvice: true },
     })
-    res.json({ items, planReviewDate: profile?.planReviewDate ?? null })
+    const advice = (profile?.actionPlanAdvice as any)?.[person] ?? {}
+    res.json({ items, planReviewDate: profile?.planReviewDate ?? null, advice })
+  } catch (err) { next(err) }
+}
+
+// คำแนะนำนักวางแผน รายด้าน (เก็บใน Profile.actionPlanAdvice เป็น JSON แยกตามคน)
+export async function setActionPlanAdvice(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const person = req.body?.person === 'spouse' ? 'spouse' : 'self'
+    const section = String(req.body?.section || '').trim()
+    if (!section) { res.status(400).json({ error: 'ต้องระบุ section' }); return }
+    const text = typeof req.body?.text === 'string' ? req.body.text : ''
+    const existing = await prisma.profile.findUnique({ where: { userId: req.effectiveUserId! }, select: { actionPlanAdvice: true } })
+    const all: any = (existing?.actionPlanAdvice as any) ?? {}
+    const forPerson = { ...(all[person] ?? {}), [section]: text }
+    const next2 = { ...all, [person]: forPerson }
+    await prisma.profile.upsert({
+      where: { userId: req.effectiveUserId! },
+      update: { actionPlanAdvice: next2 },
+      create: { userId: req.effectiveUserId!, actionPlanAdvice: next2 },
+    })
+    res.json({ advice: forPerson })
   } catch (err) { next(err) }
 }
 

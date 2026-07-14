@@ -7,7 +7,7 @@ import {
   getTasks, createTask, updateTask, deleteTask,
 } from '../controllers/advisor.controller'
 import { getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement } from '../controllers/announcement.controller'
-import { listActionItems, createActionItem, updateActionItem, deleteActionItem, setPlanReviewDate } from '../controllers/actionplan.controller'
+import { listActionItems, createActionItem, updateActionItem, deleteActionItem, setPlanReviewDate, setActionPlanAdvice } from '../controllers/actionplan.controller'
 import {
   getIncomes, createIncome, updateIncome, deleteIncome,
   getExpenses, createExpense, updateExpense, deleteExpense,
@@ -156,6 +156,7 @@ r.post('/action-items', authenticate, createActionItem)
 r.patch('/action-items/:id', authenticate, updateActionItem)
 r.delete('/action-items/:id', authenticate, deleteActionItem)
 r.put('/plan-review-date', authenticate, setPlanReviewDate)
+r.put('/action-plan-advice', authenticate, setActionPlanAdvice)
 
 r.get('/insurance-plan', authenticate, getInsurancePlan)
 r.put('/insurance-plan', authenticate, saveInsurancePlan)
