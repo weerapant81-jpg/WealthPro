@@ -118,7 +118,8 @@ export function computeInsurance(plan: PersonPlan, a: InsuranceAutos) {
 
   // สินทรัพย์ที่มี (หักออก)
   const manualAssets = plan.assets.reduce((s, it) => s + toNum(it.amount), 0)
-  const severancePV = a.workingYears > 0 ? a.autoAssets.severance / Math.pow(1 + a.preRetReturn / 100, a.workingYears) : a.autoAssets.severance
+  // เงินชดเชยประกันสังคม (กรณีเสียชีวิต) = มูลค่า ณ ปัจจุบัน ไม่ต้อง discount
+  const severancePV = a.autoAssets.severance
   const autoAssetTotal = a.autoAssets.investment + a.autoAssets.deposit + a.autoAssets.insurance + severancePV
   const sumAssets = manualAssets + autoAssetTotal
 
@@ -416,7 +417,7 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
           <AutoRow label="สินทรัพย์ลงทุน" value={autoAssets.investment} color="#4ade80" />
           <AutoRow label="เงินฝาก" value={autoAssets.deposit} color="#4ade80" />
           <AutoRow label="ทุนประกันชีวิตเดิม" value={autoAssets.insurance} color="#4ade80" />
-          <AutoRow label="เงินชดเชยฯ (มูลค่าปัจจุบัน)" value={severancePV} color="#4ade80" />
+          <AutoRow label="เงินชดเชย (ประกันสังคม)" value={severancePV} color="#4ade80" />
           <div style={{ borderTop: '1px dashed var(--card-border)', margin: '6px 0' }} />
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>สินทรัพย์เพิ่มเติม (กรอกเอง)</span>
           <EditableList items={plan.assets} onChange={v => set('assets', v)} color="#4ade80" total={sumAssets} />
@@ -505,7 +506,7 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
           <AutoRow label="สินทรัพย์ลงทุน" value={autoAssets.investment} color="#4ade80" />
           <AutoRow label="เงินฝาก" value={autoAssets.deposit} color="#4ade80" />
           <AutoRow label="ทุนประกันชีวิตเดิม" value={autoAssets.insurance} color="#4ade80" />
-          <AutoRow label="เงินชดเชยฯ (มูลค่าปัจจุบัน)" value={severancePV} color="#4ade80" />
+          <AutoRow label="เงินชดเชย (ประกันสังคม)" value={severancePV} color="#4ade80" />
           <div style={{ borderTop: '1px dashed var(--card-border)', margin: '6px 0' }} />
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>สินทรัพย์เพิ่มเติม (กรอกเอง)</span>
           <EditableList items={plan.assets} onChange={v => set('assets', v)} color="#4ade80" total={sumAssets} />
@@ -597,7 +598,6 @@ export default function InsurancePlanPage({ person = 'self' }: { person?: 'self'
   const { data: invProfile } = useQuery({ queryKey: ['investment-profile'], queryFn: () => api.get('/investment-profile').then(r => r.data), retry: false })
   const { data: lifePolicies } = useQuery({ queryKey: ['life-insurances'], queryFn: () => api.get('/life-insurances').then(r => r.data), retry: false })
   const { data: allRiders } = useQuery({ queryKey: ['all-riders'], queryFn: () => api.get('/all-riders').then(r => r.data), retry: false })
-  const { data: sevPlan } = useQuery({ queryKey: ['severance-plan'], queryFn: () => api.get('/severance-plan').then(r => r.data), retry: false })
   const { data: expenses } = useQuery({ queryKey: ['expenses', person], queryFn: () => api.get('/expenses', { params: { person } }).then(r => r.data), retry: false })
   const { data: taxPlan } = useQuery({ queryKey: ['tax-plan'], queryFn: () => api.get('/tax-plan').then(r => r.data), retry: false })
 
@@ -671,8 +671,7 @@ export default function InsurancePlanPage({ person = 'self' }: { person?: 'self'
   const personPolicies = Array.isArray(lifePolicies) ? lifePolicies.filter((p: any) => (p.insuredPerson || '').includes(personName)) : []
   const personPolicyIds = new Set(personPolicies.map((p: any) => p.id))
   const autoInsurance = personPolicies.reduce((s: number, p: any) => s + toNum(p.sumAssured), 0)
-  const autoSeverance = toNum(sevPlan?.[person]?.netSeverance)
-  const autoAssets = { investment: autoInvestment, deposit: autoDeposit, insurance: autoInsurance, severance: autoSeverance }
+  // autoAssets ประกาศหลังคำนวณเงินชดเชยประกันสังคม (ใช้ welfare/monthlySalary ที่อยู่ด้านล่าง)
 
   // ความคุ้มครองทุพพลภาพเดิม: รวม rider ประเภท "ทุพพลภาพ" (disabled) ของกรมธรรม์บุคคลนั้น
   const autoTPD = Array.isArray(allRiders)
@@ -686,6 +685,16 @@ export default function InsurancePlanPage({ person = 'self' }: { person?: 'self'
   const monthlySalary = person === 'self' ? toNum(clientProfile?.salary) : (toNum(spouseJob?.salary) || toNum(clientProfile?.spouseIncome))
   const autoSS = welfare?.hasSocialSecurity ? Math.min(monthlySalary, 17500) * 0.05 * 12 : 0
   const autoPVD = welfare?.hasPVD ? monthlySalary * (toNum(welfare?.pvdEmployeeRate) / 100) * 12 : 0
+
+  // ── เงินชดเชยประกันสังคม (กรณีเสียชีวิต) = ค่าทำศพ + เงินสงเคราะห์กรณีตาย + บำเหน็จชราภาพสะสม (คืนทายาท) ──
+  // มูลค่า ณ ปัจจุบัน · แสดงเป็นสินทรัพย์ที่ครอบครัวได้รับ หักออกจากทุนประกันชีวิต
+  const ssoAvgWage = Math.min(monthlySalary, 15000)               // ค่าจ้างเฉลี่ย (เพดาน ปกส. 15,000)
+  const ssoMonths = toNum(welfare?.socialSecurityYears) * 12      // จำนวนเดือนที่สมทบมาแล้ว
+  const ssoFuneral = 50000                                        // ค่าทำศพ (คงที่)
+  const ssoSurvivor = ssoMonths >= 120 ? ssoAvgWage * 6 : ssoMonths >= 36 ? ssoAvgWage * 2 : 0   // เงินสงเคราะห์กรณีตาย (6 เท่า/2 เท่า)
+  const ssoOldAge = toNum(welfare?.socialSecurityValue)           // บำเหน็จชราภาพสะสม (คืนทายาท) = มูลค่ากองทุน ปกส. ปัจจุบัน
+  const autoSSCompensation = welfare?.hasSocialSecurity ? (ssoFuneral + ssoSurvivor + ssoOldAge) : 0
+  const autoAssets = { investment: autoInvestment, deposit: autoDeposit, insurance: autoInsurance, severance: autoSSCompensation }
   const autoSavings = Array.isArray(expenses)
     ? expenses.filter((e: any) => String(e.category).startsWith('saving_')).reduce((s: number, e: any) => s + toAnnual(e.amount, e.frequency), 0) : 0
   // ค่าใช้จ่ายส่วนตัว (HLV) default = ค่าใช้จ่ายผันแปร "เงินให้บุพการี" (var_parents) ต่อปี
