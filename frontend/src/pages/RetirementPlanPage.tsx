@@ -656,7 +656,7 @@ function PersonPanel({ data, onChange, color, isSelf }: {
           <div style={{ fontSize: 10.5, color: 'var(--text-muted)', padding: '2px 0 4px' }}>โตด้วยอัตราเพิ่มเงินเดือน {data.savingsGrowthRate ?? 0}%/ปี · ความต้องการ = {data.replacementRate ?? 70}% ของรายได้ปีสุดท้าย</div>
         </>}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
-          <span style={{ flex: 1, fontSize: 12.5, color: 'var(--text-secondary)' }}>{(data.needMethod ?? 'expense') === 'replacement' ? 'รายได้หลังเกษียณ/เดือน' : 'รวม ณ วันเกษียณ'}</span>
+          <span style={{ flex: 1, fontSize: 12.5, color: 'var(--text-secondary)' }}>รายได้หลังเกษียณ/เดือน</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <div style={{ width: 110, padding: '4px 8px', textAlign: 'right', background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 5, color, fontSize: 13, fontWeight: 600, fontFamily: 'monospace' }}>
               {fmt(result.annualAtRetirement / 12, 0)}
