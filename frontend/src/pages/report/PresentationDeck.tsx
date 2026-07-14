@@ -1654,16 +1654,20 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         </Slide>
 
         {/* ── 19. งบการเงินล่วงหน้า (อายุปัจจุบัน → เกษียณ · บีบลง 1 หน้า) ── */}
-        <Slide slideId="forward" footer={commentFooter('forward')}>
+        <Slide slideId="forward">
           <SlideHead icon={Banknote} kicker="Forward Cashflow" title={`งบการเงินล่วงหน้า · ${selfName} (อายุ ${forward ? forward.ages[0] : '—'}–${forward ? forward.ages[forward.ages.length - 1] : '—'})`} accent={CY} />
           {forward ? (() => {
             const f = forward
             const cellW = `${(100 / (f.ages.length + 2)).toFixed(2)}%`
-            const fz = f.ages.length > 16 ? 7.5 : 8.5
-            const num = (v: number, c?: string, b?: boolean): React.CSSProperties => ({ padding: '2px 3px', textAlign: 'right', fontFamily: 'monospace', fontSize: fz, color: c ?? (v > 0 ? INK : '#c3ccd6'), fontWeight: b ? 800 : 400, whiteSpace: 'nowrap' })
-            const lbl = (indent = false, b = false, c?: string): React.CSSProperties => ({ padding: `2px 3px 2px ${indent ? 10 : 3}px`, textAlign: 'left', fontSize: fz, color: c ?? (b ? INK : SUB), fontWeight: b ? 800 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 150 })
+            // ย่อขนาดตามจำนวนแถวจริง ให้ตารางจบถึง "กระแสเงินสดสุทธิ" ใน 1 หน้าเสมอ
+            const totalRows = f.incomeLines.length + f.fixedLines.length + f.varLines.length + f.savLines.length + 12
+            const rowH = Math.max(9, Math.min(17, Math.floor(600 / totalRows)))
+            const padY = rowH >= 14 ? 2 : 1
+            const fz = Math.max(5.5, Math.min(8.5, rowH - 2 * padY - 3))
+            const num = (v: number, c?: string, b?: boolean): React.CSSProperties => ({ padding: `${padY}px 3px`, textAlign: 'right', fontFamily: 'monospace', fontSize: fz, lineHeight: 1.2, color: c ?? (v > 0 ? INK : '#c3ccd6'), fontWeight: b ? 800 : 400, whiteSpace: 'nowrap' })
+            const lbl = (indent = false, b = false, c?: string): React.CSSProperties => ({ padding: `${padY}px 3px ${padY}px ${indent ? 10 : 3}px`, textAlign: 'left', fontSize: fz, lineHeight: 1.2, color: c ?? (b ? INK : SUB), fontWeight: b ? 800 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 150 })
             const SecRow = ({ title, color }: { title: string; color: string }) => (
-              <tr><td colSpan={f.ages.length + 1} style={{ padding: '4px 3px 2px', fontSize: fz + 0.5, fontWeight: 800, color, borderBottom: `1px solid ${LINE}` }}>{title}</td></tr>
+              <tr><td colSpan={f.ages.length + 1} style={{ padding: `${padY + 1}px 3px ${padY}px`, fontSize: fz + 0.5, lineHeight: 1.2, fontWeight: 800, color, borderBottom: `1px solid ${LINE}` }}>{title}</td></tr>
             )
             const LineRow = ({ r }: { r: { label: string; vals: number[] } }) => (
               <tr style={{ borderBottom: `1px solid ${HAIR}` }}>
