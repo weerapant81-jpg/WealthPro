@@ -1274,6 +1274,18 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                     </div>}
                   </div>
                 </div>
+                {/* ความคุ้มครองที่มี แยกตามประเภท (จากกรมธรรม์+สัญญาเพิ่มเติม) */}
+                <div style={{ marginTop: 10, background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '10px 14px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: MUTED, textTransform: 'uppercase', marginBottom: 4 }}>ความคุ้มครองที่มี (แยกประเภท)</div>
+                  {(p.cov?.radarData ?? []).filter((d: any) => toNum(d.amount) > 0).length === 0
+                    ? <div style={{ fontSize: 12, color: MUTED, padding: '4px 0' }}>ยังไม่มีความคุ้มครอง</div>
+                    : (p.cov.radarData as any[]).filter(d => toNum(d.amount) > 0).map(d => (
+                      <div key={d.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '4px 0', borderBottom: `1px solid ${HAIR}`, fontSize: 12.5 }}>
+                        <span style={{ color: SUB }}>{d.subject}</span>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: INK }}>{fmt(toNum(d.amount))} <span style={{ fontSize: 10.5, fontWeight: 400, color: MUTED }}>บาท</span></span>
+                      </div>
+                    ))}
+                </div>
               </div>
             ))}
           </TwoCol>
