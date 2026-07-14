@@ -191,9 +191,10 @@ function ClientDashboard() {
   for (const it of (actionData?.items ?? [])) {
     const sub = Array.isArray(it.subPlan) ? it.subPlan : []
     for (const r of sub) {
-      const desc = String(r?.desc || '').trim()
+      // แต่ละหมวดใช้ชื่อฟิลด์ต่างกัน: desc (ทั่วไป) / method (สภาพคล่อง) / who (มรดก)
+      const desc = String(r?.desc || r?.method || r?.who || '').trim()
       const rawAmt = r?.amount ?? r?.premium ?? r?.sumInsured
-      const amount = rawAmt != null && rawAmt !== '' ? Number(rawAmt) : null
+      const amount = rawAmt != null && rawAmt !== '' ? Number(String(rawAmt).replace(/,/g, '')) : null
       const schedule = String(r?.schedule || '')
       const owner = String(r?.owner || '').trim()
       if (!desc && amount == null && !schedule) continue
