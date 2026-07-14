@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { ShieldCheck, ChevronRight, RotateCcw, Save, User, Users } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { ShieldCheck, ChevronRight, RotateCcw, Save, User, Users, ArrowRight } from 'lucide-react'
 import * as s from '../styles/dark'
 import { PageHeader } from '../components/ui'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
@@ -249,6 +250,7 @@ type Answers = Record<number, number[]>
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function RiskAssessmentPage() {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const [answers, setAnswers] = useState<Answers>({})
   const [extraAnswers, setExtraAnswers] = useState<Record<number, number>>({})
   const [step, setStep] = useState<'quiz' | 'result'>('quiz')
@@ -473,7 +475,13 @@ export default function RiskAssessmentPage() {
         {/* Save */}
         <div style={{ textAlign: 'center', paddingBottom: 8 }}>
           {saved ? (
-            <div style={{ color: '#22c55e', fontSize: 14 }}>✓ บันทึกผลการประเมินแล้ว</div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+              <div style={{ color: '#22c55e', fontSize: 14 }}>✓ บันทึกผลการประเมินแล้ว</div>
+              <button onClick={() => navigate('/financial-plan')}
+                style={{ ...s.btn(), padding: '12px 32px', fontSize: 14, gap: 8 }}>
+                เริ่มต้นวางแผนการเงิน <ArrowRight size={16} />
+              </button>
+            </div>
           ) : (
             <button onClick={handleSave} disabled={saveRisk.isPending}
               style={{ ...s.btn(), padding: '12px 32px', fontSize: 14, gap: 8 }}>

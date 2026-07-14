@@ -397,6 +397,7 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
               ดึงจาก "อัตราผลตอบแทนจากการลงทุนก่อนเกษียณ" หน้าตั้งค่าสมมติฐาน
             </div>
             <AssumpRow label="อัตราการเพิ่มของรายได้ (g)" value={plan.hlvGrowth} onChange={v => set('hlvGrowth', v)} unit="%" />
+            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', lineHeight: 1.5, marginTop: -2 }}>ดึงจาก "เงินเดือนเพิ่มขึ้น" หน้าข้อมูลส่วนบุคคล (แก้ไขทับได้)</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6, borderTop: '1px solid var(--card-border)' }}>
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Real Rate = (1+i)/(1+g) − 1</span>
               <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: '#22d3ee' }}>{(hlvReal * 100).toFixed(2)}%</span>
@@ -485,6 +486,7 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
               ดึงจาก "อัตราผลตอบแทนจากการลงทุนก่อนเกษียณ" หน้าตั้งค่าสมมติฐาน
             </div>
             <AssumpRow label="อัตราการเพิ่มของรายได้ (g)" value={plan.incomeGrowth} onChange={v => set('incomeGrowth', v)} unit="%" />
+            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', lineHeight: 1.5, marginTop: -2 }}>ดึงจาก "เงินเดือนเพิ่มขึ้น" หน้าข้อมูลส่วนบุคคล (แก้ไขทับได้)</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6, borderTop: '1px solid var(--card-border)' }}>
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Real Rate = (1+i)/(1+g) − 1</span>
               <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: '#fbbf24' }}>{(realRate * 100).toFixed(2)}%</span>
@@ -602,6 +604,8 @@ export default function InsurancePlanPage({ person = 'self' }: { person?: 'self'
   const [self, setSelf] = useState<PersonPlan>(defaultPlan())
   const [spouse, setSpouse] = useState<PersonPlan>(defaultPlan())
   const loadedRef = useRef(false)
+  const filledParentRef = useRef<Record<string, boolean>>({})
+  const filledGrowthRef = useRef<Record<string, boolean>>({})
   useEffect(() => {
     if (loadedRef.current || !isFetched) return
     if (saved?.self) setSelf(s => ({ ...s, ...saved.self }))
@@ -684,6 +688,38 @@ export default function InsurancePlanPage({ person = 'self' }: { person?: 'self'
   const autoPVD = welfare?.hasPVD ? monthlySalary * (toNum(welfare?.pvdEmployeeRate) / 100) * 12 : 0
   const autoSavings = Array.isArray(expenses)
     ? expenses.filter((e: any) => String(e.category).startsWith('saving_')).reduce((s: number, e: any) => s + toAnnual(e.amount, e.frequency), 0) : 0
+  // ค่าใช้จ่ายส่วนตัว (HLV) default = ค่าใช้จ่ายผันแปร "เงินให้บุพการี" (var_parents) ต่อปี
+  const autoParentCare = Array.isArray(expenses)
+    ? expenses.filter((e: any) => e.category === 'var_parents').reduce((s: number, e: any) => s + toAnnual(e.amount, e.frequency), 0) : 0
+  // เติมค่า default "ค่าใช้จ่ายส่วนตัว" (HLV) จากเงินให้บุพการี ครั้งเดียวต่อคน หากผู้ใช้ยังไม่กรอก (=0)
+  useEffect(() => {
+    if (!loadedRef.current || expenses === undefined || filledParentRef.current[person] || autoParentCare <= 0) return
+    const upd = person === 'self' ? setSelf : setSpouse
+    upd(p => {
+      const list = p.hlvDeduct ?? []
+      const idx = list.findIndex(it => it.label === 'ค่าใช้จ่ายส่วนตัว')
+      if (idx < 0 || toNum(list[idx].amount) !== 0) return p
+      const next = list.slice(); next[idx] = { ...next[idx], amount: autoParentCare }
+      return { ...p, hlvDeduct: next }
+    })
+    filledParentRef.current[person] = true
+  }, [person, expenses, autoParentCare])
+
+  // อัตราการเพิ่มของรายได้ (g) default = "เงินเดือนเพิ่มขึ้น" หน้าข้อมูลส่วนบุคคล
+  const rawSalGrowth = person === 'self' ? clientProfile?.salaryIncreaseRate : spouseJob?.salaryIncreaseRate
+  const autoSalaryGrowth = (rawSalGrowth != null && rawSalGrowth !== '' && !isNaN(Number(rawSalGrowth))) ? Number(rawSalGrowth) : null
+  // เติม g จากเงินเดือนเพิ่มขึ้น ครั้งเดียวต่อคน หากยังเป็นค่าเริ่มต้น (5)
+  useEffect(() => {
+    if (!loadedRef.current || autoSalaryGrowth == null || filledGrowthRef.current[person]) return
+    const upd = person === 'self' ? setSelf : setSpouse
+    upd(p => {
+      const patch: Partial<PersonPlan> = {}
+      if (p.hlvGrowth === 5) patch.hlvGrowth = autoSalaryGrowth
+      if (p.incomeGrowth === 5) patch.incomeGrowth = autoSalaryGrowth
+      return Object.keys(patch).length ? { ...p, ...patch } : p
+    })
+    filledGrowthRef.current[person] = true
+  }, [person, autoSalaryGrowth])
   const lifePremiumAnnual = personPolicies.reduce((s: number, p: any) => s + toNum(p.premium), 0)
   const healthPremiumAnnual = Array.isArray(expenses)
     ? expenses.filter((e: any) => e.category === 'fixed_health_ins').reduce((s: number, e: any) => s + toAnnual(e.amount, e.frequency), 0) : 0

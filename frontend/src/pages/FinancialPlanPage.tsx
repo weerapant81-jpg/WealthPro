@@ -9,6 +9,7 @@ import EstatePlanPage from './EstatePlanPage'
 import TaxPlanningPage from './TaxPlanningPage'
 import { PageHeader } from '../components/ui'
 import { WizardNav } from '../components/WizardNav'
+import { useClient } from '../context/ClientContext'
 import EducationPlanPage from './EducationPlanPage'
 import InsurancePlanPage from './InsurancePlanPage'
 import ProjectionInvestmentTab from './projection/ProjectionInvestmentTab'
@@ -55,6 +56,9 @@ export default function FinancialPlanPage() {
   })
   const clientName = clientProfile?.firstName ? `คุณ${clientProfile.firstName}` : 'ลูกค้า'
   const spouseName = clientProfile?.spouseProfile?.firstName ? `คุณ${clientProfile.spouseProfile.firstName}` : 'คู่สมรส'
+  // remount แท็บเมื่อสลับลูกค้า → รีเซ็ต local state (loadedRef/auto-fill) ให้ดึงชื่อ/อายุของลูกค้าที่เลือกใหม่ถูกต้อง
+  const { selectedClient } = useClient()
+  const clientKey = selectedClient?.id ?? 'me'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -72,10 +76,10 @@ export default function FinancialPlanPage() {
       <PageHeader icon={active.icon} title={active.label} subtitle="วางแผนการเงิน" />
 
       {active.proj
-        ? <Active key={person} person={person} />
+        ? <Active key={`${person}-${clientKey}`} person={person} />
         : active.hasPerson
-          ? <Active person={person} />
-          : <Active />}
+          ? <Active key={clientKey} person={person} />
+          : <Active key={clientKey} />}
 
       {/* นำทางวางแผนทีละหน้า — ก่อนหน้า / ถัดไป */}
       <WizardNav steps={TABS.map(t => ({ key: t.key, label: t.label }))} current={tab} onGo={goTab} />
