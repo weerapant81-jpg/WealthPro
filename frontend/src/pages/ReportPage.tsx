@@ -78,6 +78,47 @@ function calcRetire(p: any, asset: number) {
   return { totalNeeded, asset, gap, annualSavings, monthly: annualSavings / 12, yearsTo, yearsAfter }
 }
 
+/* ── Monte Carlo success rate: โอกาสที่เงินพอใช้ถึงอายุขัย ── */
+function mulberry32(seed: number) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+type McOpts = {
+  curAge: number; retAge: number; lifeExp: number
+  startAssets: number; annualSaving: number; savingGrowth: number
+  mu: number; sigma: number; lumpAtRet: number; expense1: number; inflation: number
+}
+function mcSuccessRate(o: McOpts): number {
+  const N = 600
+  if (o.lifeExp <= o.curAge) return 0
+  const seed = (Math.round(o.startAssets) ^ (Math.round(o.mu * 10000) << 2) ^ (o.retAge << 8) ^ (o.lifeExp << 3) ^ Math.round(o.expense1)) >>> 0
+  const rng = mulberry32(seed || 1)
+  let ok = 0
+  for (let p = 0; p < N; p++) {
+    let v = o.startAssets, save = o.annualSaving, exp = o.expense1, alive = true
+    for (let age = o.curAge; age < o.lifeExp; age++) {
+      let u1 = rng(); if (u1 < 1e-12) u1 = 1e-12
+      const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * rng())
+      const growth = Math.exp((o.mu - (o.sigma * o.sigma) / 2) + o.sigma * z)
+      if (age < o.retAge) {
+        v = v * growth + save
+        save *= 1 + o.savingGrowth
+        if (age + 1 === o.retAge) v += o.lumpAtRet
+      } else {
+        v = (v - exp) * growth
+        exp *= 1 + o.inflation
+        if (v < 0) { alive = false; break }
+      }
+    }
+    if (alive) ok++
+  }
+  return Math.round((ok / N) * 100)
+}
+
 interface Sec { k: string; t: string; lvl: 1 | 2; auto?: string }
 const SECTIONS: Sec[] = [
   { k: 'letter', t: 'จดหมายจากนักวางแผนการเงิน', lvl: 1, auto: 'letter' },
@@ -86,6 +127,7 @@ const SECTIONS: Sec[] = [
   { k: 'exec', t: 'บทสรุปผู้บริหาร', lvl: 1, auto: 'exec' },
   { k: 'domains', t: 'บทวิเคราะห์การวางแผนการเงิน 6 ด้าน', lvl: 1, auto: 'domains' },
   { k: 'reco', t: 'ข้อเสนอแนะ', lvl: 1 },
+  { k: 'scenarios', t: 'การทดสอบความทนทานของแผน (Scenario & Monte Carlo)', lvl: 1, auto: 'scenarios' },
   { k: 'action', t: 'แผนปฏิบัติการ', lvl: 1, auto: 'action' },
   { k: 'personal', t: 'สรุปผลการวิเคราะห์ข้อมูลส่วนบุคคลเบื้องต้น', lvl: 1, auto: 'personal' },
   { k: 'finance', t: 'สรุปผลการวิเคราะห์ข้อมูลทางการเงินส่วนบุคคล', lvl: 1, auto: 'finance' },
@@ -305,6 +347,60 @@ export default function ReportPage() {
             <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 14px', marginBottom: 8, background: '#f8fafc', borderRadius: 10, borderLeft: `4px solid ${TEAL}` }}>
               <span style={{ color: TEAL, fontWeight: 800, fontSize: 15, lineHeight: 1.5 }}>›</span>
               <span style={{ fontSize: 14, color: '#0f172a', fontWeight: 600, lineHeight: 1.7 }}>{g}</span>
+            </div>
+          ))}
+        </div>
+      )
+    }
+    if (kind === 'scenarios') {
+      const rp = retPlan?.self
+      if (!rp) return <div style={{ fontSize: 12.5, color: '#94a3b8', marginBottom: 12 }}>ยังไม่มีข้อมูลแผนเกษียณ — กรอกที่หน้า "วางแผนเกษียณ" ก่อน</div>
+      const curAge = rp.currentAge ?? age ?? 45
+      const retAge = profile?.retirementAgeSelf ?? rp.retirementAge ?? 60
+      const lifeExp = profile?.lifeExpectancySelf ?? rp.lifeExpectancy ?? 85
+      const inflation = (rp.inflationRate ?? profile?.inflationRate ?? 3) / 100
+      const sgr = (rp.savingsGrowthRate ?? 0) / 100
+      // ความผันผวนตามระดับความเสี่ยง (ตรรกะเดียวกับแบบจำลองหน้ามูลค่าสินทรัพย์ลงทุน)
+      const riskLabel = String(profile?.riskLabel ?? profile?.riskLevel ?? '')
+      const sigmaPct = /สูง/.test(riskLabel) ? 16 : /กลาง|ปานกลาง/.test(riskLabel) ? 11 : /ต่ำ/.test(riskLabel) ? 6 : (portRet >= 8 ? 16 : portRet >= 4 ? 11 : 6)
+      const mu = (portRet > 0 ? portRet : (rp.preRetirementReturn ?? 5)) / 100
+      const lump = retR ? retR.sources.sso + retR.sources.pvd + retR.sources.severance : 0
+      const saving = retR?.annualSavings ?? 0
+      const expenseAt = (ra: number) => rp.needMethod === 'replacement'
+        ? (rp.annualIncome ?? 0) * Math.pow(1 + sgr, Math.max(0, ra - curAge)) * ((rp.replacementRate ?? 70) / 100)
+        : ((rp.monthlyLiving ?? 0) + (rp.monthlyHealth ?? 0)) * 12 * Math.pow(1 + inflation, Math.max(0, ra - curAge))
+      const base: McOpts = { curAge, retAge, lifeExp, startAssets: totalInv, annualSaving: saving, savingGrowth: sgr, mu, sigma: sigmaPct / 100, lumpAtRet: lump, expense1: expenseAt(retAge), inflation }
+      const scenarios: { name: string; desc: string; o: McOpts }[] = [
+        { name: 'แผนพื้นฐาน', desc: `ออมเพิ่มตามแผน ${fmt(saving)} บาท/ปี · เกษียณอายุ ${retAge} · อายุขัย ${lifeExp} ปี · เงินเฟ้อ ${(inflation * 100).toFixed(1)}%`, o: base },
+        { name: 'ไม่ออมเพิ่มจากปัจจุบัน', desc: 'เหมือนแผนพื้นฐาน แต่ไม่มีการออมเพิ่ม — ใช้เฉพาะสินทรัพย์ที่มีและเงินก้อน ณ เกษียณ', o: { ...base, annualSaving: 0 } },
+        { name: `อายุยืนถึง ${lifeExp + 5} ปี`, desc: 'เหมือนแผนพื้นฐาน แต่ต้องใช้เงินหลังเกษียณนานขึ้นอีก 5 ปี', o: { ...base, lifeExp: lifeExp + 5 } },
+        { name: 'เงินเฟ้อสูงขึ้น +1%', desc: `เงินเฟ้อตลอดแผนเพิ่มเป็น ${(inflation * 100 + 1).toFixed(1)}% ต่อปี`, o: { ...base, inflation: inflation + 0.01, expense1: expenseAt(retAge) * Math.pow(1.01, Math.max(0, retAge - curAge)) } },
+        ...(retAge - 5 > curAge ? [{ name: `เกษียณเร็วขึ้น 5 ปี (อายุ ${retAge - 5})`, desc: 'ระยะเวลาออมสั้นลงและใช้เงินหลังเกษียณนานขึ้น', o: { ...base, retAge: retAge - 5, expense1: expenseAt(retAge - 5) } }] : []),
+        { name: 'ผลตอบแทนต่ำกว่าคาด −2%', desc: `ผลตอบแทนพอร์ตเฉลี่ยลดจาก ${(mu * 100).toFixed(1)}% เหลือ ${(mu * 100 - 2).toFixed(1)}% ต่อปี`, o: { ...base, mu: mu - 0.02 } },
+      ]
+      const results = scenarios.map(s => ({ ...s, pct: mcSuccessRate(s.o) }))
+      const tone = (p: number) => p >= 80 ? GREENR : p >= 60 ? AMBERR : REDR
+      return (
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.8, marginBottom: 6 }}>
+            เพื่อทดสอบความยั่งยืนของแผน เราจำลอง "ชีวิตทางการเงิน" ของคุณ 600 เส้นทางด้วยเทคนิค Monte Carlo โดยสุ่มลำดับผลตอบแทนตามความผันผวนของพอร์ต ({sigmaPct}% ต่อปี) ตัวเลขที่แสดงคือสัดส่วนของเส้นทางที่เงินยังเหลือถึงอายุขัยที่วางแผนไว้
+          </p>
+          <p style={{ fontSize: 11.5, color: '#94a3b8', lineHeight: 1.7, marginBottom: 14 }}>
+            หมายเหตุ: การเปลี่ยนตัวแปรเพียงเล็กน้อยอาจทำให้ผลลัพธ์ต่างกันมาก ผล Monte Carlo จึงเหมาะกับการ "เปรียบเทียบระหว่างทางเลือก" มากกว่าการชี้ขาดว่าแผนสำเร็จหรือล้มเหลว — ค่าที่ต่ำหมายถึงความยืดหยุ่นในอนาคตน้อยลง ไม่ใช่ความล้มเหลวแน่นอน
+          </p>
+          {results.map((s, i) => (
+            <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'center', border: '1px solid #f1f5f9', borderRadius: 12, padding: '12px 16px', marginBottom: 8, breakInside: 'avoid' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 800, color: '#0f172a' }}>{i + 1}. {s.name}</div>
+                <div style={{ fontSize: 11.5, color: '#64748b', lineHeight: 1.6, marginTop: 3 }}>{s.desc}</div>
+                <div style={{ height: 6, borderRadius: 999, background: '#f1f5f9', marginTop: 8, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${Math.max(3, s.pct)}%`, borderRadius: 999, background: tone(s.pct) }} />
+                </div>
+              </div>
+              <div style={{ width: 76, textAlign: 'center' }}>
+                <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'monospace', color: tone(s.pct) }}>{s.pct}%</div>
+                <div style={{ fontSize: 9.5, color: '#94a3b8', letterSpacing: 0.5 }}>โอกาสสำเร็จ</div>
+              </div>
             </div>
           ))}
         </div>
