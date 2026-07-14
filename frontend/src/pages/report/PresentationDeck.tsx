@@ -778,6 +778,8 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
       fixedLines: lineRows(data.expFixed), fixedTotal: sumRow(data.expFixed),
       varLines: lineRows(data.expVar), varTotal: sumRow(data.expVar),
       savLines: lineRows(data.expSaving), savTotal: sumRow(data.expSaving),
+      goalLines: lineRows([...(data.goalInsurance ?? []), ...(data.goalEducation ?? []), ...(data.goalRetire ?? [])]),
+      goalTotal: sumRow([...(data.goalInsurance ?? []), ...(data.goalEducation ?? []), ...(data.goalRetire ?? [])]),
       tax,
     }
   }, [cfPlan, selfAge, profile, client, taxPlan])
@@ -1660,7 +1662,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
             const f = forward
             const cellW = `${(100 / (f.ages.length + 2)).toFixed(2)}%`
             // ย่อขนาดตามจำนวนแถวจริง ให้ตารางจบถึง "กระแสเงินสดสุทธิ" ใน 1 หน้าเสมอ
-            const totalRows = f.incomeLines.length + f.fixedLines.length + f.varLines.length + f.savLines.length + 12
+            const totalRows = f.incomeLines.length + f.fixedLines.length + f.varLines.length + f.savLines.length + f.goalLines.length + 15
             const rowH = Math.max(9, Math.min(17, Math.floor(600 / totalRows)))
             const padY = rowH >= 14 ? 2 : 1
             const fz = Math.max(5.5, Math.min(8.5, rowH - 2 * padY - 3))
@@ -1683,6 +1685,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
             )
             const expTotal = f.ages.map((_, i) => f.fixedTotal[i] + f.varTotal[i] + f.savTotal[i] + f.tax[i])
             const net = f.ages.map((_, i) => f.incomeTotal[i] - expTotal[i])
+            const remain = net.map((v, i) => v - f.goalTotal[i])
             return (
               <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
@@ -1710,6 +1713,13 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                     <tr style={{ borderTop: '1.5px solid #cbd5e1' }}>
                       <td style={lbl(false, true)}>กระแสเงินสดสุทธิ</td>
                       {net.map((v, i) => <td key={i} style={num(v, v >= 0 ? CY : RD, true)}>{fmt(v)}</td>)}
+                    </tr>
+                    <SecRow title="ค่าใช้จ่ายเพื่อเป้าหมายทางการเงิน" color={CY} />
+                    {f.goalLines.map((r, i) => <LineRow key={i} r={r} />)}
+                    <TotalRow label="รวมรายจ่ายเพื่อเป้าหมาย" vals={f.goalTotal} color={CY} />
+                    <tr style={{ borderTop: '1.5px solid #cbd5e1' }}>
+                      <td style={lbl(false, true)}>กระแสเงินสดคงเหลือ</td>
+                      {remain.map((v, i) => <td key={i} style={num(v, v >= 0 ? CY : RD, true)}>{fmt(v)}</td>)}
                     </tr>
                   </tbody>
                 </table>
