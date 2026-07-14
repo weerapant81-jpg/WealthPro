@@ -10,7 +10,7 @@ import { calc, defaultState, type TaxState } from '../../lib/tax'
 import {
   ShieldCheck, TrendingUp, PiggyBank, GraduationCap, Landmark, ClipboardCheck,
   Activity, Pencil, X, Check, AlertTriangle, User, Users, GripVertical, EyeOff, Plus,
-  Wallet, Scale, Receipt, ListChecks, Baby, Target, HeartPulse, Banknote, CalendarClock,
+  Wallet, Scale, Receipt, ListChecks, Baby, Target, HeartPulse, Banknote, CalendarClock, Briefcase,
   Type as TypeIcon, ImagePlus, Trash2, ArrowUp, ArrowDown, Bold, AlignLeft, AlignCenter, AlignRight, FilePlus2,
   RotateCcw, RotateCw, BringToFront, SendToBack, Grid3x3,
 } from 'lucide-react'
@@ -852,7 +852,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   const cOf = (k: string) => pres[k]?.comment || ''
   const hidOf = (k: string) => !!pres[k]?.hidden
   const SLIDE_LABEL: Record<string, string> = {
-    family: 'ข้อมูลครอบครัว', goals: 'เป้าหมายการเงิน', insgoals: 'เป้าหมายด้านการประกัน', balance: 'งบดุล', cashflow: 'งบกระแสเงินสด',
+    family: 'ข้อมูลครอบครัว', work: 'ข้อมูลการทำงานและสวัสดิการ', goals: 'เป้าหมายการเงิน', insgoals: 'เป้าหมายด้านการประกัน', balance: 'งบดุล', cashflow: 'งบกระแสเงินสด',
     assetmix: 'โครงสร้างสินทรัพย์', cfmix: 'โครงสร้างกระแสเงินสด', ratios: 'อัตราส่วน/สุขภาพการเงิน',
     insurance: 'ความเสี่ยง & ประกัน', investment: 'การลงทุน', retirement: 'แผนเกษียณ',
     education: 'ทุนการศึกษาบุตร', edu2: 'กราฟทุนการศึกษา', tax: 'ภาษีเงินได้', estate: 'การจัดการมรดก', action: 'แผนปฏิบัติการ', retire2: 'กราฟเกษียณ', holistic: 'ไทม์ไลน์แผนดำเนินการ',
@@ -1061,6 +1061,53 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                 )}
               </div>
             )}
+          </div>
+        </Slide>
+
+        {/* ── 4b. ข้อมูลการทำงานและสวัสดิการ ── */}
+        <Slide slideId="work" footer={commentFooter('work')}>
+          <SlideHead icon={Briefcase} kicker="Work & Benefits" title="ข้อมูลการทำงานและสวัสดิการ" accent={CY} />
+          <div style={{ display: 'grid', gridTemplateColumns: hasSpouse ? '1fr 1fr' : '1fr', gap: 16, flex: 1, alignContent: 'start' }}>
+            {([
+              { name: selfName, tint: CY, job: { occupation: client?.occupation, jobTitle: client?.jobTitle, company: client?.company, workYears: client?.workYears, salary: client?.salary, rate: client?.salaryIncreaseRate }, wf: client },
+              ...(hasSpouse ? [{ name: spouseName, tint: VI, job: (() => { const j = Array.isArray(client?.spouseJobs) ? client.spouseJobs[0] : null; return { occupation: j?.occupation || client?.spouseProfile?.occupation, jobTitle: j?.jobTitle, company: j?.company, workYears: j?.workYears, salary: j?.salary ?? client?.spouseIncome, rate: j?.salaryIncreaseRate } })(), wf: client?.spouseProfile }] : []),
+            ] as any[]).map(p => {
+              const WRow = ({ l, v, strong }: { l: string; v: string; strong?: boolean }) => (
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '5px 0', borderBottom: `1px solid ${HAIR}`, fontSize: 12.5 }}>
+                  <span style={{ color: SUB }}>{l}</span>
+                  <span style={{ fontWeight: strong ? 800 : 700, color: INK, textAlign: 'right' }}>{v}</span>
+                </div>
+              )
+              const Benefit = ({ label, on, detail }: { label: string; on: boolean; detail?: string }) => (
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 0', borderBottom: `1px solid ${HAIR}` }}>
+                  <span style={{ width: 18, height: 18, borderRadius: 999, flexShrink: 0, marginTop: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: on ? `${GR}1f` : '#f1f5f9', color: on ? GR : MUTED, fontSize: 11, fontWeight: 800 }}>{on ? '✓' : '–'}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: on ? INK : MUTED }}>{label}</div>
+                    {on && detail && <div style={{ fontSize: 11, color: SUB, marginTop: 1 }}>{detail}</div>}
+                  </div>
+                </div>
+              )
+              const salaryM = toNum(p.job.salary)
+              return (
+                <div key={p.name} style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 14, padding: 16 }}>
+                  <PersonHead name={p.name} tint={p.tint} />
+                  {/* งาน & รายได้ */}
+                  <WRow l="อาชีพ / ตำแหน่ง" v={[p.job.occupation, p.job.jobTitle].filter(Boolean).join(' · ') || '—'} />
+                  {p.job.company && <WRow l="สถานที่ทำงาน" v={String(p.job.company)} />}
+                  {toNum(p.job.workYears) > 0 && <WRow l="อายุงาน" v={`${toNum(p.job.workYears)} ปี`} />}
+                  <WRow l="เงินเดือน" v={salaryM > 0 ? `${fmt(salaryM)} บาท/เดือน` : '—'} strong />
+                  <WRow l="อัตราการเพิ่มขึ้นของรายได้" v={p.job.rate != null && p.job.rate !== '' ? `${toNum(p.job.rate)}% ต่อปี` : '—'} />
+                  {/* สวัสดิการ */}
+                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: MUTED, textTransform: 'uppercase', margin: '12px 0 2px' }}>สวัสดิการที่มี</div>
+                  <Benefit label="ประกันสังคม" on={!!p.wf?.hasSocialSecurity}
+                    detail={[toNum(p.wf?.socialSecurityYears) > 0 ? `สมทบมาแล้ว ${toNum(p.wf?.socialSecurityYears)} ปี` : '', toNum(p.wf?.socialSecurityValue) > 0 ? `มูลค่ากองทุน ${fmt(toNum(p.wf?.socialSecurityValue))} บาท` : ''].filter(Boolean).join(' · ')} />
+                  <Benefit label="ประกันกลุ่ม" on={!!p.wf?.hasGroupInsurance}
+                    detail={[toNum(p.wf?.giRoomLimit) > 0 ? `ค่าห้อง ${fmt(toNum(p.wf?.giRoomLimit))}` : '', toNum(p.wf?.giMedicalLimit) > 0 ? `ค่ารักษา ${fmt(toNum(p.wf?.giMedicalLimit))}` : '', toNum(p.wf?.giOpdLimit) > 0 ? `OPD ${fmt(toNum(p.wf?.giOpdLimit))}` : ''].filter(Boolean).join(' · ')} />
+                  <Benefit label="กองทุนสำรองเลี้ยงชีพ (PVD)" on={!!p.wf?.hasPVD}
+                    detail={[toNum(p.wf?.pvdEmployeeRate) > 0 ? `สะสม ${toNum(p.wf?.pvdEmployeeRate)}%` : '', toNum(p.wf?.pvdEmployerRate) > 0 ? `นายจ้างสมทบ ${toNum(p.wf?.pvdEmployerRate)}%` : '', toNum(p.wf?.pvdCurrentValue) > 0 ? `มูลค่าปัจจุบัน ${fmt(toNum(p.wf?.pvdCurrentValue))} บาท` : ''].filter(Boolean).join(' · ')} />
+                </div>
+              )
+            })}
           </div>
         </Slide>
 
