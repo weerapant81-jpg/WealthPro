@@ -7,6 +7,7 @@ import * as s from '../styles/dark'
 import { PageHeader } from '../components/ui'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { ChartFrame } from '../components/exportable'
+import { hasSpouseInfo } from '../lib/spouse'
 
 // ─── Chart Q7 ─────────────────────────────────────────────────────────────────
 function ReturnChart() {
@@ -267,6 +268,8 @@ export default function RiskAssessmentPage() {
   })
   const clientName = clientProfile?.firstName ? `คุณ${clientProfile.firstName}` : 'ลูกค้า'
   const spouseName = clientProfile?.spouseProfile?.firstName ? `คุณ${clientProfile.spouseProfile.firstName}` : 'คู่สมรส'
+  const showSpouse = hasSpouseInfo(clientProfile)
+  useEffect(() => { if (!showSpouse && person === 'spouse') setPerson('client') }, [showSpouse, person])
 
   // ผลล่าสุดของบุคคลที่เลือก (client = ฟิลด์หลัก, spouse = spouseRisk JSON)
   const lastResult = person === 'client'
@@ -294,7 +297,7 @@ export default function RiskAssessmentPage() {
   const PersonSwitch = (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 16 }}>
       <div style={{ display: 'inline-flex', gap: 4, background: 'var(--navy-950)', border: '1px solid var(--card-border)', borderRadius: 10, padding: 4 }}>
-        {([['client', clientName], ['spouse', spouseName]] as const).map(([val, label]) => (
+        {([['client', clientName], ['spouse', spouseName]] as const).filter(([val]) => showSpouse || val === 'client').map(([val, label]) => (
           <button key={val} onClick={() => { if (val !== person) setPerson(val) }}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 18px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: person === val ? 600 : 400,
               background: person === val ? 'var(--cyan-dim)' : 'transparent',

@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { hasSpouseInfo } from '../lib/spouse'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import {
@@ -130,6 +131,8 @@ function ClientDashboard() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   const { data: clientProfile } = useQuery({ queryKey: ['client-profile'], queryFn: () => api.get('/client-profile').then(r => r.data), retry: false })
+  const showSpouse = hasSpouseInfo(clientProfile)
+  useEffect(() => { if (!showSpouse && person === 'spouse') setPerson('client') }, [showSpouse, person])
   const photoSrc: string | undefined = person === 'client' ? clientProfile?.photo : clientProfile?.spouseProfile?.photo
   const savePhoto = useMutation({
     mutationFn: (dataUrl: string | null) => person === 'client'
@@ -231,7 +234,7 @@ function ClientDashboard() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', gap: 4, background: 'var(--navy-950)', padding: 4, borderRadius: 10, border: '1px solid var(--card-border)' }}>
-            {([['client', '#06b6d4', User, clientName], ['spouse', '#c084fc', Users, spouseName]] as const).map(([k, c, Icon, name]) => (
+            {([['client', '#06b6d4', User, clientName], ['spouse', '#c084fc', Users, spouseName]] as const).filter(([k]) => showSpouse || k === 'client').map(([k, c, Icon, name]) => (
               <button key={k} onClick={() => setPerson(k)}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', background: person === k ? `${c}20` : 'transparent', color: person === k ? c : 'var(--text-muted)', fontWeight: person === k ? 600 : 400, fontSize: 13 }}>
                 <Icon size={14} />{name}

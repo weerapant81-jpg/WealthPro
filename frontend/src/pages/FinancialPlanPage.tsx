@@ -10,6 +10,7 @@ import TaxPlanningPage from './TaxPlanningPage'
 import { PageHeader } from '../components/ui'
 import { WizardNav } from '../components/WizardNav'
 import { useClient } from '../context/ClientContext'
+import { hasSpouseInfo } from '../lib/spouse'
 import EducationPlanPage from './EducationPlanPage'
 import InsurancePlanPage from './InsurancePlanPage'
 import ProjectionInvestmentTab from './projection/ProjectionInvestmentTab'
@@ -59,11 +60,14 @@ export default function FinancialPlanPage() {
   // remount แท็บเมื่อสลับลูกค้า → รีเซ็ต local state (loadedRef/auto-fill) ให้ดึงชื่อ/อายุของลูกค้าที่เลือกใหม่ถูกต้อง
   const { selectedClient } = useClient()
   const clientKey = selectedClient?.id ?? 'me'
+  // ซ่อนปุ่มสลับคู่สมรสเมื่อลูกค้าโสด/ไม่มีคู่สมรส
+  const showSpouse = hasSpouseInfo(clientProfile)
+  useEffect(() => { if (!showSpouse && person === 'spouse') setPerson('self') }, [showSpouse, person])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* ปุ่มสลับลูกค้า/คู่สมรส → topbar (portal) · แท็บย้ายไปเป็นเมนูย่อยใน sidebar */}
-      {topSlot && active.hasPerson && createPortal(
+      {topSlot && active.hasPerson && showSpouse && createPortal(
         <div style={{ display: 'inline-flex', gap: 3, background: 'var(--navy-900)', padding: 3, borderRadius: 9, border: '1px solid var(--card-border)' }}>
           {([['self', '#06b6d4', User, clientName], ['spouse', '#c084fc', Users, spouseName]] as const).map(([key, c, Icon, label]) => (
             <button key={key} onClick={() => setPerson(key)}

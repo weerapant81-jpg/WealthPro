@@ -698,8 +698,10 @@ export default function ClientProfilePage() {
   }
 
   const hasSpouse = form.maritalStatus === 'สมรส'
+  useEffect(() => { if (!hasSpouse && person === 'spouse') setPerson('client') }, [hasSpouse, person])
 
-  const showPersonToggle = tab === 'personal' || tab === 'investment' || tab === 'goals' || tab === 'finance'
+  // ซ่อนปุ่มสลับคู่สมรสเมื่อสถานภาพไม่ใช่สมรส
+  const showPersonToggle = (tab === 'personal' || tab === 'investment' || tab === 'goals' || tab === 'finance') && hasSpouse
   const isSigned = !!(form.consent as any)?.signedAt
 
   return (

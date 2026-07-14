@@ -5,6 +5,7 @@ import { Calculator, Check, Loader2, User, Users, RefreshCw } from 'lucide-react
 import { useIsCompact } from '../hooks/useViewport'
 import { calc, defaultState, BRACKETS, expenseFor, type TaxState, type ExpenseKey } from '../lib/tax'
 import { MoneyInput } from '../components/MoneyInput'
+import { hasSpouseInfo } from '../lib/spouse'
 
 /* ── helpers ── */
 const fmt = (n: number) => (isFinite(n) ? Math.round(n) : 0).toLocaleString('th-TH')
@@ -150,6 +151,8 @@ export default function TaxPlanningPage() {
 
   const clientName = clientProfile?.firstName ? `คุณ${clientProfile.firstName}` : 'ลูกค้า'
   const spouseName = clientProfile?.spouseProfile?.firstName ? `คุณ${clientProfile.spouseProfile.firstName}` : 'คู่สมรส'
+  const showSpouse = hasSpouseInfo(clientProfile)
+  useEffect(() => { if (!showSpouse && person === 'spouse') setPerson('self') }, [showSpouse, person])
 
   const loadedRef = useRef(false)
   useEffect(() => {
@@ -301,7 +304,7 @@ export default function TaxPlanningPage() {
             {status === 'saved' && <><Check size={14} color="#4ade80" /><span style={{ color: '#4ade80' }}>บันทึกแล้ว</span></>}
           </div>
           <div style={{ display: 'flex', gap: 4, background: 'var(--navy-950)', padding: 4, borderRadius: 10, border: '1px solid var(--card-border)' }}>
-            {([['self', '#06b6d4', User, clientName], ['spouse', '#c084fc', Users, spouseName]] as const).map(([key, col, Icon, name]) => (
+            {([['self', '#06b6d4', User, clientName], ['spouse', '#c084fc', Users, spouseName]] as const).filter(([key]) => showSpouse || key === 'self').map(([key, col, Icon, name]) => (
               <button key={key} onClick={() => setPerson(key)}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 18px', borderRadius: 8, border: 'none', cursor: 'pointer', background: person === key ? `${col}20` : 'transparent', color: person === key ? col : 'var(--text-muted)', fontWeight: person === key ? 600 : 400, fontSize: 13 }}>
                 <Icon size={14} />{name}

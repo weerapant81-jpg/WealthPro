@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { hasSpouseInfo } from '../lib/spouse'
 import { TrendingUp, Shield, Briefcase, Scale, User, Users } from 'lucide-react'
 import ProjectionInvestmentTab from './projection/ProjectionInvestmentTab'
 import ProjectionSocialSecurityTab from './projection/ProjectionSocialSecurityTab'
@@ -26,6 +27,8 @@ export default function ProjectionPage() {
   })
   const clientName = clientProfile?.firstName ? `คุณ${clientProfile.firstName}` : 'ลูกค้า'
   const spouseName = clientProfile?.spouseProfile?.firstName ? `คุณ${clientProfile.spouseProfile.firstName}` : 'คู่สมรส'
+  const showSpouse = hasSpouseInfo(clientProfile)
+  useEffect(() => { if (!showSpouse && person === 'spouse') setPerson('self') }, [showSpouse, person])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -36,7 +39,7 @@ export default function ProjectionPage() {
 
         {/* Person switcher */}
         <div style={{ display: 'flex', gap: 4, background: 'var(--navy-950)', padding: 4, borderRadius: 10, border: '1px solid var(--card-border)' }}>
-          {([['self', '#06b6d4', User, clientName], ['spouse', '#c084fc', Users, spouseName]] as const).map(([key, c, Icon, label]) => (
+          {([['self', '#06b6d4', User, clientName], ['spouse', '#c084fc', Users, spouseName]] as const).filter(([key]) => showSpouse || key === 'self').map(([key, c, Icon, label]) => (
             <button key={key} onClick={() => setPerson(key)}
               style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 18px', borderRadius: 8, border: 'none', cursor: 'pointer', background: person === key ? `${c}20` : 'transparent', color: person === key ? c : 'var(--text-muted)', fontWeight: person === key ? 600 : 400, fontSize: 13, transition: 'all 0.15s' }}>
               <Icon size={14} />{label}
