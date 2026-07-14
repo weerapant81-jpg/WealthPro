@@ -62,7 +62,11 @@ export function useInsuranceReadiness(person: 'client' | 'spouse') {
   const healthPremiumAnnual = Array.isArray(expenses)
     ? expenses.filter((e: any) => e.category === 'fixed_health_ins').reduce((s: number, e: any) => s + toAnnual(e.amount, e.frequency), 0) : 0
   const autoTax = taxPlan?.[key] ? calcTaxPlan({ ...defaultTaxState(), ...taxPlan[key] }).tax : 0
-  const autoDeduct = { ss: autoSS, pvd: autoPVD, savings: autoSavings, insurance: lifePremiumAnnual + healthPremiumAnnual, tax: autoTax }
+  // ค่าใช้จ่ายส่วนตัว = ค่าใช้จ่ายผันแปรรวม หัก "เงินให้บุพการี" (var_parents) และ "ภาษีเงินได้" (var_tax)
+  const autoPersonalExpense = Array.isArray(expenses)
+    ? expenses.filter((e: any) => String(e.category).startsWith('var_') && e.category !== 'var_parents' && e.category !== 'var_tax')
+        .reduce((s: number, e: any) => s + toAnnual(e.amount, e.frequency), 0) : 0
+  const autoDeduct = { ss: autoSS, pvd: autoPVD, savings: autoSavings, insurance: lifePremiumAnnual + healthPremiumAnnual, tax: autoTax, personal: autoPersonalExpense }
 
   // ระยะเวลาความคุ้มครอง (จนบุตรคนเล็กพึ่งตัวเองได้ 22 − อายุ · ไม่มีบุตร → ปีทำงาน)
   const children = Array.isArray(clientProfile?.children) ? clientProfile.children : []

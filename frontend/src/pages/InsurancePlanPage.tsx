@@ -48,9 +48,7 @@ export interface PersonPlan {
 
 export const defaultPlan = (): PersonPlan => ({
   income: 0,
-  hlvDeduct: [
-    { label: 'ค่าใช้จ่ายส่วนตัว', amount: 0 },
-  ],
+  hlvDeduct: [],
   hlvReturn: 5.9,
   hlvGrowth: 5,
   deductions: [
@@ -89,7 +87,7 @@ export interface InsuranceAutos {
   workingYears: number
   autoDebt: number
   autoAssets: { investment: number; deposit: number; insurance: number; severance: number }
-  autoDeduct: { ss: number; pvd: number; savings: number; insurance: number; tax: number }
+  autoDeduct: { ss: number; pvd: number; savings: number; insurance: number; tax: number; personal: number }
   autoYears: number
   preRetReturn: number
 }
@@ -101,7 +99,7 @@ export function computeInsurance(plan: PersonPlan, a: InsuranceAutos) {
   const manualSum = (items: Item[]) => (items ?? []).filter(it => !INS_AUTO_LABELS.test(it.label)).reduce((s, it) => s + toNum(it.amount), 0)
 
   // Human Life Value
-  const hlvAuto = a.autoDeduct.ss + a.autoDeduct.pvd + a.autoDeduct.savings + a.autoDeduct.insurance + a.autoDeduct.tax
+  const hlvAuto = a.autoDeduct.ss + a.autoDeduct.pvd + a.autoDeduct.savings + a.autoDeduct.insurance + a.autoDeduct.tax + a.autoDeduct.personal
   const hlvSelf = hlvAuto + manualSum(plan.hlvDeduct)
   const hlvNetIncome = Math.max(0, income - hlvSelf)
   const hlvReal = (1 + a.preRetReturn / 100) / (1 + plan.hlvGrowth / 100) - 1
@@ -256,7 +254,7 @@ function ResultCard({ label, value, accent, note }: { label: string; value: numb
 }
 
 /* ── per-person panel: HLV | Needs-Based ── */
-function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoAssets, autoTPD, autoDeduct, autoYears, youngestAge, preRetReturn }: { plan: PersonPlan; onChange: (p: PersonPlan) => void; color: string; autoIncome: number; workingYears: number; autoDebt: number; autoAssets: { investment: number; deposit: number; insurance: number; severance: number }; autoTPD: number; autoDeduct: { ss: number; pvd: number; savings: number; insurance: number; tax: number }; autoYears: number; youngestAge: number | null; preRetReturn: number }) {
+function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoAssets, autoTPD, autoDeduct, autoYears, youngestAge, preRetReturn }: { plan: PersonPlan; onChange: (p: PersonPlan) => void; color: string; autoIncome: number; workingYears: number; autoDebt: number; autoAssets: { investment: number; deposit: number; insurance: number; severance: number }; autoTPD: number; autoDeduct: { ss: number; pvd: number; savings: number; insurance: number; tax: number; personal: number }; autoYears: number; youngestAge: number | null; preRetReturn: number }) {
   const set = <K extends keyof PersonPlan>(k: K, v: PersonPlan[K]) => onChange({ ...plan, [k]: v })
 
   // สูตรคำนวณกลาง (ใช้ร่วมกับ useInsuranceReadiness/สไลด์นำเสนอ กัน drift)
@@ -376,7 +374,8 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
             <AutoRow label="กองทุนลดหย่อนภาษี (RMF/SSF/ThaiESG)" value={autoDeduct.savings} color="#f59e0b" />
             <AutoRow label="เบี้ยประกันชีวิต/สุขภาพของตนเอง" value={autoDeduct.insurance} color="#f59e0b" />
             <AutoRow label="ภาษีเงินได้" value={autoDeduct.tax} color="#f59e0b" />
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>ค่าใช้จ่ายส่วนตัว/อื่นๆ (กรอกเอง)</span>
+            <AutoRow label="ค่าใช้จ่ายส่วนตัว" value={autoDeduct.personal} color="#f59e0b" />
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>ค่าใช้จ่ายอื่นๆ (กรอกเอง)</span>
             <EditableList items={plan.hlvDeduct} onChange={v => set('hlvDeduct', v)} color="#f59e0b" total={hlvSelf} />
             <div style={{ borderTop: '1px solid var(--card-border)', margin: '2px 0' }} />
             <ResultRow label="รายได้สุทธิเป็นของครอบครัว/ปี" value={hlvNetIncome} color="var(--cyan-light)" />
@@ -604,12 +603,13 @@ export default function InsurancePlanPage({ person = 'self' }: { person?: 'self'
   const [self, setSelf] = useState<PersonPlan>(defaultPlan())
   const [spouse, setSpouse] = useState<PersonPlan>(defaultPlan())
   const loadedRef = useRef(false)
-  const filledParentRef = useRef<Record<string, boolean>>({})
   const filledGrowthRef = useRef<Record<string, boolean>>({})
   useEffect(() => {
     if (loadedRef.current || !isFetched) return
-    if (saved?.self) setSelf(s => ({ ...s, ...saved.self }))
-    if (saved?.spouse) setSpouse(s => ({ ...s, ...saved.spouse }))
+    // migration: ลบ item "ค่าใช้จ่ายส่วนตัว" ในลิสต์ manual เดิม (ตอนนี้เป็น auto row แล้ว) กัน double-count
+    const stripPersonal = (p: any) => p?.hlvDeduct ? { ...p, hlvDeduct: p.hlvDeduct.filter((it: any) => it.label !== 'ค่าใช้จ่ายส่วนตัว') } : p
+    if (saved?.self) setSelf(s => ({ ...s, ...stripPersonal(saved.self) }))
+    if (saved?.spouse) setSpouse(s => ({ ...s, ...stripPersonal(saved.spouse) }))
     loadedRef.current = true
   }, [isFetched, saved])
 
@@ -697,23 +697,10 @@ export default function InsurancePlanPage({ person = 'self' }: { person?: 'self'
   const autoAssets = { investment: autoInvestment, deposit: autoDeposit, insurance: autoInsurance, severance: autoSSCompensation }
   const autoSavings = Array.isArray(expenses)
     ? expenses.filter((e: any) => String(e.category).startsWith('saving_')).reduce((s: number, e: any) => s + toAnnual(e.amount, e.frequency), 0) : 0
-  // ค่าใช้จ่ายส่วนตัว (HLV) default = ค่าใช้จ่ายผันแปรรวมต่อปี หัก "เงินให้บุพการี" (var_parents) และ "ภาษีเงินได้" (var_tax)
-  const autoParentCare = Array.isArray(expenses)
+  // ค่าใช้จ่ายส่วนตัว (auto) = ค่าใช้จ่ายผันแปรรวมต่อปี หัก "เงินให้บุพการี" (var_parents) และ "ภาษีเงินได้" (var_tax)
+  const autoPersonalExpense = Array.isArray(expenses)
     ? expenses.filter((e: any) => String(e.category).startsWith('var_') && e.category !== 'var_parents' && e.category !== 'var_tax')
         .reduce((s: number, e: any) => s + toAnnual(e.amount, e.frequency), 0) : 0
-  // เติมค่า default "ค่าใช้จ่ายส่วนตัว" (HLV) จากเงินให้บุพการี ครั้งเดียวต่อคน หากผู้ใช้ยังไม่กรอก (=0)
-  useEffect(() => {
-    if (!loadedRef.current || expenses === undefined || filledParentRef.current[person] || autoParentCare <= 0) return
-    const upd = person === 'self' ? setSelf : setSpouse
-    upd(p => {
-      const list = p.hlvDeduct ?? []
-      const idx = list.findIndex(it => it.label === 'ค่าใช้จ่ายส่วนตัว')
-      if (idx < 0 || toNum(list[idx].amount) !== 0) return p
-      const next = list.slice(); next[idx] = { ...next[idx], amount: autoParentCare }
-      return { ...p, hlvDeduct: next }
-    })
-    filledParentRef.current[person] = true
-  }, [person, expenses, autoParentCare])
 
   // อัตราการเพิ่มของรายได้ (g) default = "เงินเดือนเพิ่มขึ้น" หน้าข้อมูลส่วนบุคคล
   const rawSalGrowth = person === 'self' ? clientProfile?.salaryIncreaseRate : spouseJob?.salaryIncreaseRate
@@ -735,7 +722,7 @@ export default function InsurancePlanPage({ person = 'self' }: { person?: 'self'
     ? expenses.filter((e: any) => e.category === 'fixed_health_ins').reduce((s: number, e: any) => s + toAnnual(e.amount, e.frequency), 0) : 0
   const autoInsPremium = lifePremiumAnnual + healthPremiumAnnual
   const autoTax = taxPlan?.[person] ? calcTaxPlan({ ...defaultTaxState(), ...taxPlan[person] }).tax : 0
-  const autoDeduct = { ss: autoSS, pvd: autoPVD, savings: autoSavings, insurance: autoInsPremium, tax: autoTax }
+  const autoDeduct = { ss: autoSS, pvd: autoPVD, savings: autoSavings, insurance: autoInsPremium, tax: autoTax, personal: autoPersonalExpense }
 
   // ระยะเวลาความคุ้มครอง (Needs-Based) = จนบุตรคนเล็กพึ่งตัวเองได้ (22 − อายุบุตรคนเล็ก) · ไม่มีบุตร → ปีทำงานถึงเกษียณ
   const children = Array.isArray(clientProfile?.children) ? clientProfile.children : []
