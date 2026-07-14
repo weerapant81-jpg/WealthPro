@@ -1248,10 +1248,10 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
               {portfolioTotal > 0 ? <MiniPie data={allocation} /> : <Empty text="ยังไม่มีข้อมูลสินทรัพย์ลงทุน" />}
               {portfolioTotal > 0 && <div style={{ fontSize: 13, fontWeight: 800, color: INK, marginTop: 8 }}>รวม {fmt(portfolioTotal)} บาท</div>}
             </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: INK, marginBottom: 6 }}>จำลองมูลค่าพอร์ตในอนาคต (Monte Carlo)</div>
               {mc.rows.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={400}>
                   <ComposedChart data={mc.rows} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
                     <defs><linearGradient id="pdMcBand" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={CY} stopOpacity={0.24} /><stop offset="100%" stopColor={CY} stopOpacity={0.05} /></linearGradient></defs>
                     <CartesianGrid strokeDasharray="3 3" stroke={HAIR} vertical={false} />
