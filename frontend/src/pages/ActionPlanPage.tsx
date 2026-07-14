@@ -599,7 +599,8 @@ export default function ActionPlanPage() {
           const rows = Array.isArray(it.subPlan) ? it.subPlan : []
           const base = (plan: string, amount: number, schedule: string, owner: string, priority: string) => ({ plan: plan || it.title, amount, schedule, owner: ownerLabel(owner), priority, color: sec.color, done: it.status === 'done' })
           if (!rows.length) return [base(it.title, Number(it.target) || 0, it.dueDate ? fmtDate(it.dueDate) : '', it.owner, PRIORITY[it.priority]?.label ?? '')]
-          return rows.map((r: any) => base(r.desc || r.method || r.who || '', Number(String(r.amount ?? r.sumInsured ?? r.premium ?? '').replace(/,/g, '')) || 0, r.schedule ? fmtDate(r.schedule) : '', r.owner || it.owner, r.priority || ''))
+          // จำนวนเงิน: แผนประกันใช้ "เบี้ยประกัน" (เงินที่ต้องจ่ายจริง) ไม่ใช่ทุนประกัน
+          return rows.map((r: any) => base(r.desc || r.method || r.who || '', Number(String(r.amount ?? r.premium ?? '').replace(/,/g, '')) || 0, r.schedule ? fmtDate(r.schedule) : '', r.owner || it.owner, r.priority || ''))
         })
         const visible = cleanOrder
           .map(k => PLAN_SECTIONS.find(s => s.key === k)!)
@@ -708,6 +709,12 @@ export default function ActionPlanPage() {
                           </div>
                         )
                       })}
+                      {/* แถวรวมทุกเป้าหมาย */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,2.2fr) 118px 108px 108px 92px', gap: 10, alignItems: 'center', padding: '9px 0 2px', borderTop: '2px solid var(--card-border)' }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>รวมเงินสำหรับทุกเป้าหมาย</span>
+                        <span style={{ fontSize: 13.5, fontWeight: 800, fontFamily: 'monospace', textAlign: 'right', color: 'var(--cyan-light)' }}>{fmt(planLines.reduce((a, l) => a + l.amount, 0))}</span>
+                        <span /><span /><span />
+                      </div>
                     </div>
                   </div>}
             </div>
