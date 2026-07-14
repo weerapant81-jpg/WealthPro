@@ -1417,7 +1417,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
               <div style={{ fontSize: 12, color: SUB, marginBottom: 8 }}>{eduChart.childName} · ออม {eduChart.savingYears} ปี · มูลค่ากองทุนสะสมรายปี แยกตามประเภทสถาบัน{eduChart.childCount > 1 ? ` (แสดงบุตรคนที่ 1 จาก ${eduChart.childCount})` : ''}</div>
               <div style={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={eduChart.chartData} margin={{ top: 8, right: 16, left: 6, bottom: 6 }}>
+                <ComposedChart data={eduChart.chartData} margin={{ top: 34, right: 16, left: 6, bottom: 6 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={HAIR} vertical={false} />
                   <XAxis dataKey="year" tick={{ fontSize: 10, fill: MUTED }} axisLine={{ stroke: LINE }} tickLine={false} />
                   <YAxis tickFormatter={v => fmtM(v)} tick={{ fontSize: 10, fill: MUTED }} width={46} axisLine={false} tickLine={false} />
@@ -1430,7 +1430,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                     const row: any = lastSaveYear != null ? eduChart.chartData.find((r: any) => r.year === lastSaveYear) : null
                     if (!row) return null
                     return <>
-                      <ReferenceLine x={row.year} stroke={MUTED} strokeDasharray="4 4" label={{ value: `ปีสุดท้ายที่ออม ${row.year}`, position: 'top', fill: SUB, fontSize: 10, fontWeight: 700 }} />
+                      <ReferenceLine x={row.year} stroke={MUTED} strokeDasharray="4 4" label={{ value: `ปีสุดท้ายที่ออม ${row.year}`, position: 'insideBottomLeft', fill: SUB, fontSize: 10, fontWeight: 700 }} />
                       {eduChart.types.map(t => toNum(row[t.key]) > 0 && (
                         <ReferenceDot key={`peak-${t.key}`} x={row.year} y={row[t.key]} r={4} fill={t.color} stroke="#fff" strokeWidth={1.5}
                           label={{ value: fmt(row[t.key]), position: 'top', fill: t.color, fontSize: 11, fontWeight: 800 }} />
