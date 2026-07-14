@@ -602,6 +602,9 @@ export default function ActionPlanPage() {
           // จำนวนเงิน: แผนประกันใช้ "เบี้ยประกัน" (เงินที่ต้องจ่ายจริง) ไม่ใช่ทุนประกัน
           return rows.map((r: any) => base(r.desc || r.method || r.who || '', Number(String(r.amount ?? r.premium ?? '').replace(/,/g, '')) || 0, r.schedule ? fmtDate(r.schedule) : '', r.owner || it.owner, r.priority || ''))
         })
+        // เรียงตามความสำคัญ: สูง → กลาง → ต่ำ → ไม่ระบุ
+        const PR_ORDER: Record<string, number> = { 'สูง': 0, 'กลาง': 1, 'ต่ำ': 2 }
+        planLines.sort((a, b) => (PR_ORDER[a.priority] ?? 3) - (PR_ORDER[b.priority] ?? 3))
         const visible = cleanOrder
           .map(k => PLAN_SECTIONS.find(s => s.key === k)!)
           .filter(sec => sec && !hidden.includes(sec.key) && !(sec.key === 'education' && !(edu && edu.childCount > 0)))
