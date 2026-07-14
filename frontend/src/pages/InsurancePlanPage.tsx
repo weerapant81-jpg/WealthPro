@@ -697,9 +697,10 @@ export default function InsurancePlanPage({ person = 'self' }: { person?: 'self'
   const autoAssets = { investment: autoInvestment, deposit: autoDeposit, insurance: autoInsurance, severance: autoSSCompensation }
   const autoSavings = Array.isArray(expenses)
     ? expenses.filter((e: any) => String(e.category).startsWith('saving_')).reduce((s: number, e: any) => s + toAnnual(e.amount, e.frequency), 0) : 0
-  // ค่าใช้จ่ายส่วนตัว (HLV) default = ค่าใช้จ่ายผันแปร "เงินให้บุพการี" (var_parents) ต่อปี
+  // ค่าใช้จ่ายส่วนตัว (HLV) default = ค่าใช้จ่ายผันแปรรวมต่อปี หัก "เงินให้บุพการี" (var_parents) และ "ภาษีเงินได้" (var_tax)
   const autoParentCare = Array.isArray(expenses)
-    ? expenses.filter((e: any) => e.category === 'var_parents').reduce((s: number, e: any) => s + toAnnual(e.amount, e.frequency), 0) : 0
+    ? expenses.filter((e: any) => String(e.category).startsWith('var_') && e.category !== 'var_parents' && e.category !== 'var_tax')
+        .reduce((s: number, e: any) => s + toAnnual(e.amount, e.frequency), 0) : 0
   // เติมค่า default "ค่าใช้จ่ายส่วนตัว" (HLV) จากเงินให้บุพการี ครั้งเดียวต่อคน หากผู้ใช้ยังไม่กรอก (=0)
   useEffect(() => {
     if (!loadedRef.current || expenses === undefined || filledParentRef.current[person] || autoParentCare <= 0) return
