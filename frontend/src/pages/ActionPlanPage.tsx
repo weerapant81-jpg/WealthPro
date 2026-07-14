@@ -519,7 +519,8 @@ function ItemCard({ it, index, metricCtx, items, onPatch, onRemove }: {
 // ── 6 ด้านหลัก CFP (Holistic Financial Planning) ──
 const PLAN_SECTIONS: { key: string; title: string; sub: string; icon: React.ElementType; color: string; cats: string[] }[] = [
   { key: 'liquidity', title: 'การบริหารสภาพคล่อง/หนี้สิน', sub: 'สภาพคล่อง · หนี้สิน · การออม/ลงทุน', icon: Wallet, color: '#06b6d4', cats: ['liquidity', 'savings', 'debt'] },
-  { key: 'investment', title: 'การวางแผนการลงทุน', sub: 'จัดพอร์ตให้สอดคล้องเป้าหมาย ผลตอบแทน และความเสี่ยง', icon: TrendingUp, color: '#10b981', cats: ['investment', 'education', 'other'] },
+  { key: 'investment', title: 'การวางแผนการลงทุน', sub: 'จัดพอร์ตให้สอดคล้องเป้าหมาย ผลตอบแทน และความเสี่ยง', icon: TrendingUp, color: '#10b981', cats: ['investment', 'other'] },
+  { key: 'education', title: 'ทุนการศึกษาบุตร', sub: 'เตรียมทุนการศึกษาสำหรับบุตร', icon: GraduationCap, color: '#ffb800', cats: ['education'] },
   { key: 'insurance', title: 'การวางแผนประกัน & ความเสี่ยง', sub: 'ป้องกันความเสี่ยงไม่ให้เป้าหมายทางการเงินสะดุด', icon: ShieldCheck, color: '#3b82f6', cats: ['insurance'] },
   { key: 'retirement', title: 'การวางแผนเกษียณอายุ', sub: 'เงินก้อนหลังเกษียณ & แผนสะสมเงิน', icon: Target, color: '#00cfc1', cats: ['retirement'] },
   { key: 'tax', title: 'การวางแผนภาษี', sub: 'ใช้สิทธิลดหย่อนอย่างคุ้มค่า ถูกต้องตามกฎหมาย', icon: Receipt, color: '#0ea5e9', cats: ['tax'] },
@@ -751,11 +752,11 @@ export default function ActionPlanPage() {
       return <>
         <StatRow>
           <StatBox label="เป้าหมายการเงิน" value={`${goalRows.length} รายการ`} />
-          <StatBox label="ทุนการศึกษา" value={edu && edu.childCount > 0 ? money(edu.totalNominal) : '—'} color={edu && edu.childCount > 0 ? '#ffb800' : undefined} />
+          <StatBox label="มูลค่ารวมเป้าหมาย" value={money(goalRows.reduce((a: number, gr: any) => a + (Number(String(gr.targetAmount || '').replace(/,/g, '')) || 0), 0))} />
         </StatRow>
         {goalRows.length > 0 && (
           <div style={{ marginBottom: 16 }}>
-            {goalRows.slice(0, 4).map((gr: any, i: number) => (
+            {goalRows.slice(0, 5).map((gr: any, i: number) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, padding: '3px 0', color: 'var(--text-secondary)' }}>
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{gr.name || 'เป้าหมาย'}</span>
                 <span style={{ fontFamily: 'monospace', color: 'var(--text-primary)', flexShrink: 0 }}>{money(Number(String(gr.targetAmount || '').replace(/,/g, '')) || 0)}</span>
@@ -763,6 +764,16 @@ export default function ActionPlanPage() {
             ))}
           </div>
         )}
+      </>
+    }
+    if (key === 'education') {
+      if (!edu || edu.childCount <= 0) return null
+      return <>
+        <MetricBar label="ทุนการศึกษาบุตร (เป้าหมาย)" valueText={money(edu.totalNominal)} pct={0} color="#ffb800" />
+        <StatRow>
+          <StatBox label="จำนวนบุตร" value={`${edu.childCount} คน`} />
+          <StatBox label="ต้องออม/เดือน" value={money(edu.monthlySaving)} color="#ffb800" />
+        </StatRow>
       </>
     }
     if (key === 'tax') {
@@ -811,6 +822,8 @@ export default function ActionPlanPage() {
         return <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 460px), 1fr))', gap: 20, alignItems: 'start' }}>
             {PLAN_SECTIONS.map((sec, si) => {
+              // ซ่อนการ์ดทุนการศึกษาเมื่อไม่มีบุตร
+              if (sec.key === 'education' && !(edu && edu.childCount > 0)) return null
               const st = sectionStatus(sec.key)
               const secItems = itemsFor(sec)
               const secSug = sugFor(sec)
