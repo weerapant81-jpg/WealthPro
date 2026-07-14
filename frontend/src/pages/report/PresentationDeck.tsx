@@ -510,7 +510,7 @@ function Empty({ text }: { text: string }) {
 }
 
 /* พาย + legend (light) */
-function MiniPie({ data, height = 190 }: { data: { name: string; value: number }[]; height?: number }) {
+function MiniPie({ data, height = 190, radius = [44, 74] }: { data: { name: string; value: number }[]; height?: number; radius?: [number, number] }) {
   const total = data.reduce((s, d) => s + d.value, 0)
   if (total <= 0) return <Empty text="ไม่มีข้อมูล" />
   return (
@@ -518,7 +518,7 @@ function MiniPie({ data, height = 190 }: { data: { name: string; value: number }
       <div style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={44} outerRadius={74} paddingAngle={1.5} stroke="#fff" strokeWidth={2} label={(e: any) => `${(e.percent * 100).toFixed(0)}%`} labelLine={false}>
+            <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={radius[0]} outerRadius={radius[1]} paddingAngle={1.5} stroke="#fff" strokeWidth={2} label={(e: any) => `${(e.percent * 100).toFixed(0)}%`} labelLine={false}>
               {data.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
             </Pie>
             <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} />
@@ -853,7 +853,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   const hidOf = (k: string) => !!pres[k]?.hidden
   const SLIDE_LABEL: Record<string, string> = {
     family: 'ข้อมูลครอบครัว', work: 'ข้อมูลการทำงานและสวัสดิการ', goals: 'เป้าหมายการเงิน', insgoals: 'เป้าหมายด้านการประกัน', balance: 'งบดุล', cashflow: 'งบกระแสเงินสด',
-    assetmix: 'โครงสร้างสินทรัพย์', cfmix: 'โครงสร้างกระแสเงินสด', ratios: 'อัตราส่วน/สุขภาพการเงิน',
+    cfmix: 'โครงสร้างกระแสเงินสด', ratios: 'อัตราส่วน/สุขภาพการเงิน',
     insurance: 'ความเสี่ยง & ประกัน', investment: 'การลงทุน', retirement: 'แผนเกษียณ',
     education: 'ทุนการศึกษาบุตร', edu2: 'กราฟทุนการศึกษา', tax: 'ภาษีเงินได้', estate: 'การจัดการมรดก', action: 'แผนปฏิบัติการ', retire2: 'กราฟเกษียณ', holistic: 'ไทม์ไลน์แผนดำเนินการ',
   }
@@ -1147,22 +1147,11 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                       ))}
                     </tbody>
                   </table>
-                </div>
-              )
-            })}
-          </TwoCol>
-        </Slide>
-
-        {/* ── โครงสร้างสินทรัพย์ (ต่อจากงบดุล) ── */}
-        <Slide slideId="assetmix" footer={commentFooter('assetmix')}>
-          <SlideHead icon={Scale} kicker="Asset Structure" title="โครงสร้างสินทรัพย์" accent={CY} />
-          <TwoCol>
-            {people.map(p => {
-              const b = balanceRows(p.ratios)
-              return (
-                <div key={p.key} style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: 14 }}>
-                  <PersonHead name={p.name} tint={p.tint} />
-                  <MiniPie data={[{ name: 'สภาพคล่อง', value: b.liquid }, { name: 'ลงทุน', value: b.invest }, { name: 'ส่วนตัว', value: b.personal }]} />
+                  {/* โครงสร้างสินทรัพย์ (กราฟเล็ก) — รวมในหน้าเดียวกับงบดุล เหลือที่ให้คอมเมนต์ */}
+                  <div style={{ marginTop: 10, background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '8px 10px 4px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: MUTED, textTransform: 'uppercase', marginBottom: 2 }}>โครงสร้างสินทรัพย์</div>
+                    <MiniPie data={[{ name: 'สภาพคล่อง', value: b.liquid }, { name: 'ลงทุน', value: b.invest }, { name: 'ส่วนตัว', value: b.personal }]} height={140} radius={[32, 55]} />
+                  </div>
                 </div>
               )
             })}
