@@ -35,6 +35,16 @@ const SUBPLAN_CONFIG: Record<string, SubConfig> = {
       { key: 'schedule', label: 'กำหนดการ', type: 'date' },
     ],
   },
+  savings: {
+    title: 'แผนดำเนินการเพื่อการออม', accent: '#10b981',
+    cols: [
+      { key: 'desc', label: 'แผนปฏิบัติการ', type: 'text', placeholder: 'เช่น หักบัญชีออมอัตโนมัติทุกเดือน · ลดค่าใช้จ่ายฟุ่มเฟือย', flex: true },
+      { key: 'tool', label: 'เครื่องมือ', type: 'text', placeholder: 'เช่น บัญชีออมทรัพย์ดอกเบี้ยสูง · กองทุนรวม' },
+      { key: 'amount', label: 'จำนวนเงิน/เดือน', type: 'money' },
+      ownerCol,
+      { key: 'schedule', label: 'กำหนดการ', type: 'date' },
+    ],
+  },
   insurance: {
     title: 'แผนดำเนินการเรื่องการประกัน', accent: '#3b82f6',
     cols: [
