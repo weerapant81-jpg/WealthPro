@@ -33,7 +33,7 @@ const SUBPLAN_CONFIG: Record<string, SubConfig> = {
     cols: [
       { key: 'method', label: 'วิธีการ', type: 'text', placeholder: 'เช่น กันเงินอัตโนมัติทุกเดือน · ลดค่าใช้จ่ายฟุ่มเฟือย', flex: true },
       { key: 'tool', label: 'เครื่องมือ', type: 'text', placeholder: 'เช่น บัญชีดอกเบี้ยสูง · กองทุนตลาดเงิน' },
-      { key: 'amount', label: 'จำนวนเงิน/เดือน', type: 'money' },
+      { key: 'amount', label: 'จำนวนเงิน', type: 'money' },
       ownerCol,
       { key: 'schedule', label: 'กำหนดการ', type: 'date' },
     ],
@@ -43,7 +43,7 @@ const SUBPLAN_CONFIG: Record<string, SubConfig> = {
     cols: [
       { key: 'desc', label: 'แผนปฏิบัติการ', type: 'text', placeholder: 'เช่น หักบัญชีออมอัตโนมัติทุกเดือน · ลดค่าใช้จ่ายฟุ่มเฟือย', flex: true },
       { key: 'tool', label: 'เครื่องมือ', type: 'text', placeholder: 'เช่น บัญชีออมทรัพย์ดอกเบี้ยสูง · กองทุนรวม' },
-      { key: 'amount', label: 'จำนวนเงิน/เดือน', type: 'money' },
+      { key: 'amount', label: 'จำนวนเงิน', type: 'money' },
       ownerCol,
       { key: 'schedule', label: 'กำหนดการ', type: 'date' },
     ],
@@ -244,17 +244,18 @@ const PLAN_SECTIONS: { key: string; title: string; sub: string; icon: React.Elem
 // กล่องคำแนะนำนักวางแผน — บันทึกตอน blur
 function AdviceBox({ value, color, onSave }: { value: string; color: string; onSave: (v: string) => void }) {
   const [text, setText] = useState(value)
+  const [focused, setFocused] = useState(false)   // ขยายกล่อง 300% ตอนพิมพ์ ให้บันทึกสะดวก
   const savedRef = useRef(value)
   useEffect(() => { setText(value); savedRef.current = value }, [value])
-  const commit = () => { if (text !== savedRef.current) { savedRef.current = text; onSave(text) } }
+  const commit = () => { setFocused(false); if (text !== savedRef.current) { savedRef.current = text; onSave(text) } }
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
         <Sparkles size={13} style={{ color }} /> คำแนะนำนักวางแผน
       </div>
-      <textarea value={text} onChange={e => setText(e.target.value)} onBlur={commit}
+      <textarea value={text} onChange={e => setText(e.target.value)} onFocus={() => setFocused(true)} onBlur={commit}
         placeholder="บันทึกคำแนะนำ/ข้อสังเกตของนักวางแผนสำหรับด้านนี้..."
-        style={{ width: '100%', minHeight: 62, resize: 'vertical', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--card-border)', background: 'var(--navy-950)', color: 'var(--text-primary)', fontSize: 12.5, lineHeight: 1.5, outline: 'none', boxSizing: 'border-box' }} />
+        style={{ width: '100%', minHeight: focused ? 190 : 62, resize: 'vertical', padding: '9px 11px', borderRadius: 9, border: `1px solid ${focused ? color : 'var(--card-border)'}`, background: 'var(--navy-950)', color: 'var(--text-primary)', fontSize: 12.5, lineHeight: 1.5, outline: 'none', boxSizing: 'border-box', transition: 'min-height .25s ease, border-color .15s' }} />
     </div>
   )
 }
