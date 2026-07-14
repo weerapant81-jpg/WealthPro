@@ -866,7 +866,7 @@ export default function ActionPlanPage() {
                       <div style={{ fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 700 }}>ด้านที่ {si + 1}</div>
                       <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{sec.title}</div>
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: st.color, whiteSpace: 'nowrap' }}>{st.label}</span>
+                    {st.color !== 'var(--text-muted)' && <span style={{ fontSize: 11, fontWeight: 700, color: st.color, whiteSpace: 'nowrap' }}>{st.label}</span>}
                   </div>
 
                   {/* ① ตัวชี้วัด (คำนวณ) */}
@@ -911,20 +911,39 @@ export default function ActionPlanPage() {
                 </div>
               )
             })}
-          </div>
 
-          {/* บทสรุปภาพรวม */}
-          <div style={{ marginTop: 4, padding: '20px 24px', borderRadius: 14, border: '1px solid var(--cyan)', background: 'var(--cyan-dim)', display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-            <div style={{ width: 42, height: 42, borderRadius: 999, background: 'var(--cyan)', color: '#00201d', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <ClipboardCheck size={21} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>บทสรุปภาพรวมแผนการเงิน</div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6, lineHeight: 1.65 }}>
-                ความคืบหน้ารวม <strong style={{ color: 'var(--cyan-light)' }}>{overallPct}%</strong> ({doneCount}/{items.length} รายการเสร็จ)
+            {/* บทสรุปภาพรวม — การ์ดในกริด (เติมช่องว่าง) */}
+            <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 14, border: '1px solid var(--cyan)', background: 'var(--cyan-dim)', minHeight: 440 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 11, background: 'var(--cyan)', color: '#00201d', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <ClipboardCheck size={20} />
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>บทสรุปภาพรวมแผนการเงิน</div>
+              </div>
+              {/* ความคืบหน้ารวม */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>ความคืบหน้ารวม</span>
+                  <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--cyan-light)', fontFamily: 'monospace' }}>{overallPct}%</span>
+                </div>
+                <div style={{ height: 8, borderRadius: 999, background: 'var(--navy-700)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${overallPct}%`, background: 'linear-gradient(90deg,var(--cyan),var(--cyan-light))', borderRadius: 999, transition: 'width .5s' }} />
+                </div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 6 }}>{doneCount}/{items.length} รายการเสร็จ · จาก 6 ด้านหลัก</div>
+              </div>
+              {/* ด้านที่ควรเร่งดำเนินการ */}
+              <div>
+                <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: .4, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 8 }}>ด้านที่ควรเร่งดำเนินการ</div>
                 {warnSecs.length > 0
-                  ? <> · ด้านที่ควรเร่งดำเนินการ: <strong style={{ color: AMBER }}>{warnSecs.map(w => w.title).join(' · ')}</strong></>
-                  : <> · ทุกด้านอยู่ในเกณฑ์ดี 👍</>}
+                  ? <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                      {warnSecs.map(w => (
+                        <div key={w.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--text-primary)' }}>
+                          <span style={{ width: 7, height: 7, borderRadius: 999, background: AMBER, flexShrink: 0 }} />
+                          {w.title}
+                        </div>
+                      ))}
+                    </div>
+                  : <div style={{ fontSize: 12.5, color: GREEN }}>ทุกด้านอยู่ในเกณฑ์ดี 👍</div>}
               </div>
             </div>
           </div>
