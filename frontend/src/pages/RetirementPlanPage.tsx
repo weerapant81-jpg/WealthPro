@@ -447,27 +447,23 @@ function PersonPanel({ data, onChange, color, isSelf }: {
   const pvdAtRetire = pvdPlan?.[personKey]?.valueAtRetirement ?? fb.pvdAtRetire
   const sevNet = sevPlan?.[personKey]?.netSeverance ?? fb.sevNet
 
-  const filledAge = useRef(false)
   const filledSettings = useRef(false)
+  // ชื่อ/อายุ ดึงจาก clientProfile — reactive (re-run เมื่อค่ากลับเป็น default) กัน race กับ mergeManual ที่โหลด saved ทีหลัง
   useEffect(() => {
-    if (filledAge.current || !clientProfile) return
+    if (!clientProfile) return
     const patch: Partial<Person> = {}
-    // อายุปัจจุบันจากวันเกิด
-    if (clientProfile.birthDate) {
-      const age = new Date().getFullYear() - new Date(clientProfile.birthDate).getFullYear()
-      if (age > 0) patch.currentAge = age
-    }
-    // ชื่อลูกค้า/คู่สมรส (เฉพาะชื่อ ไม่มีนามสกุล) — เติมเฉพาะถ้ายังเป็นค่าเริ่มต้น ไม่ทับที่ที่ปรึกษาแก้เอง
+    // อายุปัจจุบันจากวันเกิด (คู่สมรสใช้ spouseAge) — เติมเมื่อยังเป็นค่าเริ่มต้น (45)
+    const age = isSelf
+      ? (clientProfile.birthDate ? new Date().getFullYear() - new Date(clientProfile.birthDate).getFullYear() : null)
+      : (clientProfile.spouseAge ?? null)
+    if (age && age > 0 && data.currentAge === 45 && data.currentAge !== age) patch.currentAge = age
+    // ชื่อลูกค้า/คู่สมรส (เฉพาะชื่อ) — เติมเมื่อยังเป็นค่าเริ่มต้น ไม่ทับที่ที่ปรึกษาแก้เอง
     const first = (isSelf ? clientProfile.firstName : clientProfile.spouseProfile?.firstName) || ''
     const last = (isSelf ? clientProfile.lastName : clientProfile.spouseProfile?.lastName) || ''
-    // ถือว่า "ยังเป็นค่าเริ่มต้น" รวมถึงชื่อเต็มที่เคยเติมไว้ (คุณ<ชื่อ นามสกุล>) เพื่อ downgrade กลับเป็นชื่ออย่างเดียว
     const isDefaultName = !data.name.trim() || data.name === 'คุณ' || data.name === 'คู่สมรส' || data.name === `คุณ${`${first} ${last}`.trim()}`
-    if (first && isDefaultName) patch.name = `คุณ${first}`
-    if (Object.keys(patch).length) {
-      onChange({ ...data, ...patch })
-      filledAge.current = true
-    }
-  }, [clientProfile])
+    if (first && isDefaultName && data.name !== `คุณ${first}`) patch.name = `คุณ${first}`
+    if (Object.keys(patch).length) onChange({ ...data, ...patch })
+  }, [clientProfile, data.name, data.currentAge])
   useEffect(() => {
     if (filledSettings.current || !profile) return
     const lifeExp = isSelf ? profile.lifeExpectancySelf : profile.lifeExpectancySpouse
