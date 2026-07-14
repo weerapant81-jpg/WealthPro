@@ -883,7 +883,17 @@ export default function ActionPlanPage() {
       {isLoading ? <div style={{ ...card, color: 'var(--text-muted)', fontSize: 13 }}>กำลังโหลด...</div> : (() => {
         const KNOWN = new Set(PLAN_SECTIONS.flatMap(x => x.cats))
         const itemsFor = (sec: typeof PLAN_SECTIONS[number]) => items.filter(it => sec.cats.includes(it.category) || (sec.key === 'investment' && !KNOWN.has(it.category)))
-        const warnSecs = PLAN_SECTIONS.filter(x => sectionStatus(x.key).color === AMBER)
+        // รวมแผนดำเนินการจากทุกการ์ด → ตารางสรุป
+        const ownerLabel = (o: string) => o === 'client' ? 'ลูกค้า' : o === 'advisor' ? 'ที่ปรึกษา' : o === 'spouse' ? 'คู่สมรส' : (o || '—')
+        const fmtDate = (d: string) => { if (!d) return '—'; const dt = new Date(d); return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: '2-digit' }) }
+        const sectionOf = (cat: string) => PLAN_SECTIONS.find(x => x.cats.includes(cat)) ?? PLAN_SECTIONS.find(x => x.key === 'investment')!
+        const planLines = items.flatMap((it: Item) => {
+          const sec = sectionOf(it.category)
+          const rows = Array.isArray(it.subPlan) ? it.subPlan : []
+          const base = (plan: string, amount: number, schedule: string, owner: string) => ({ plan: plan || it.title, amount, schedule, owner: ownerLabel(owner), priority: it.priority, color: sec.color, done: it.status === 'done' })
+          if (!rows.length) return [base(it.title, Number(it.target) || 0, it.dueDate ? fmtDate(it.dueDate) : '', it.owner)]
+          return rows.map((r: any) => base(r.desc || r.method || r.who || '', Number(String(r.amount ?? r.sumInsured ?? r.premium ?? '').replace(/,/g, '')) || 0, r.schedule ? fmtDate(r.schedule) : '', r.owner || it.owner))
+        })
         const visible = cleanOrder
           .map(k => PLAN_SECTIONS.find(s => s.key === k)!)
           .filter(sec => sec && !hidden.includes(sec.key) && !(sec.key === 'education' && !(edu && edu.childCount > 0)))
@@ -967,39 +977,44 @@ export default function ActionPlanPage() {
               )
             })}
 
-            {/* บทสรุปภาพรวม — การ์ดในกริด (เติมช่องว่าง) */}
-            <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 14, border: '1px solid var(--cyan)', background: 'var(--cyan-dim)', minHeight: 440 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+            {/* บทสรุปแผนดำเนินการ — รวมทุกการ์ด (span เต็มความกว้าง) */}
+            <div style={{ ...card, gridColumn: '1 / -1', border: '1px solid var(--cyan)', background: 'var(--cyan-dim)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 14, flexWrap: 'wrap' }}>
                 <div style={{ width: 40, height: 40, borderRadius: 11, background: 'var(--cyan)', color: '#00201d', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <ClipboardCheck size={20} />
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>บทสรุปภาพรวมแผนการเงิน</div>
-              </div>
-              {/* ความคืบหน้ารวม */}
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>ความคืบหน้ารวม</span>
-                  <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--cyan-light)', fontFamily: 'monospace' }}>{overallPct}%</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>สรุปแผนดำเนินการทั้งหมด</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>รวมแผนจากทุกด้าน · ความคืบหน้า {overallPct}% ({doneCount}/{items.length} รายการเสร็จ)</div>
                 </div>
-                <div style={{ height: 8, borderRadius: 999, background: 'var(--navy-700)', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${overallPct}%`, background: 'linear-gradient(90deg,var(--cyan),var(--cyan-light))', borderRadius: 999, transition: 'width .5s' }} />
-                </div>
-                <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 6 }}>{doneCount}/{items.length} รายการเสร็จ · จาก 6 ด้านหลัก</div>
               </div>
-              {/* ด้านที่ควรเร่งดำเนินการ */}
-              <div>
-                <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: .4, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 8 }}>ด้านที่ควรเร่งดำเนินการ</div>
-                {warnSecs.length > 0
-                  ? <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                      {warnSecs.map(w => (
-                        <div key={w.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--text-primary)' }}>
-                          <span style={{ width: 7, height: 7, borderRadius: 999, background: AMBER, flexShrink: 0 }} />
-                          {w.title}
-                        </div>
-                      ))}
+              {planLines.length === 0
+                ? <div style={{ fontSize: 12.5, color: 'var(--text-muted)', padding: '8px 0' }}>ยังไม่มีแผนดำเนินการ — เพิ่มในแต่ละการ์ด</div>
+                : <div style={{ overflowX: 'auto' }}>
+                    <div style={{ minWidth: 640 }}>
+                      {/* หัวตาราง */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,2.2fr) 118px 108px 108px 92px', gap: 10, padding: '0 0 8px', borderBottom: '1px solid var(--card-border)' }}>
+                        {['แผนดำเนินการ', 'จำนวนเงิน', 'กำหนดการ', 'ผู้รับผิดชอบ', 'ความสำคัญ'].map((h, i) => (
+                          <span key={h} style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textAlign: i === 1 ? 'right' : 'left' }}>{h}</span>
+                        ))}
+                      </div>
+                      {planLines.map((l, i) => {
+                        const pr = PRIORITY[l.priority] || PRIORITY.medium
+                        return (
+                          <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,2.2fr) 118px 108px 108px 92px', gap: 10, alignItems: 'center', padding: '7px 0', borderBottom: '1px solid var(--divider)' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: l.done ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: l.done ? 'line-through' : 'none', minWidth: 0 }}>
+                              <span style={{ width: 7, height: 7, borderRadius: 2, background: l.color, flexShrink: 0 }} />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.plan}</span>
+                            </span>
+                            <span style={{ fontSize: 12.5, fontFamily: 'monospace', textAlign: 'right', color: l.amount > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>{l.amount > 0 ? fmt(l.amount) : '—'}</span>
+                            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{l.schedule}</span>
+                            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{l.owner}</span>
+                            <span style={{ fontSize: 11.5, fontWeight: 700, color: pr.color }}>{pr.label}</span>
+                          </div>
+                        )
+                      })}
                     </div>
-                  : <div style={{ fontSize: 12.5, color: GREEN }}>ทุกด้านอยู่ในเกณฑ์ดี 👍</div>}
-              </div>
+                  </div>}
             </div>
           </div>
         </>
