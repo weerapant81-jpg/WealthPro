@@ -101,6 +101,9 @@ const SECTIONS: Sec[] = [
   { k: 'finance', t: 'สรุปผลการวิเคราะห์ข้อมูลทางการเงินส่วนบุคคล', lvl: 1, auto: 'finance' },
   { k: 'fin_cf2', t: 'งบกระแสเงินสด (Cash Flow Statement)', lvl: 2, auto: 'fin_cf2' },
   { k: 'fin_ratio2', t: 'อัตราส่วนทางการเงิน (Financial Ratio)', lvl: 2, auto: 'fin_ratio2' },
+  { k: 'finance_sp', t: 'สรุปผลการวิเคราะห์ข้อมูลทางการเงินส่วนบุคคล (คู่สมรส)', lvl: 1, auto: 'finance_sp' },
+  { k: 'fin_cf2_sp', t: 'งบกระแสเงินสด — คู่สมรส', lvl: 2, auto: 'fin_cf2_sp' },
+  { k: 'fin_ratio2_sp', t: 'อัตราส่วนทางการเงิน — คู่สมรส', lvl: 2, auto: 'fin_ratio2_sp' },
   { k: 'goals', t: 'ผลการวิเคราะห์เป้าหมายทางการเงิน', lvl: 1 },
   { k: 'g_debt', t: 'สรุปผลการวิเคราะห์ด้านหนี้สิน', lvl: 2, auto: 'debt' },
   { k: 'g_insurance', t: 'การวิเคราะห์ความเสี่ยงภัยและความต้องการด้านการประกันภัย', lvl: 2, auto: 'insurance' },
@@ -774,19 +777,25 @@ export default function ReportPage() {
             status={tInv > 0 ? { label: 'ดำเนินการอยู่', tone: 'good' } : { label: 'เริ่มวางแผน', tone: 'warn' }}
             pct={tInv > 0 ? 80 : 15}
             rows={[['สินทรัพย์ลงทุนรวม', `${fmt(tInv)} ฿`], ['ผลตอบแทนพอร์ต (เฉลี่ย)', `${pRet.toFixed(1)}%`]]} />
-          <DomainCard no={3} advice={adv.insurance} title="การวางแผนประกัน & ความเสี่ยง"
+          {eduR && eduR.childCount > 0 && (
+            <DomainCard no={3} advice={adv.education} title="ทุนการศึกษาบุตร"
+              status={{ label: `บุตร ${eduR.childCount} คน`, tone: 'good' }}
+              pct={eduR.totalNominal > 0 ? Math.min(100, (eduR.totalPV / eduR.totalNominal) * 100) : 0}
+              rows={[['ค่าเล่าเรียนรวมที่ต้องเตรียม', `${fmt(eduR.totalNominal)} ฿`], ['มูลค่าปัจจุบัน (เงินก้อนวันนี้)', `${fmt(eduR.totalPV)} ฿`], ['ต้องออม/เดือน', `${fmt(eduR.monthlySaving)} ฿`]]} />
+          )}
+          <DomainCard no={eduR && eduR.childCount > 0 ? 4 : 3} advice={adv.insurance} title="การวางแผนประกัน & ความเสี่ยง"
             status={iR ? (iR.gap > 0 ? { label: `ขาด ${fmt(iR.gap)} ฿`, tone: 'warn' } : { label: 'เพียงพอ', tone: 'good' }) : { label: 'รอข้อมูล', tone: 'warn' }}
             pct={iR && iR.need > 0 ? iR.have / iR.need * 100 : 0}
             rows={[['ทุนประกันที่แนะนำ', iR ? `${fmt(iR.need)} ฿` : '—'], ['ความคุ้มครองที่มี', iR ? `${fmt(iR.have)} ฿` : '—'], ['ส่วนที่ยังขาด', iR && iR.gap > 0 ? `${fmt(iR.gap)} ฿` : 'เพียงพอ']]} />
-          <DomainCard no={4} advice={adv.retirement} title="การวางแผนเกษียณอายุ"
+          <DomainCard no={eduR && eduR.childCount > 0 ? 5 : 4} advice={adv.retirement} title="การวางแผนเกษียณอายุ"
             status={rR ? (rR.gap > 0 ? { label: `ขาด ${fmt(rR.gap)} ฿`, tone: 'warn' } : { label: 'พร้อมเกษียณ', tone: 'good' }) : { label: 'รอข้อมูล', tone: 'warn' }}
             pct={rR?.readinessPct ?? 0}
             rows={[['ทุนเกษียณที่ต้องการ', rR ? `${fmt(rR.needed)} ฿` : '—'], ['ทรัพย์สินที่เตรียมแล้ว', rR ? `${fmt(rR.have)} ฿` : '—'], ['ต้องออมเพิ่ม/ปี', rR && rR.gap > 0 ? `${fmt(rR.annualSavings)} ฿` : '—']]} />
-          <DomainCard no={5} advice={adv.tax} title="การวางแผนภาษี"
+          <DomainCard no={eduR && eduR.childCount > 0 ? 6 : 5} advice={adv.tax} title="การวางแผนภาษี"
             status={tc ? { label: 'วางแผนแล้ว', tone: 'good' } : { label: 'ยังไม่วางแผน', tone: 'warn' }}
             pct={tc ? 75 : 10}
             rows={[['เงินได้สุทธิ', tc ? `${fmt(tc.ni)} ฿` : '—'], ['ภาษีที่ต้องชำระ', tc ? `${fmt(tc.netTax)} ฿` : '—'], ['อัตราภาษีที่แท้จริง', tc ? `${tc.eff.toFixed(1)}%` : '—']]} />
-          <DomainCard no={6} advice={adv.estate} title="การวางแผนส่งมอบมรดก"
+          <DomainCard no={eduR && eduR.childCount > 0 ? 7 : 6} advice={adv.estate} title="การวางแผนส่งมอบมรดก"
             status={profile?.estatePlan ? { label: 'มีแผนแล้ว', tone: 'good' } : { label: 'ควรจัดทำ', tone: 'warn' }}
             pct={profile?.estatePlan ? 70 : 15}
             rows={[['ความมั่งคั่งสุทธิ (กองมรดก)', `${fmt(toNum(s2.netWorth))} ฿`], ['สถานะแผนมรดก/พินัยกรรม', profile?.estatePlan ? 'จัดทำแล้ว' : 'ยังไม่จัดทำ']]} />
@@ -794,10 +803,14 @@ export default function ReportPage() {
         </div>
       )
     }
-    if (kind === 'finance' || kind === 'fin_cf2' || kind === 'fin_ratio2') {
-      // ── งบการเงินเต็มรูปแบบ 3 งบ: งบดุล · งบกระแสเงินสด · อัตราส่วนทางการเงิน ──
+    if (['finance', 'fin_cf2', 'fin_ratio2', 'finance_sp', 'fin_cf2_sp', 'fin_ratio2_sp'].includes(kind)) {
+      // ── งบการเงินเต็มรูปแบบ 3 งบ: งบดุล · งบกระแสเงินสด · อัตราส่วนทางการเงิน (มีเวอร์ชันคู่สมรส) ──
+      const isSp = kind.endsWith('_sp')
+      if (isSp && !hasSpouse) return null
+      const baseKind = isSp ? kind.slice(0, -3) : kind
+      const R2 = isSp ? ratiosSp : ratios
       const toMonthly2 = (a: number, f: string) => f === 'QUARTERLY' ? a / 3 : f === 'ANNUALLY' ? a / 12 : a
-      const inv: any = invProfile ?? {}
+      const inv: any = (isSp ? invProfile?.spouseData : invProfile) ?? {}
       const savRows = (inv.savingsAccounts ?? []).map((a: any, i2: number) => ({ name: a.depositType || `เงินฝากที่ ${i2 + 1}`, v: toNum(a.currentValue) })).filter((r: any) => r.v > 0)
       const invRows = (inv.investmentAssets ?? []).map((a: any, i2: number) => ({ name: a.assetName || `สินทรัพย์ลงทุนที่ ${i2 + 1}`, v: toNum(a.currentValue) })).filter((r: any) => r.v > 0)
       const perRows = (inv.personalAssets ?? []).map((a: any, i2: number) => ({ name: a.customLabel || a.assetType || `สินทรัพย์ที่ ${i2 + 1}`, v: toNum(a.currentValue) })).filter((r: any) => r.v > 0)
@@ -810,11 +823,11 @@ export default function ReportPage() {
       const shortT = sumV(shortDebt), longT = sumV(longDebt), debtT = shortT + longT
       const netWT = assetT - debtT
       // งบกระแสเงินสด — รายรับจาก incomeSources + รายจ่ายรายรายการจาก /expenses (ลูกค้า + แชร์ครึ่ง)
-      const incRows = ((client?.incomeSources ?? []) as any[])
+      const incRows = (((isSp ? client?.spouseIncomeSources : client?.incomeSources) ?? []) as any[])
         .filter(sc => toNum(sc.amount) > 0)
         .map(sc => { const m = sc.label === 'โบนัส' ? toNum(sc.amount) / 12 : toNum(sc.amount); return { name: sc.label || 'รายรับ', note: sc.source, m, v: m * 12 } })
       const expRows = (prefix: string) => (expensesQ ?? [])
-        .filter((e: any) => String(e.category).startsWith(prefix) && (e.person === 'client' || e.person === 'shared'))
+        .filter((e: any) => String(e.category).startsWith(prefix) && (e.person === (isSp ? 'spouse' : 'client') || e.person === 'shared'))
         .map((e: any) => { const m0 = toMonthly2(toNum(e.amount), e.frequency); const m = e.person === 'shared' ? m0 / 2 : m0; return { name: e.name, note: e.person === 'shared' ? 'แชร์ร่วมกัน (ครึ่งหนึ่ง)' : undefined, m, v: m * 12 } })
         .filter((r: any) => r.v > 0)
       const fixRows = expRows('fixed_'), varRows = expRows('var_'), savERows = expRows('saving_')
@@ -863,7 +876,7 @@ export default function ReportPage() {
           <span style={{ fontFamily: 'monospace', color: c, fontWeight: 800 }}>{sign && v > 0 ? '+' : ''}{fmt(v)} ฿</span>
         </div>
       )
-      if (kind === 'finance') return (
+      if (baseKind === 'finance') return (
         <div style={{ marginBottom: 16 }}>
           {/* ── 1. งบดุลส่วนบุคคล ── */}
           <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', borderLeft: `5px solid ${TEAL}`, paddingLeft: 10, marginBottom: 12 }}>งบดุลส่วนบุคคล (Balance Sheet)</div>
@@ -883,7 +896,7 @@ export default function ReportPage() {
 
         </div>
       )
-      if (kind === 'fin_cf2') return (
+      if (baseKind === 'fin_cf2') return (
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 22, fontSize: 10.5, color: '#94a3b8', margin: '0 14px 4px' }}><span>บาท/เดือน</span><span>บาท/ปี</span><span>% รายรับ</span></div>
           <Sect title="รายรับ (Income)" accent={GREENR} total={incT} rows={incRows} base={incT} monthly />
@@ -912,7 +925,7 @@ export default function ReportPage() {
                 ))}
               </tr>
             </thead>
-            <tbody>{(ratios?.ratios ?? []).map((e: any) => {
+            <tbody>{(R2?.ratios ?? []).map((e: any) => {
               const m = RM[e.key]; if (!m) return null
               const st = stChip[e.state] ?? stChip.nodata
               return (
@@ -927,9 +940,9 @@ export default function ReportPage() {
               )
             })}</tbody>
           </table>
-          {ratios?.healthScore != null && (
+          {R2?.healthScore != null && (
             <div style={{ marginTop: 10, padding: '9px 14px', background: '#f0fdfa', border: `1px solid ${TEAL}55`, borderRadius: 10, fontSize: 12.5, color: '#0f172a', fontWeight: 700 }}>
-              คะแนนสุขภาพทางการเงินรวม: <span style={{ fontFamily: 'monospace', fontWeight: 800, color: TEAL }}>{ratios.healthScore} / 100</span>{ratios.healthLabel ? ` · ${ratios.healthLabel}` : ''}
+              คะแนนสุขภาพทางการเงินรวม: <span style={{ fontFamily: 'monospace', fontWeight: 800, color: TEAL }}>{R2.healthScore} / 100</span>{R2.healthLabel ? ` · ${R2.healthLabel}` : ''}
             </div>
           )}
         </div>
@@ -1047,7 +1060,7 @@ export default function ReportPage() {
   }
 
   // ซ่อนหน้า (คู่สมรส) เมื่อลูกค้าไม่มีข้อมูลคู่สมรส
-  const visibleSections = SECTIONS.filter(s => !(['domains_spouse', 'exec_spouse'].includes(s.k) && !hasSpouse))
+  const visibleSections = SECTIONS.filter(s => !(['domains_spouse', 'exec_spouse', 'finance_sp', 'fin_cf2_sp', 'fin_ratio2_sp'].includes(s.k) && !hasSpouse))
   const included = visibleSections.filter(s => secs[s.k]?.include)
 
   // ── Export PDF เอง (jsPDF + html2canvas) — ชัวร์ทุกอุปกรณ์ โดยเฉพาะ iPad ที่ print เบราว์เซอร์เพี้ยน ──
