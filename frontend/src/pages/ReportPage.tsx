@@ -71,10 +71,8 @@ const SECTIONS: Sec[] = [
   { k: 'g_retire', t: 'ความต้องการทางการเงินเพื่อการเกษียณ', lvl: 2, auto: 'retirement' },
   { k: 'g_tax', t: 'การวิเคราะห์ภาษีเงินได้', lvl: 2, auto: 'taxfull' },
   { k: 'g_estate', t: 'แนวทางการจัดการทรัพย์สินและมรดก', lvl: 2, auto: 'estatefull' },
-  { k: 'g_port', t: 'รูปแบบพอร์ตลงทุนที่เหมาะสม', lvl: 2, auto: 'portfolio' },
   { k: 'g_port_reco', t: 'พอร์ตการลงทุนที่แนะนำ', lvl: 2, auto: 'portfolio_reco' },
   { k: 'assumptions', t: 'สมมติฐานที่ใช้ในการวางแผน', lvl: 1, auto: 'assumptions' },
-  { k: 'appendix', t: 'เอกสารแนบ', lvl: 1 },
   { k: 'acknowledge2', t: 'คำรับทราบ (Acknowledgment)', lvl: 1, auto: 'ack2' },
 ]
 
@@ -208,18 +206,7 @@ export default function ReportPage() {
   const eduInf = profile?.educationInflation ?? 5, eduRet = profile?.educationFundReturn ?? 4
   const children: any[] = client?.children ?? []
 
-  function DataTable({ rows }: { rows: [string, number, string?][] }) {
-    return (
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 12 }}>
-        <tbody>{rows.map(([l, v, color], i) => (
-          <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
-            <td style={{ padding: '7px 4px', color: '#475569' }}>{l}</td>
-            <td style={{ padding: '7px 4px', textAlign: 'right', fontWeight: 700, fontFamily: 'monospace', color: color || '#0f2a43' }}>{fmt(v)} บาท</td>
-          </tr>
-        ))}</tbody>
-      </table>
-    )
-  }
+
 
   /* ── ชิ้นส่วนดีไซน์รายงาน (สไตล์มืออาชีพ) ── */
   const TEAL = '#00cfc1', AMBERR = '#d97706', REDR = '#dc2626', GREENR = '#059669'
@@ -1415,27 +1402,6 @@ export default function ReportPage() {
               </div>
             )
           })}
-        </div>
-      )
-    }
-    if (kind === 'portfolio') {
-      if (allocation.total === 0) return <div style={{ fontSize: 12.5, color: '#94a3b8', marginBottom: 12 }}>ยังไม่มีข้อมูลสินทรัพย์ลงทุน</div>
-      return (
-        <div style={{ background: '#f8fafc', borderRadius: 8, padding: 14, marginBottom: 14, display: 'flex', gap: 16, alignItems: 'center' }}>
-          <div style={{ width: 220, height: 220 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={allocation.rows} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={85} label={(e: any) => `${(e.percent * 100).toFixed(0)}%`}>
-                  {allocation.rows.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                </Pie>
-                <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div style={{ flex: 1 }}>
-            <DataTable rows={allocation.rows.map((r, i) => [r.name, r.value, PIE_COLORS[i % PIE_COLORS.length]] as [string, number, string])} />
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0f2a43', textAlign: 'right' }}>รวม {fmt(allocation.total)} บาท</div>
-          </div>
         </div>
       )
     }
