@@ -5,7 +5,7 @@ import { FileText, Printer, Check, Loader2, FileStack, Presentation, Pencil, Dow
 import { useIsCompact } from '../hooks/useViewport'
 import { PageHeader } from '../components/ui'
 import PresentationDeck, { SlideEditor, OverlayLayer, type SlideEl, type CustomSlide } from './report/PresentationDeck'
-import { PieChart, Pie, Cell, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis, ComposedChart, Line, ReferenceLine } from 'recharts'
+import { PieChart, Pie, Cell, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis, ComposedChart, Line, ReferenceLine, ScatterChart, Scatter, CartesianGrid } from 'recharts'
 import { useRetirementReadiness } from '../hooks/useRetirementReadiness'
 import { useInsuranceReadiness } from '../hooks/useInsuranceReadiness'
 import { useEducationReadiness } from '../hooks/useEducationReadiness'
@@ -75,8 +75,6 @@ const SECTIONS: Sec[] = [
   { k: 'g_estate', t: 'แนวทางการจัดการทรัพย์สินและมรดก', lvl: 2 },
   { k: 'g_port', t: 'รูปแบบพอร์ตลงทุนที่เหมาะสม', lvl: 2, auto: 'portfolio' },
   { k: 'g_port_reco', t: 'พอร์ตการลงทุนที่แนะนำ', lvl: 2, auto: 'portfolio_reco' },
-  { k: 'g_monitor', t: 'แนวทางในการควบคุมและวัดผลการดำเนินงาน', lvl: 2 },
-  { k: 'g_calendar', t: 'สรุปปฏิทินชีวิต', lvl: 2 },
   { k: 'assumptions', t: 'สมมติฐานที่ใช้ในการวางแผน', lvl: 1, auto: 'assumptions' },
   { k: 'appendix', t: 'เอกสารแนบ', lvl: 1 },
 ]
@@ -1187,7 +1185,14 @@ export default function ReportPage() {
       const assets = applyMarketData(DEFAULT_ASSETS, marketData)
       const { matrix } = applyCorrelation(DEFAULT_CORR, marketData)
       const W_LBL = ['ตราสารหนี้', 'หุ้นไทย', 'หุ้นโลก', 'หุ้นสหรัฐฯ']
+      // จุดทุกทางเลือก (9 จุด) สำหรับ Efficient Frontier + ไฮไลต์พอร์ตแนะนำ (Sharpe สูงสุดของแต่ละชุด)
+      const frontier = PORTFOLIO_SETS.flatMap(set => {
+        const results = set.options.map(o => computePortfolio(o.weights, assets, matrix))
+        const bi = results.reduce((b, r, i2) => r.sharpe > results[b].sharpe ? i2 : b, 0)
+        return results.map((r, i2) => ({ x: +r.sigma.toFixed(2), y: +r.ret.toFixed(2), color: set.color, best: i2 === bi, name: `${set.label} · ${set.options[i2].label}` }))
+      })
       return (
+        <div style={{ marginBottom: 16 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
           {PORTFOLIO_SETS.map(set => {
             const results = set.options.map(o => computePortfolio(o.weights, assets, matrix))
@@ -1216,6 +1221,72 @@ export default function ReportPage() {
               </div>
             )
           })}
+        </div>
+
+        {/* สมมติฐานผลตอบแทนและความเสี่ยง */}
+        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', margin: '6px 0 8px' }}>สมมติฐานผลตอบแทนและความเสี่ยง (ย้อนหลัง 10 ปี)</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 14, marginBottom: 16 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5 }}>
+            <thead>
+              <tr style={{ borderBottom: '1.5px solid #cbd5e1' }}>
+                {['ประเภทสินทรัพย์', 'CAGR (%)', 'SD (%)'].map((h, i2) => (
+                  <th key={h} style={{ padding: '5px 8px', fontSize: 10, fontWeight: 700, color: '#64748b', textAlign: i2 === 0 ? 'left' : 'right' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>{assets.map(a => (
+              <tr key={a.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ padding: '5px 8px', color: '#334155' }}>{a.name}{a.live && <span style={{ marginLeft: 5, fontSize: 8.5, fontWeight: 800, color: GREENR, background: `${GREENR}14`, borderRadius: 4, padding: '1px 5px' }}>LIVE</span>}</td>
+                <td style={{ padding: '5px 8px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: GREENR }}>{a.cagr.toFixed(2)}</td>
+                <td style={{ padding: '5px 8px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: AMBERR }}>{a.sd > 0 ? a.sd.toFixed(2) : '—'}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+          <div>
+            <div style={{ fontSize: 10.5, fontWeight: 800, color: '#94a3b8', marginBottom: 4 }}>ค่าสัมประสิทธิ์สหสัมพันธ์ (Correlation)</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10.5 }}>
+              <thead>
+                <tr>{[''].concat(W_LBL).map((h, i2) => <th key={i2} style={{ padding: '3px 5px', fontSize: 9, fontWeight: 700, color: '#64748b', textAlign: i2 === 0 ? 'left' : 'right' }}>{h}</th>)}</tr>
+              </thead>
+              <tbody>{W_LBL.map((rl, ri) => (
+                <tr key={rl} style={{ borderBottom: '1px solid #f8fafc' }}>
+                  <td style={{ padding: '3px 5px', fontWeight: 700, color: '#475569' }}>{rl}</td>
+                  {W_LBL.map((_, ci) => (
+                    <td key={ci} style={{ padding: '3px 5px', textAlign: 'right', fontFamily: 'monospace', color: ci > ri ? '#e2e8f0' : Math.abs(matrix[ri][ci]) >= 0.5 && ri !== ci ? AMBERR : '#334155', fontWeight: ri === ci ? 800 : 600 }}>
+                      {ci > ri ? '—' : matrix[ri][ci].toFixed(2)}
+                    </td>
+                  ))}
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Efficient Frontier */}
+        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>Efficient Frontier</div>
+        <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 6 }}>ผลตอบแทนคาดหวัง vs ความเสี่ยง — จุดใหญ่คือพอร์ตแนะนำของแต่ละระดับ (Sharpe สูงสุด)</div>
+        <div style={{ height: 230, background: '#f8fafc', borderRadius: 12, padding: '8px 8px 0' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <ScatterChart margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
+              <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
+              <XAxis type="number" dataKey="x" name="ความเสี่ยง σ" unit="%" domain={['auto', 'auto']} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+              <YAxis type="number" dataKey="y" name="ผลตอบแทน" unit="%" domain={['auto', 'auto']} tick={{ fontSize: 10, fill: '#94a3b8' }} width={40} />
+              <Tooltip content={({ payload }: any) => payload?.length ? (
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '6px 10px', fontSize: 11 }}>
+                  <div style={{ fontWeight: 800, color: '#0f172a' }}>{payload[0].payload.name}</div>
+                  <div style={{ color: '#475569' }}>ผลตอบแทน {payload[0].payload.y}% · σ {payload[0].payload.x}%</div>
+                </div>
+              ) : null} />
+              <Scatter data={frontier}>
+                {frontier.map((pt, i2) => <Cell key={i2} fill={pt.color} stroke={pt.best ? '#0f172a' : 'none'} strokeWidth={pt.best ? 2 : 0} />)}
+              </Scatter>
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
+        <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginTop: 6, fontSize: 10.5, color: '#64748b' }}>
+          {PORTFOLIO_SETS.map(set => <span key={set.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: 999, background: set.color }} />{set.label}</span>)}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 999, border: '2px solid #0f172a' }} />พอร์ตแนะนำ</span>
+        </div>
         </div>
       )
     }
@@ -1383,7 +1454,7 @@ export default function ReportPage() {
                 </span>
               </div>
               {/* ช่องพิมพ์เฉพาะหัวข้อที่ไม่มีเนื้อหาอัตโนมัติ (หัวข้อ auto ใช้กล่องแก้ไขบนหน้ากระดาษ/ปุ่มแก้ไขรายงานแทน) */}
-              {!s.auto && (
+              {!s.auto && s.k !== 'goals' && (
                 <textarea value={secs[s.k]?.text ?? ''} onChange={e => setText(s.k, e.target.value)}
                   placeholder="พิมพ์เนื้อหา/ข้อเสนอแนะสำหรับหัวข้อนี้..." rows={3}
                   style={{ ...einp, resize: 'vertical', minHeight: 56 }} />
