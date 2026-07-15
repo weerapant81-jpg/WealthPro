@@ -66,7 +66,7 @@ type EditorCtx = {
   advisorName?: string
   advisorPhone?: string
 }
-const SlideEditor = createContext<EditorCtx>({ editMode: false, snap: false, overlays: {}, setEls: () => {} })
+export const SlideEditor = createContext<EditorCtx>({ editMode: false, snap: false, overlays: {}, setEls: () => {} })
 const SNAP = 2   // % grid
 
 const uid = () => `el${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
@@ -145,7 +145,7 @@ function Slide({ children, footer, pad = 40, slideId, noFooter }: { children?: R
 }
 
 /* ══════════════════════════ OverlayLayer + ElementBox ══════════════════════════ */
-function OverlayLayer({ slideId }: { slideId: string }) {
+export function OverlayLayer({ slideId }: { slideId: string }) {
   const { editMode, snap, overlays, setEls } = useContext(SlideEditor)
   const [sel, setSel] = useState<string | null>(null)
   const [editing, setEditing] = useState<string | null>(null)

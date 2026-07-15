@@ -4,7 +4,7 @@ import { api } from '../lib/api'
 import { FileText, Printer, Check, Loader2, FileStack, Presentation, Pencil, Download } from 'lucide-react'
 import { useIsCompact } from '../hooks/useViewport'
 import { PageHeader } from '../components/ui'
-import PresentationDeck, { type SlideEl, type CustomSlide } from './report/PresentationDeck'
+import PresentationDeck, { SlideEditor, OverlayLayer, type SlideEl, type CustomSlide } from './report/PresentationDeck'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { useRetirementReadiness } from '../hooks/useRetirementReadiness'
 import { useInsuranceReadiness } from '../hooks/useInsuranceReadiness'
@@ -1049,13 +1049,11 @@ export default function ReportPage() {
                   </button>
                 ))}
               </div>
-              {mode === 'pres' && (
-                <button onClick={() => setEditMode(e => !e)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                    background: editMode ? 'var(--cyan)' : 'transparent', color: editMode ? '#00201d' : 'var(--text-secondary)', border: `1px solid ${editMode ? 'var(--cyan)' : 'var(--card-border)'}` }}>
-                  <Pencil size={15} /> {editMode ? 'เสร็จสิ้นการแก้ไข' : 'แก้ไขสไลด์'}
-                </button>
-              )}
+              <button onClick={() => setEditMode(e => !e)}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  background: editMode ? 'var(--cyan)' : 'transparent', color: editMode ? '#00201d' : 'var(--text-secondary)', border: `1px solid ${editMode ? 'var(--cyan)' : 'var(--card-border)'}` }}>
+                <Pencil size={15} /> {editMode ? 'เสร็จสิ้นการแก้ไข' : (mode === 'pres' ? 'แก้ไขสไลด์' : 'แก้ไขรายงาน')}
+              </button>
               {status === 'saving' && <span style={{ fontSize: 12.5, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}><Loader2 size={14} className="rp-spin" /> กำลังบันทึก...</span>}
               {status === 'saved' && <span style={{ fontSize: 12.5, color: '#4ade80', display: 'flex', alignItems: 'center', gap: 6 }}><Check size={14} /> บันทึกแล้ว</span>}
               <button onClick={() => { if (checkSigned()) window.print() }} title="ใช้ระบบพิมพ์ของเบราว์เซอร์ (เหมาะกับเดสก์ท็อป)"
@@ -1088,6 +1086,7 @@ export default function ReportPage() {
             const a = [...s];[a[i], a[j]] = [a[j], a[i]]; return a
           })} />
       ) : (
+      <SlideEditor.Provider value={{ editMode, snap: false, overlays, setEls: (id, els) => setOverlays(o => ({ ...o, [id]: els })), advisorName: advisor?.fullName, advisorPhone: advisor?.phone }}>
       <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : '360px 1fr', gap: 20, alignItems: 'start' }}>
         {/* Editor */}
         <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 'calc(100vh - 140px)', overflowY: 'auto', paddingRight: 4 }}>
@@ -1115,7 +1114,7 @@ export default function ReportPage() {
         {/* Paper preview */}
         <div id="report-paper" style={{ display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
           {/* Cover — สไตล์มืออาชีพ (โลโก้ · แถบชื่อเรื่อง · แบนเนอร์ · ข้อมูลลูกค้า/ที่ปรึกษา) */}
-          <Page>
+          <Page pageId="page:cover">
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 950, justifyContent: 'space-between' }}>
               {/* brand row */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -1173,7 +1172,7 @@ export default function ReportPage() {
           </Page>
 
           {/* TOC */}
-          <Page>
+          <Page pageId="page:toc">
             <h2 style={{ textAlign: 'center', fontSize: 22, fontWeight: 700, color: '#0f2a43', marginBottom: 24 }}>สารบัญ</h2>
             {included.map((s, i) => (
               <div key={s.k} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '4px 0', paddingLeft: s.lvl === 2 ? 28 : 0 }}>
@@ -1185,7 +1184,7 @@ export default function ReportPage() {
 
           {/* Content sections */}
           {included.map((s, idx) => (
-            <Page key={s.k}>
+            <Page key={s.k} pageId={`page:${s.k}`}>
               {/* running header — แบรนด์ + เลขหน้า */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid #f1f5f9', paddingBottom: 10, marginBottom: 22 }}>
                 <span style={{ fontSize: 13, fontWeight: 800 }}><span style={{ color: '#0f172a' }}>Wealth</span><span style={{ color: '#00cfc1' }}>Pro</span></span>
@@ -1200,6 +1199,7 @@ export default function ReportPage() {
           ))}
         </div>
       </div>
+      </SlideEditor.Provider>
       )}
 
       {/* modal ลงนามบนหน้าจอ (ขยายใหญ่ เซ็นด้วยนิ้ว/เมาส์) */}
@@ -1256,10 +1256,11 @@ function SignModal({ title, value, onSave, onClear, onClose }: { title: string; 
   )
 }
 
-function Page({ children }: { children: React.ReactNode }) {
+function Page({ children, pageId }: { children: React.ReactNode; pageId?: string }) {
   return (
-    <div className="rp-page" style={{ width: '100%', maxWidth: 794, minHeight: 1050, background: '#ffffff', color: '#1e293b', boxShadow: '0 4px 24px rgba(0,0,0,0.18)', borderRadius: 4, padding: '48px 56px', fontFamily: "'Sarabun', sans-serif" }}>
+    <div className="rp-page" style={{ width: '100%', maxWidth: 794, minHeight: 1050, background: '#ffffff', color: '#1e293b', boxShadow: '0 4px 24px rgba(0,0,0,0.18)', borderRadius: 4, padding: '48px 56px', fontFamily: "'Sarabun', sans-serif", position: 'relative' }}>
       {children}
+      {pageId && <OverlayLayer slideId={pageId} />}
     </div>
   )
 }
