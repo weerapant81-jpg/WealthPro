@@ -5,7 +5,7 @@ import { FileText, Printer, Check, Loader2, FileStack, Presentation, Pencil, Dow
 import { useIsCompact } from '../hooks/useViewport'
 import { useClient } from '../context/ClientContext'
 import { PageHeader } from '../components/ui'
-import PresentationDeck, { SlideEditor, OverlayLayer, type SlideEl, type CustomSlide } from './report/PresentationDeck'
+import PresentationDeck, { SlideEditor, OverlayLayer, DECK_SLIDES, type SlideEl, type CustomSlide } from './report/PresentationDeck'
 import { PieChart, Pie, Cell, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis, ComposedChart, Line, ReferenceLine, ScatterChart, Scatter, CartesianGrid } from 'recharts'
 import { useRetirementReadiness } from '../hooks/useRetirementReadiness'
 import { useInsuranceReadiness } from '../hooks/useInsuranceReadiness'
@@ -123,7 +123,7 @@ export default function ReportPage() {
 
   const [title, setTitle] = useState('แผนการเงินส่วนบุคคล')
   const [mode, setMode] = useState<'full' | 'pres'>('full')
-  const [pres, setPres] = useState<Record<string, { comment?: string; hidden?: boolean }>>({})
+  const [pres, setPres] = useState<Record<string, { comment?: string; hidden?: boolean; off?: boolean }>>({})
   const [editMode, setEditMode] = useState(false)
   const [overlays, setOverlays] = useState<Record<string, SlideEl[]>>({})
   const [customSlides, setCustomSlides] = useState<CustomSlide[]>([])
@@ -150,7 +150,7 @@ export default function ReportPage() {
       if (saved.title) setTitle(saved.title)
       if (saved.mode === 'pres' || saved.mode === 'full') setMode(saved.mode)
       if (saved.pres && typeof saved.pres === 'object') {
-        const next: Record<string, { comment?: string; hidden?: boolean }> = {}
+        const next: Record<string, { comment?: string; hidden?: boolean; off?: boolean }> = {}
         for (const k of Object.keys(saved.pres)) {
           const v = saved.pres[k]
           next[k] = typeof v === 'string' ? { comment: v } : (v || {})   // backward-compat: string → {comment}
@@ -1559,7 +1559,8 @@ export default function ReportPage() {
     if (!paper) return
     // pres → จับ .pd-slide (16:9) · full → จับ .rp-page (A4 portrait)
     const isPres = mode === 'pres'
-    const els = Array.from(paper.querySelectorAll(isPres ? '.pd-slide' : '.rp-page')) as HTMLElement[]
+    const els = (Array.from(paper.querySelectorAll(isPres ? '.pd-slide' : '.rp-page')) as HTMLElement[])
+      .filter(el => getComputedStyle(el).display !== 'none')   // ข้ามสไลด์ที่ถูกซ่อนจากเมนูเลือกหน้า
     if (!els.length) return
     setExporting(true)
     try {
@@ -1660,6 +1661,18 @@ export default function ReportPage() {
       </div>
 
       {mode === 'pres' ? (
+      <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : '250px 1fr', gap: 20, alignItems: 'start' }}>
+        {/* เมนูเลือกหน้าสไลด์ (เหมือนฉบับเต็ม) */}
+        <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 'calc(100vh - 140px)', overflowY: 'auto', paddingRight: 4 }}>
+          {DECK_SLIDES.map(sl => (
+            <label key={sl.id} style={{ ...ecard, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', opacity: pres[sl.id]?.off ? 0.55 : 1 }}>
+              <input type="checkbox" checked={!pres[sl.id]?.off}
+                onChange={e => setPres(p => ({ ...p, [sl.id]: { ...p[sl.id], off: !e.target.checked } }))} />
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: pres[sl.id]?.off ? 'var(--text-muted)' : 'var(--text-secondary)' }}>{sl.label}</span>
+            </label>
+          ))}
+        </div>
+        <div style={{ minWidth: 0 }}>
         <PresentationDeck title={title} pres={pres}
           onComment={(k, t) => setPres(p => ({ ...p, [k]: { ...p[k], comment: t } }))}
           onToggleHide={k => setPres(p => ({ ...p, [k]: { ...p[k], hidden: !p[k]?.hidden } }))}
@@ -1676,6 +1689,8 @@ export default function ReportPage() {
             const j = i + dir; if (j < 0 || j >= s.length) return s
             const a = [...s];[a[i], a[j]] = [a[j], a[i]]; return a
           })} />
+        </div>
+      </div>
       ) : (
       <SlideEditor.Provider value={{ editMode, snap: false, overlays, setEls: (id, els) => setOverlays(o => ({ ...o, [id]: els })), advisorName: advisor?.fullName, advisorPhone: advisor?.phone }}>
       <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : '250px 1fr', gap: 20, alignItems: 'start' }}>

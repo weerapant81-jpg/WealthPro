@@ -58,6 +58,32 @@ export type SlideEl =
   | { id: string; type: 'image'; x: number; y: number; w: number; h: number; src: string; rot?: number }
 export type CustomSlide = { id: string; bg?: string }
 
+// รายการสไลด์ทั้งหมด (เรียงตามลำดับจริง) — ใช้ทำเมนูเลือกหน้าในหน้ารายงาน
+export const DECK_SLIDES: { id: string; label: string }[] = [
+  { id: 'cover', label: 'หน้าปก' },
+  { id: 'agenda', label: 'สารบัญ' },
+  { id: 'process', label: 'กระบวนการวางแผน CFP' },
+  { id: 'family', label: 'ข้อมูลครอบครัว' },
+  { id: 'work', label: 'ข้อมูลการทำงานและสวัสดิการ' },
+  { id: 'goals', label: 'เป้าหมายการเงิน' },
+  { id: 'insgoals', label: 'เป้าหมายด้านการประกัน' },
+  { id: 'balance', label: 'งบดุล' },
+  { id: 'cashflow', label: 'งบกระแสเงินสด' },
+  { id: 'ratios', label: 'อัตราส่วน/สุขภาพการเงิน' },
+  { id: 'insurance', label: 'ความเสี่ยง & ประกัน' },
+  { id: 'investment', label: 'การลงทุน' },
+  { id: 'retirement', label: 'แผนเกษียณ' },
+  { id: 'retire2', label: 'กราฟเกษียณ' },
+  { id: 'education', label: 'ทุนการศึกษาบุตร' },
+  { id: 'edu2', label: 'กราฟทุนการศึกษา' },
+  { id: 'tax', label: 'ภาษีเงินได้' },
+  { id: 'estate', label: 'การจัดการมรดก' },
+  { id: 'action', label: 'แผนปฏิบัติการ' },
+  { id: 'holistic', label: 'ไทม์ไลน์แผนดำเนินการ' },
+  { id: 'forward', label: 'งบการเงินล่วงหน้า (ถึงเกษียณ)' },
+  { id: 'thankyou', label: 'หน้าขอบคุณ' },
+]
+
 type EditorCtx = {
   editMode: boolean
   snap: boolean
@@ -122,7 +148,7 @@ function annualizedReturn(cost: number, value: number, investDate: string): numb
 function Slide({ children, footer, pad = 40, slideId, noFooter }: { children?: React.ReactNode; footer?: React.ReactNode; pad?: number; slideId?: string; noFooter?: boolean }) {
   const { advisorName, advisorPhone } = useContext(SlideEditor)
   return (
-    <div className="pd-slide" style={{
+    <div className="pd-slide" data-slide={slideId} style={{
       width: '100%', maxWidth: 1120, aspectRatio: '297 / 210', background: '#fff', color: INK,
       boxShadow: '0 1px 2px rgba(12,32,53,0.04), 0 18px 50px -12px rgba(12,32,53,0.22)', borderRadius: 14,
       padding: `${pad}px 56px ${pad - 12}px`,
@@ -541,7 +567,7 @@ function MiniPie({ data, height = 190, radius = [44, 74] }: { data: { name: stri
 export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   editMode, overlays, onOverlayChange, customSlides, thankYouPhoto, onThankYouPhoto, onAddSlide, onDelSlide, onMoveSlide }: {
   title: string
-  pres: Record<string, { comment?: string; hidden?: boolean }>
+  pres: Record<string, { comment?: string; hidden?: boolean; off?: boolean }>
   onComment: (key: string, text: string) => void
   onToggleHide: (key: string) => void
   editMode: boolean
@@ -934,6 +960,9 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
 
   return (
     <SlideEditor.Provider value={{ editMode, snap, overlays, setEls: onOverlayChange, advisorName: advisor?.fullName, advisorPhone: advisor?.phone }}>
+      {/* ซ่อนสไลด์ที่ผู้ใช้ไม่เลือก (pres[key].off) — ครอบคลุมหน้าแยกอัตโนมัติ เช่น action-2 */}
+      <style>{Object.keys(pres).filter(k => (pres as any)[k]?.off)
+        .map(k => `.pd-slide[data-slide="${k}"], .pd-slide[data-slide^="${k}-"]{display:none !important;}`).join('\n')}</style>
       {/* แถบเครื่องมือแก้ไข */}
       {editMode && (
         <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6, padding: '8px 14px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 10 }}>
