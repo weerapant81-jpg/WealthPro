@@ -3,6 +3,7 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { FileText, Printer, Check, Loader2, FileStack, Presentation, Pencil, Download } from 'lucide-react'
 import { useIsCompact } from '../hooks/useViewport'
+import { useClient } from '../context/ClientContext'
 import { PageHeader } from '../components/ui'
 import PresentationDeck, { SlideEditor, OverlayLayer, type SlideEl, type CustomSlide } from './report/PresentationDeck'
 import { PieChart, Pie, Cell, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis, ComposedChart, Line, ReferenceLine, ScatterChart, Scatter, CartesianGrid } from 'recharts'
@@ -98,7 +99,9 @@ export default function ReportPage() {
   const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: () => api.get('/profile').then(r => r.data), retry: false })
   const { data: retPlan } = useQuery({ queryKey: ['retirement-plan'], queryFn: () => api.get('/retirement-plan').then(r => r.data), retry: false })
   const { data: eduPlan } = useQuery({ queryKey: ['education-plan'], queryFn: () => api.get('/education-plan').then(r => r.data), retry: false })
-  const { data: saved, isFetched } = useQuery({ queryKey: ['report-plan'], queryFn: () => api.get('/report-plan').then(r => r.data), retry: false })
+  const { selectedClient } = useClient()
+  const clientKey = selectedClient?.id ?? 'none'
+  const { data: saved, isFetched } = useQuery({ queryKey: ['report-plan', clientKey], queryFn: () => api.get('/report-plan').then(r => r.data), retry: false })
   const { data: taxPlanQ } = useQuery({ queryKey: ['tax-plan'], queryFn: () => api.get('/tax-plan').then(r => r.data), retry: false })
   const { data: actionData } = useQuery({ queryKey: ['action-items'], queryFn: () => api.get('/action-items').then(r => r.data), retry: false })
   const { data: expensesQ = [] } = useQuery<any[]>({ queryKey: ['expenses'], queryFn: () => api.get('/expenses').then(r => r.data), retry: false })
@@ -130,6 +133,17 @@ export default function ReportPage() {
   const [secs, setSecs] = useState<Record<string, SecData>>(() =>
     Object.fromEntries(SECTIONS.map(s => [s.k, { include: true, text: '' }])))
   const loadedRef = useRef(false)
+  // เปลี่ยนลูกค้า → ล้างสถานะรายงานทั้งหมด (รวมลายเซ็น/ติ๊ก PDPA) แล้วโหลดแผนของลูกค้าคนใหม่
+  const clientRef = useRef(clientKey)
+  useEffect(() => {
+    if (clientRef.current === clientKey) return
+    clientRef.current = clientKey
+    loadedRef.current = false
+    setTitle('แผนการเงินส่วนบุคคล')
+    setPres({}); setOverlays({}); setCustomSlides([]); setThankYouPhoto('')
+    setSignatures({}); setSigning(null); setEditMode(false)
+    setSecs(Object.fromEntries(SECTIONS.map(sc => [sc.k, { include: true, text: '' }])))
+  }, [clientKey])
   useEffect(() => {
     if (loadedRef.current || !isFetched) return
     if (saved && typeof saved === 'object') {
