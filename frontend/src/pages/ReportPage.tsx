@@ -1382,7 +1382,8 @@ export default function ReportPage() {
                   {s.lvl === 2 ? '— ' : ''}{s.t}
                 </span>
               </div>
-              {!['letter', 'clientgoals', 'service', 'exec', 'exec_spouse'].includes(s.k) && (
+              {/* ช่องพิมพ์เฉพาะหัวข้อที่ไม่มีเนื้อหาอัตโนมัติ (หัวข้อ auto ใช้กล่องแก้ไขบนหน้ากระดาษ/ปุ่มแก้ไขรายงานแทน) */}
+              {!s.auto && (
                 <textarea value={secs[s.k]?.text ?? ''} onChange={e => setText(s.k, e.target.value)}
                   placeholder="พิมพ์เนื้อหา/ข้อเสนอแนะสำหรับหัวข้อนี้..." rows={3}
                   style={{ ...einp, resize: 'vertical', minHeight: 56 }} />
