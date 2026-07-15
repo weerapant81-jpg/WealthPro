@@ -419,7 +419,7 @@ export default function ReportPage() {
           const plan = String(r?.desc || r?.method || r?.who || '').trim()
           const amount = toNum(r?.amount ?? r?.premium)
           if (!plan && amount <= 0 && !r?.schedule) continue
-          lines.push({ plan: plan || it.title, amount, schedule: r?.schedule || '', owner: String(r?.owner || '').trim() || ownerTh(it.owner), done })
+          lines.push({ plan: plan || it.title, amount, schedule: r?.schedule || '', owner: String(r?.owner || '').trim() || ownerTh(it.owner), done: !!r?.done || done })
         }
       }
       if (!lines.length) return <div style={{ fontSize: 12.5, color: '#94a3b8', marginBottom: 12 }}>ยังไม่มีรายการในแผนปฏิบัติการ — เพิ่มได้ที่หน้า "แผนปฏิบัติการ"</div>

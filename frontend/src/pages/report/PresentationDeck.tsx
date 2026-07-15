@@ -597,7 +597,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         const plan = String(r?.desc || r?.method || r?.who || '').trim()
         const amount = toNum(r?.amount ?? r?.premium)
         if (!plan && amount <= 0 && !r?.schedule) continue
-        out.push({ plan: plan || it.title, amount, schedule: r?.schedule || '', owner: String(r?.owner || '').trim() || ownerTh(it.owner), color, done })
+        out.push({ plan: plan || it.title, amount, schedule: r?.schedule || '', owner: String(r?.owner || '').trim() || ownerTh(it.owner), color, done: !!r?.done || done })
       }
     }
     return out

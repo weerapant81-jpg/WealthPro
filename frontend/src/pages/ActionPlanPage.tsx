@@ -8,7 +8,7 @@ import { calc as calcTax, defaultState as defaultTaxState } from '../lib/tax'
 import {
   ClipboardCheck, Plus, Trash2, CalendarClock, Target, ShieldCheck,
   GraduationCap, Wallet, Receipt, ScrollText, Sparkles, User, Users,
-  ListChecks, TrendingUp, GripVertical, X, Eye, FileText,
+  ListChecks, TrendingUp, GripVertical, X, Eye, FileText, CheckCircle2, Circle,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useClient } from '../context/ClientContext'
@@ -168,7 +168,13 @@ function SubPlanTable({ value, config, onSave, hideHeader }: { value: SubRow[] |
   const cellStyle: React.CSSProperties = { padding: '5px 8px', borderRadius: 6, border: '1px solid var(--card-border)', background: 'var(--navy-800)', color: 'var(--text-primary)', fontSize: 12, width: '100%' }
   const th: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', padding: '4px 8px' }
   const widthOf = (c: SubCol) => c.flex ? 'minmax(160px,1fr)' : c.type === 'money' ? '128px' : c.type === 'date' ? '120px' : c.type === 'select' ? '116px' : '130px'
-  const gridCols = config.cols.map(widthOf).join(' ') + ' 28px'
+  const gridCols = config.cols.map(widthOf).join(' ') + ' 38px 28px'
+  const toggleDone = (i: number) => {
+    const cur = rowsRef.current[i]
+    const patch = cur?.done ? { done: false, doneAt: null } : { done: true, doneAt: new Date().toISOString().slice(0, 10) }
+    const n = rowsRef.current.map((r, j) => j === i ? { ...r, ...patch } : r)
+    setRows(n); onSave(n)
+  }
   const sumOf = (key: string) => rows.reduce((a, r) => a + (Number(r[key]) || 0), 0)
 
   const addBtn = (
@@ -189,11 +195,12 @@ function SubPlanTable({ value, config, onSave, hideHeader }: { value: SubRow[] |
           {/* หัวตาราง */}
           <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 6, alignItems: 'center' }}>
             {config.cols.map(col => <div key={col.key} style={{ ...th, textAlign: col.type === 'money' ? 'right' : 'left' }}>{col.label}</div>)}
+            <div style={{ ...th, textAlign: 'center' }}>เสร็จ</div>
             <div />
           </div>
           {/* แถวข้อมูล */}
           {rows.map((row, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 6, alignItems: 'center', marginTop: 6 }}>
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 6, alignItems: 'center', marginTop: 6, opacity: row.done ? 0.55 : 1 }}>
               {config.cols.map(col => col.type === 'money'
                 ? <NumBox key={col.key} value={row[col.key] ?? null} width={124} onChange={v => setSave(i, col.key, v)} />
                 : col.type === 'date'
@@ -203,7 +210,11 @@ function SubPlanTable({ value, config, onSave, hideHeader }: { value: SubRow[] |
                         <option value="">— เลือก —</option>
                         {col.options?.map(o => <option key={o} value={o}>{o}</option>)}
                       </select>
-                    : <input key={col.key} value={row[col.key] || ''} placeholder={col.placeholder} onChange={e => setCell(i, col.key, e.target.value)} onBlur={commit} style={cellStyle} />)}
+                    : <input key={col.key} value={row[col.key] || ''} placeholder={col.placeholder} onChange={e => setCell(i, col.key, e.target.value)} onBlur={commit} style={{ ...cellStyle, textDecoration: row.done ? 'line-through' : 'none' }} />)}
+              <button onClick={() => toggleDone(i)} title={row.done ? `เสร็จเมื่อ ${row.doneAt || ''} — คลิกเพื่อยกเลิก` : 'ทำเครื่องหมายว่าเสร็จแล้ว'}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', justifyContent: 'center', color: row.done ? '#22c55e' : 'var(--text-muted)' }}>
+                {row.done ? <CheckCircle2 size={17} /> : <Circle size={17} />}
+              </button>
               <button onClick={() => delRow(i)} title="ลบแถว" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2 }}><Trash2 size={13} /></button>
             </div>
           ))}
@@ -215,7 +226,7 @@ function SubPlanTable({ value, config, onSave, hideHeader }: { value: SubRow[] |
                 : col.type === 'money'
                   ? <div key={col.key} style={{ fontSize: 12.5, fontWeight: 700, color: config.accent, textAlign: 'right', fontFamily: 'monospace' }}>{fmt(sumOf(col.key))}</div>
                   : <div key={col.key} />)}
-              <div />
+              <div /><div />
             </div>
           )}
         </div>
@@ -384,9 +395,30 @@ export default function ActionPlanPage() {
     onSuccess: (res: any) => qc.setQueryData(['action-items', person], (old: any) => old ? { ...old, advice: res.advice } : old),
   })
 
-  // ── สรุปความคืบหน้ารวม ──
-  const doneCount = items.filter(i => i.status === 'done').length
-  const overallPct = items.length ? Math.round((doneCount / items.length) * 100) : 0
+  // ── สรุปความคืบหน้ารวม — นับจากแถวแผนจริง (sub-plan) ไม่ใช่หัวข้อใหญ่ ──
+  const { doneCount, totalCount } = useMemo(() => {
+    let total = 0, done = 0
+    for (const it of items) {
+      const rows = Array.isArray(it.subPlan) ? it.subPlan : []
+      if (!rows.length) { total++; if (it.status === 'done') done++; continue }
+      for (const r of rows) { total++; if (r?.done) done++ }
+    }
+    return { doneCount: done, totalCount: total }
+  }, [items])
+  const overallPct = totalCount ? Math.round((doneCount / totalCount) * 100) : 0
+  // ติ๊กเสร็จจากตารางสรุป → อัปเดตแถวในรายการต้นทาง (+สถานะหัวข้อใหญ่อัตโนมัติ)
+  const toggleLineDone = (it: Item, rowIdx: number | null) => {
+    if (rowIdx == null) {
+      const done = it.status === 'done'
+      update.mutate({ id: it.id, body: { status: done ? 'todo' : 'done' } })
+      return
+    }
+    const rows = (Array.isArray(it.subPlan) ? it.subPlan : []).map((r, j) => j === rowIdx
+      ? (r?.done ? { ...r, done: false, doneAt: null } : { ...r, done: true, doneAt: new Date().toISOString().slice(0, 10) })
+      : r)
+    const allDone = rows.length > 0 && rows.every(r => r?.done)
+    update.mutate({ id: it.id, body: { subPlan: rows, status: allDone ? 'done' : 'todo' } })
+  }
 
   const card: React.CSSProperties = { background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, padding: 20, boxShadow: 'var(--shadow)' }
 
@@ -597,10 +629,10 @@ export default function ActionPlanPage() {
         const planLines = items.flatMap((it: Item) => {
           const sec = sectionOf(it.category)
           const rows = Array.isArray(it.subPlan) ? it.subPlan : []
-          const base = (plan: string, amount: number, schedule: string, owner: string, priority: string) => ({ plan: plan || it.title, amount, schedule, owner: ownerLabel(owner), priority, color: sec.color, done: it.status === 'done' })
-          if (!rows.length) return [base(it.title, Number(it.target) || 0, it.dueDate ? fmtDate(it.dueDate) : '', it.owner, PRIORITY[it.priority]?.label ?? '')]
+          const base = (plan: string, amount: number, schedule: string, owner: string, priority: string, done: boolean, rowIdx: number | null) => ({ plan: plan || it.title, amount, schedule, owner: ownerLabel(owner), priority, color: sec.color, done, it, rowIdx })
+          if (!rows.length) return [base(it.title, Number(it.target) || 0, it.dueDate ? fmtDate(it.dueDate) : '', it.owner, PRIORITY[it.priority]?.label ?? '', it.status === 'done', null)]
           // จำนวนเงิน: แผนประกันใช้ "เบี้ยประกัน" (เงินที่ต้องจ่ายจริง) ไม่ใช่ทุนประกัน
-          return rows.map((r: any) => base(r.desc || r.method || r.who || '', Number(String(r.amount ?? r.premium ?? '').replace(/,/g, '')) || 0, r.schedule ? fmtDate(r.schedule) : '', r.owner || it.owner, r.priority || ''))
+          return rows.map((r: any, ri: number) => base(r.desc || r.method || r.who || '', Number(String(r.amount ?? r.premium ?? '').replace(/,/g, '')) || 0, r.schedule ? fmtDate(r.schedule) : '', r.owner || it.owner, r.priority || '', !!r.done, ri))
         })
         // เรียงตามความสำคัญ: สูง → กลาง → ต่ำ → ไม่ระบุ
         const PR_ORDER: Record<string, number> = { 'สูง': 0, 'กลาง': 1, 'ต่ำ': 2 }
@@ -655,10 +687,19 @@ export default function ActionPlanPage() {
                   {(() => {
                     const cfg = SUBPLAN_CONFIG[sec.cats[0]]
                     const planItem = secItems[0]
+                    const pRows = planItem && Array.isArray(planItem.subPlan) ? planItem.subPlan : []
+                    const pDone = pRows.filter((r: any) => r?.done).length
                     return (
                       <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid var(--card-border)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: .4, textTransform: 'uppercase', color: sec.color, display: 'flex', alignItems: 'center', gap: 5 }}><ListChecks size={14} /> แผนดำเนินการ</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: .4, textTransform: 'uppercase', color: sec.color, display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <ListChecks size={14} /> แผนดำเนินการ
+                            {pRows.length > 0 && (
+                              <span style={{ fontWeight: 700, color: pDone === pRows.length ? '#22c55e' : 'var(--text-muted)', textTransform: 'none', letterSpacing: 0 }}>
+                                · {pDone}/{pRows.length} เสร็จ{pDone === pRows.length ? ' ✓' : ''}
+                              </span>
+                            )}
+                          </span>
                           {!planItem && (
                             <button onClick={() => create.mutate({ title: sec.title, category: sec.cats[0], priority: 'medium', owner: 'advisor', source: 'manual' })}
                               title="เพิ่มแผนดำเนินการ" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 9px', borderRadius: 7, border: '1px solid var(--card-border)', background: 'var(--navy-900)', color: 'var(--text-secondary)', fontSize: 11.5, cursor: 'pointer' }}>
@@ -667,7 +708,8 @@ export default function ActionPlanPage() {
                           )}
                         </div>
                         {planItem
-                          ? <SubPlanTable key={planItem.id} value={planItem.subPlan} config={cfg} hideHeader onSave={rows => update.mutate({ id: planItem.id, body: { subPlan: rows } })} />
+                          ? <SubPlanTable key={planItem.id} value={planItem.subPlan} config={cfg} hideHeader
+                              onSave={rows => update.mutate({ id: planItem.id, body: { subPlan: rows, status: rows.length > 0 && rows.every((r: any) => r?.done) ? 'done' : 'todo' } })} />
                           : <div style={{ fontSize: 11.5, color: 'var(--text-muted)', padding: '4px 0' }}>ยังไม่มีแผน — กด "+ เพิ่ม" เพื่อเริ่มบันทึกแผนดำเนินการ</div>}
                       </div>
                     )
@@ -684,7 +726,13 @@ export default function ActionPlanPage() {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>สรุปแผนดำเนินการทั้งหมด</div>
-                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>รวมแผนจากทุกด้าน · ความคืบหน้า {overallPct}% ({doneCount}/{items.length} รายการเสร็จ)</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>รวมแผนจากทุกด้าน · ความคืบหน้า {overallPct}% ({doneCount}/{totalCount} รายการเสร็จ)</div>
+                </div>
+                <div style={{ minWidth: 180, flex: '0 1 260px' }}>
+                  <div style={{ height: 8, borderRadius: 999, background: 'var(--navy-800)', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${overallPct}%`, borderRadius: 999, background: overallPct >= 100 ? '#22c55e' : 'var(--cyan)', transition: 'width .3s' }} />
+                  </div>
+                  <div style={{ fontSize: 10.5, color: 'var(--text-muted)', textAlign: 'right', marginTop: 3 }}>{overallPct >= 100 && totalCount > 0 ? 'ดำเนินการครบทุกรายการ 🎉' : `เหลืออีก ${totalCount - doneCount} รายการ`}</div>
                 </div>
               </div>
               {planLines.length === 0
@@ -702,6 +750,10 @@ export default function ActionPlanPage() {
                         return (
                           <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(180px,2.2fr) 118px 108px 108px 92px', columnGap: 26, rowGap: 10, alignItems: 'center', padding: '7px 0', borderBottom: '1px solid var(--divider)' }}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: l.done ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: l.done ? 'line-through' : 'none', minWidth: 0 }}>
+                              <button onClick={() => toggleLineDone(l.it, l.rowIdx)} title={l.done ? 'เสร็จแล้ว — คลิกเพื่อยกเลิก' : 'ทำเครื่องหมายว่าเสร็จแล้ว'}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', flexShrink: 0, color: l.done ? '#22c55e' : 'var(--text-muted)' }}>
+                                {l.done ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+                              </button>
                               <span style={{ width: 7, height: 7, borderRadius: 2, background: l.color, flexShrink: 0 }} />
                               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.plan}</span>
                             </span>
