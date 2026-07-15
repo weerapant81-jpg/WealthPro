@@ -10,6 +10,7 @@ import { useRetirementReadiness } from '../hooks/useRetirementReadiness'
 import { useInsuranceReadiness } from '../hooks/useInsuranceReadiness'
 import { useEducationReadiness } from '../hooks/useEducationReadiness'
 import { calc as calcTaxCalc, defaultState as defaultTaxState } from '../lib/tax'
+import { hasSpouseInfo } from '../lib/spouse'
 
 const fmt = (n: number) => (isFinite(n) ? Math.round(n) : 0).toLocaleString('th-TH')
 const toNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
@@ -126,6 +127,7 @@ const SECTIONS: Sec[] = [
   { k: 'clientgoals', t: 'เป้าหมายของคุณ', lvl: 1, auto: 'clientgoals' },
   { k: 'exec', t: 'บทสรุปผู้บริหาร', lvl: 1, auto: 'exec' },
   { k: 'domains', t: 'บทวิเคราะห์การวางแผนการเงิน 6 ด้าน', lvl: 1, auto: 'domains' },
+  { k: 'domains_spouse', t: 'บทวิเคราะห์การวางแผนการเงิน 6 ด้าน (คู่สมรส)', lvl: 1, auto: 'domains_spouse' },
   { k: 'reco', t: 'ข้อเสนอแนะ', lvl: 1 },
   { k: 'scenarios', t: 'การทดสอบความทนทานของแผน (Scenario & Monte Carlo)', lvl: 1, auto: 'scenarios' },
   { k: 'action', t: 'แผนปฏิบัติการ', lvl: 1, auto: 'action' },
@@ -180,6 +182,10 @@ export default function ReportPage() {
   const retR = useRetirementReadiness('client')
   const insR = useInsuranceReadiness('client')
   const eduR = useEducationReadiness()
+  // ฝั่งคู่สมรส (ใช้เมื่อมีข้อมูลคู่สมรส)
+  const retRSp = useRetirementReadiness('spouse')
+  const insRSp = useInsuranceReadiness('spouse')
+  const { data: ratiosSp } = useQuery({ queryKey: ['financial-ratios', 'spouse'], queryFn: () => api.get('/financial-ratios', { params: { person: 'spouse' } }).then(r => r.data), retry: false })
 
   const [title, setTitle] = useState('แผนการเงินส่วนบุคคล')
   const [mode, setMode] = useState<'full' | 'pres'>('full')
@@ -261,6 +267,13 @@ export default function ReportPage() {
   let _wr = 0, _cv = 0
   invAssets.forEach(a => { const v = toNum(a.currentValue), rr = parseFloat(a.annualReturn); if (!isNaN(rr) && v > 0) { _cv += v; _wr += rr * v } })
   const portRet = _cv > 0 ? _wr / _cv : 0
+  // สินทรัพย์ลงทุนฝั่งคู่สมรส
+  const hasSpouse = hasSpouseInfo(client)
+  const invAssetsSp: any[] = invProfile?.spouseData?.investmentAssets ?? []
+  const totalInvSp = invAssetsSp.reduce((s, a) => s + toNum(a.currentValue), 0)
+  let _wrS = 0, _cvS = 0
+  invAssetsSp.forEach(a => { const v = toNum(a.currentValue), rr = parseFloat(a.annualReturn); if (!isNaN(rr) && v > 0) { _cvS += v; _wrS += rr * v } })
+  const portRetSp = _cvS > 0 ? _wrS / _cvS : 0
   const assetAtRet = (p: any) => { const yt = Math.max(0, (p?.retirementAge ?? 60) - (p?.currentAge ?? 45)); return totalInv * Math.pow(1 + portRet / 100, yt) }
   const eduCosts = profile?.educationCosts ?? {}
   const eduInf = profile?.educationInflation ?? 5, eduRet = profile?.educationFundReturn ?? 4
@@ -674,39 +687,50 @@ export default function ReportPage() {
         </div>
       )
     }
-    if (kind === 'domains') {
-      const emMonths = sm.totalMonthlyExp > 0 ? sm.liquidAssets / sm.totalMonthlyExp : 0
-      const savingsRate = sm.monthlyIncome > 0 ? (sm.annualSavings / (sm.monthlyIncome * 12)) * 100 : 0
-      const debtToAsset = sm.totalAssets > 0 ? (sm.totalDebtBalance / sm.totalAssets) * 100 : 0
-      const tp = taxPlanQ?.self
+    if (kind === 'domains' || kind === 'domains_spouse') {
+      const isSp = kind === 'domains_spouse'
+      if (isSp && !hasSpouse) return null
+      const s2 = isSp ? (ratiosSp?.summary ?? {}) : sm
+      const iR = isSp ? insRSp : insR
+      const rR = isSp ? retRSp : retR
+      const tInv = isSp ? totalInvSp : totalInv
+      const pRet = isSp ? portRetSp : portRet
+      const adv: Record<string, string> = isSp ? {} : domainAdvice
+      const tp = isSp ? taxPlanQ?.spouse : taxPlanQ?.self
       const tc = tp ? calcTaxCalc({ ...defaultTaxState(), ...tp }) : null
+      const emMonths = s2.totalMonthlyExp > 0 ? s2.liquidAssets / s2.totalMonthlyExp : 0
+      const savingsRate = s2.monthlyIncome > 0 ? (s2.annualSavings / (s2.monthlyIncome * 12)) * 100 : 0
+      const debtToAsset = s2.totalAssets > 0 ? (s2.totalDebtBalance / s2.totalAssets) * 100 : 0
       const liqOk = emMonths >= 6 && debtToAsset <= 50 && savingsRate >= 10
       return (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-          <DomainCard no={1} advice={domainAdvice.liquidity} title="การบริหารสภาพคล่อง/หนี้สิน"
+        <div style={{ marginBottom: 16 }}>
+          {isSp && <p style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>สรุปสถานะการวางแผนการเงินของ{client?.spouseProfile?.firstName ? `คุณ${client.spouseProfile.firstName}` : 'คู่สมรส'} (คู่สมรส)</p>}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <DomainCard no={1} advice={adv.liquidity} title="การบริหารสภาพคล่อง/หนี้สิน"
             status={liqOk ? { label: 'เพียงพอ', tone: 'good' } : { label: 'ควรปรับปรุง', tone: 'warn' }}
             pct={Math.min(100, emMonths / 6 * 100)}
             rows={[['เงินสำรองฉุกเฉิน (เดือน)', `${emMonths.toFixed(1)} / 6.0`], ['อัตราการออม', `${savingsRate.toFixed(0)}%`], ['หนี้สินต่อสินทรัพย์', `${debtToAsset.toFixed(0)}%`]]} />
-          <DomainCard no={2} advice={domainAdvice.investment} title="การวางแผนการลงทุน/เป้าหมาย"
-            status={totalInv > 0 ? { label: 'ดำเนินการอยู่', tone: 'good' } : { label: 'เริ่มวางแผน', tone: 'warn' }}
-            pct={totalInv > 0 ? 80 : 15}
-            rows={[['สินทรัพย์ลงทุนรวม', `${fmt(totalInv)} ฿`], ['ผลตอบแทนพอร์ต (เฉลี่ย)', `${portRet.toFixed(1)}%`]]} />
-          <DomainCard no={3} advice={domainAdvice.insurance} title="การวางแผนประกัน & ความเสี่ยง"
-            status={insR ? (insR.gap > 0 ? { label: `ขาด ${fmt(insR.gap)} ฿`, tone: 'warn' } : { label: 'เพียงพอ', tone: 'good' }) : { label: 'รอข้อมูล', tone: 'warn' }}
-            pct={insR && insR.need > 0 ? insR.have / insR.need * 100 : 0}
-            rows={[['ทุนประกันที่แนะนำ', insR ? `${fmt(insR.need)} ฿` : '—'], ['ความคุ้มครองที่มี', insR ? `${fmt(insR.have)} ฿` : '—'], ['ส่วนที่ยังขาด', insR && insR.gap > 0 ? `${fmt(insR.gap)} ฿` : 'เพียงพอ']]} />
-          <DomainCard no={4} advice={domainAdvice.retirement} title="การวางแผนเกษียณอายุ"
-            status={retR ? (retR.gap > 0 ? { label: `ขาด ${fmt(retR.gap)} ฿`, tone: 'warn' } : { label: 'พร้อมเกษียณ', tone: 'good' }) : { label: 'รอข้อมูล', tone: 'warn' }}
-            pct={retR?.readinessPct ?? 0}
-            rows={[['ทุนเกษียณที่ต้องการ', retR ? `${fmt(retR.needed)} ฿` : '—'], ['ทรัพย์สินที่เตรียมแล้ว', retR ? `${fmt(retR.have)} ฿` : '—'], ['ต้องออมเพิ่ม/ปี', retR && retR.gap > 0 ? `${fmt(retR.annualSavings)} ฿` : '—']]} />
-          <DomainCard no={5} advice={domainAdvice.tax} title="การวางแผนภาษี"
+          <DomainCard no={2} advice={adv.investment} title="การวางแผนการลงทุน/เป้าหมาย"
+            status={tInv > 0 ? { label: 'ดำเนินการอยู่', tone: 'good' } : { label: 'เริ่มวางแผน', tone: 'warn' }}
+            pct={tInv > 0 ? 80 : 15}
+            rows={[['สินทรัพย์ลงทุนรวม', `${fmt(tInv)} ฿`], ['ผลตอบแทนพอร์ต (เฉลี่ย)', `${pRet.toFixed(1)}%`]]} />
+          <DomainCard no={3} advice={adv.insurance} title="การวางแผนประกัน & ความเสี่ยง"
+            status={iR ? (iR.gap > 0 ? { label: `ขาด ${fmt(iR.gap)} ฿`, tone: 'warn' } : { label: 'เพียงพอ', tone: 'good' }) : { label: 'รอข้อมูล', tone: 'warn' }}
+            pct={iR && iR.need > 0 ? iR.have / iR.need * 100 : 0}
+            rows={[['ทุนประกันที่แนะนำ', iR ? `${fmt(iR.need)} ฿` : '—'], ['ความคุ้มครองที่มี', iR ? `${fmt(iR.have)} ฿` : '—'], ['ส่วนที่ยังขาด', iR && iR.gap > 0 ? `${fmt(iR.gap)} ฿` : 'เพียงพอ']]} />
+          <DomainCard no={4} advice={adv.retirement} title="การวางแผนเกษียณอายุ"
+            status={rR ? (rR.gap > 0 ? { label: `ขาด ${fmt(rR.gap)} ฿`, tone: 'warn' } : { label: 'พร้อมเกษียณ', tone: 'good' }) : { label: 'รอข้อมูล', tone: 'warn' }}
+            pct={rR?.readinessPct ?? 0}
+            rows={[['ทุนเกษียณที่ต้องการ', rR ? `${fmt(rR.needed)} ฿` : '—'], ['ทรัพย์สินที่เตรียมแล้ว', rR ? `${fmt(rR.have)} ฿` : '—'], ['ต้องออมเพิ่ม/ปี', rR && rR.gap > 0 ? `${fmt(rR.annualSavings)} ฿` : '—']]} />
+          <DomainCard no={5} advice={adv.tax} title="การวางแผนภาษี"
             status={tc ? { label: 'วางแผนแล้ว', tone: 'good' } : { label: 'ยังไม่วางแผน', tone: 'warn' }}
             pct={tc ? 75 : 10}
             rows={[['เงินได้สุทธิ', tc ? `${fmt(tc.ni)} ฿` : '—'], ['ภาษีที่ต้องชำระ', tc ? `${fmt(tc.netTax)} ฿` : '—'], ['อัตราภาษีที่แท้จริง', tc ? `${tc.eff.toFixed(1)}%` : '—']]} />
-          <DomainCard no={6} advice={domainAdvice.estate} title="การวางแผนส่งมอบมรดก"
+          <DomainCard no={6} advice={adv.estate} title="การวางแผนส่งมอบมรดก"
             status={profile?.estatePlan ? { label: 'มีแผนแล้ว', tone: 'good' } : { label: 'ควรจัดทำ', tone: 'warn' }}
             pct={profile?.estatePlan ? 70 : 15}
-            rows={[['ความมั่งคั่งสุทธิ (กองมรดก)', `${fmt(toNum(sm.netWorth))} ฿`], ['สถานะแผนมรดก/พินัยกรรม', profile?.estatePlan ? 'จัดทำแล้ว' : 'ยังไม่จัดทำ']]} />
+            rows={[['ความมั่งคั่งสุทธิ (กองมรดก)', `${fmt(toNum(s2.netWorth))} ฿`], ['สถานะแผนมรดก/พินัยกรรม', profile?.estatePlan ? 'จัดทำแล้ว' : 'ยังไม่จัดทำ']]} />
+          </div>
         </div>
       )
     }
@@ -881,7 +905,9 @@ export default function ReportPage() {
     return null
   }
 
-  const included = SECTIONS.filter(s => secs[s.k]?.include)
+  // ซ่อนหน้า (คู่สมรส) เมื่อลูกค้าไม่มีข้อมูลคู่สมรส
+  const visibleSections = SECTIONS.filter(s => s.k !== 'domains_spouse' || hasSpouse)
+  const included = visibleSections.filter(s => secs[s.k]?.include)
 
   // ── Export PDF เอง (jsPDF + html2canvas) — ชัวร์ทุกอุปกรณ์ โดยเฉพาะ iPad ที่ print เบราว์เซอร์เพี้ยน ──
   const [exporting, setExporting] = useState(false)
@@ -1032,7 +1058,7 @@ export default function ReportPage() {
             <label style={elbl}>ชื่อรายงาน</label>
             <input value={title} onChange={e => setTitle(e.target.value)} style={einp} />
           </div>
-          {SECTIONS.map(s => (
+          {visibleSections.map(s => (
             <div key={s.k} style={ecard}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                 <input type="checkbox" checked={secs[s.k]?.include ?? true} onChange={e => setInc(s.k, e.target.checked)} />
