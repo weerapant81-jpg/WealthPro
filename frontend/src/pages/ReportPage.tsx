@@ -123,7 +123,7 @@ interface Sec { k: string; t: string; lvl: 1 | 2; auto?: string }
 const SECTIONS: Sec[] = [
   { k: 'letter', t: 'จดหมายจากนักวางแผนการเงิน', lvl: 1, auto: 'letter' },
   { k: 'clientgoals', t: 'เป้าหมายของคุณ', lvl: 1, auto: 'clientgoals' },
-  { k: 'service', t: 'ข้อตกลงในการให้บริการ', lvl: 1 },
+  { k: 'service', t: 'ข้อตกลงในการให้บริการ', lvl: 1, auto: 'service' },
   { k: 'exec', t: 'บทสรุปผู้บริหาร', lvl: 1, auto: 'exec' },
   { k: 'domains', t: 'บทวิเคราะห์การวางแผนการเงิน 6 ด้าน', lvl: 1, auto: 'domains' },
   { k: 'reco', t: 'ข้อเสนอแนะ', lvl: 1 },
@@ -315,6 +315,80 @@ export default function ReportPage() {
   )
 
   function autoNode(kind: string) {
+    if (kind === 'service') {
+      // หนังสือข้อตกลงการให้บริการ (Letter of Engagement) — บีบให้จบ 1 หน้า A4 พอดี
+      const Blank = ({ w = 120, v }: { w?: number; v?: string }) => v
+        ? <span style={{ fontWeight: 700, color: '#0f172a', borderBottom: '1px dotted #94a3b8', padding: '0 6px' }}>{v}</span>
+        : <span style={{ display: 'inline-block', minWidth: w, borderBottom: '1px dotted #94a3b8', verticalAlign: 'bottom' }}>&nbsp;</span>
+      const clause = (no: number, title: string, body: string) => (
+        <div key={no} style={{ marginBottom: 7 }}>
+          <span style={{ fontSize: 11.5, fontWeight: 800, color: '#0f172a' }}>{no}. {title} — </span>
+          <span style={{ fontSize: 11.5, color: '#334155', lineHeight: 1.6 }}>{body}</span>
+        </div>
+      )
+      const box = '☐'
+      return (
+        <div style={{ fontSize: 11.5, lineHeight: 1.6 }}>
+          <div style={{ textAlign: 'center', marginBottom: 12 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>หนังสือข้อตกลงการให้บริการวางแผนการเงิน</div>
+            <div style={{ fontSize: 10.5, color: '#94a3b8', letterSpacing: 0.5 }}>Letter of Engagement for Financial Planning Services</div>
+          </div>
+          {/* คู่สัญญา 2 คอลัมน์ */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 10 }}>
+            <div style={{ border: '1px solid #f1f5f9', borderRadius: 10, padding: '10px 14px' }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: TEAL, marginBottom: 6 }}>ผู้ให้บริการ (นักวางแผนการเงิน)</div>
+              <div style={{ fontSize: 11.5, color: '#334155', display: 'grid', gap: 4 }}>
+                <div>ชื่อ: <Blank w={150} v={advisor?.fullName} /></div>
+                <div>ใบอนุญาต/ใบรับรอง: <Blank w={100} v={advisor?.license} /></div>
+                <div>บริษัท/สังกัด: <Blank w={120} v={advisor?.company} /></div>
+                <div>โทรศัพท์: <Blank w={70} v={advisor?.phone} /> อีเมล: <Blank w={80} v={advisor?.email} /></div>
+              </div>
+            </div>
+            <div style={{ border: '1px solid #f1f5f9', borderRadius: 10, padding: '10px 14px' }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: TEAL, marginBottom: 6 }}>ผู้รับบริการ (ลูกค้า)</div>
+              <div style={{ fontSize: 11.5, color: '#334155', display: 'grid', gap: 4 }}>
+                <div>ชื่อ: <Blank w={150} v={clientName !== 'ลูกค้า' ? `คุณ${clientName}` : undefined} /></div>
+                <div>เลขบัตรประชาชน: <Blank w={110} /></div>
+                <div>ที่อยู่: <Blank w={160} v={client?.address} /></div>
+                <div>โทรศัพท์: <Blank w={70} v={client?.phone} /> อีเมล: <Blank w={80} v={client?.email} /></div>
+              </div>
+            </div>
+          </div>
+          <p style={{ fontSize: 11.5, color: '#334155', marginBottom: 9 }}>
+            คู่สัญญาทั้งสองฝ่ายตกลงทำหนังสือข้อตกลงการให้บริการวางแผนการเงินฉบับนี้ขึ้น ณ วันที่ <Blank w={30} /> เดือน <Blank w={80} /> พ.ศ. <Blank w={45} /> โดยมีรายละเอียดดังต่อไปนี้
+          </p>
+          {clause(1, 'ขอบเขตการให้บริการ', 'ผู้ให้บริการตกลงจัดทำแผนการเงินส่วนบุคคลให้แก่ผู้รับบริการ ครอบคลุมการวิเคราะห์ฐานะทางการเงิน การวางแผนเกษียณอายุ การวางแผนภาษี การวางแผนประกันชีวิตและสุขภาพ รวมถึงการวางแผนการลงทุน ทั้งนี้ตามข้อมูลที่ผู้รับบริการให้ไว้เท่านั้น')}
+          <div style={{ marginBottom: 7 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 800, color: '#0f172a' }}>2. ค่าธรรมเนียมและการชำระเงิน — </span>
+            <span style={{ fontSize: 11.5, color: '#334155' }}>ผู้รับบริการตกลงชำระค่าธรรมเนียมการจัดทำแผนการเงินจำนวน <Blank w={70} /> บาท (<Blank w={140} />บาทถ้วน) โดยชำระ {box} ครั้งเดียวเต็มจำนวน &nbsp;{box} งวดที่ 1 จำนวน <Blank w={55} /> บาท เมื่อลงนามสัญญา / งวดที่ 2 จำนวน <Blank w={55} /> บาท เมื่อส่งมอบแผน</span>
+          </div>
+          <div style={{ marginBottom: 7 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 800, color: '#0f172a' }}>3. ระยะเวลาและการส่งมอบ — </span>
+            <span style={{ fontSize: 11.5, color: '#334155' }}>ผู้ให้บริการจะส่งมอบแผนการเงินฉบับสมบูรณ์ภายใน <Blank w={35} /> วันทำการ นับจากวันที่ได้รับข้อมูลครบถ้วนจากผู้รับบริการ พร้อมนัดหมายนำเสนอแผนและตอบข้อซักถาม จำนวน 1 ครั้ง</span>
+          </div>
+          {clause(4, 'ความรับผิดชอบและข้อจำกัด', 'แผนการเงินที่จัดทำขึ้นเป็นเพียงคำแนะนำบนพื้นฐานข้อมูลที่ผู้รับบริการให้ไว้ ณ วันที่จัดทำ มิใช่การรับประกันผลตอบแทนหรือการรับประกันความสำเร็จทางการเงิน ผู้ให้บริการไม่รับผิดชอบต่อความเสียหายอันเกิดจากการตัดสินใจของผู้รับบริการ หรือจากการเปลี่ยนแปลงของสภาวะตลาดและกฎหมายที่เกิดขึ้นภายหลัง')}
+          {clause(5, 'การรักษาความลับและคุ้มครองข้อมูลส่วนบุคคล', 'ผู้ให้บริการตกลงเก็บรักษาข้อมูลของผู้รับบริการไว้เป็นความลับ และจะใช้ข้อมูลดังกล่าวเพื่อวัตถุประสงค์ในการจัดทำแผนการเงินเท่านั้น สอดคล้องกับพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA) ผู้รับบริการมีสิทธิขอตรวจสอบ แก้ไข หรือลบข้อมูลของตนได้ตลอดเวลา')}
+          {clause(6, 'การยกเลิกสัญญา', 'คู่สัญญาฝ่ายใดฝ่ายหนึ่งมีสิทธิบอกเลิกสัญญาได้โดยแจ้งเป็นลายลักษณ์อักษรล่วงหน้าไม่น้อยกว่า 7 วัน ในกรณีที่ผู้รับบริการเป็นฝ่ายยกเลิก ให้ชำระค่าธรรมเนียมตามสัดส่วนงานที่ดำเนินการแล้ว และผู้ให้บริการจะคืนส่วนที่เหลือภายใน 15 วันทำการ')}
+          <div style={{ border: `1px solid ${TEAL}55`, background: '#f0fdfa', borderRadius: 10, padding: '8px 12px', margin: '10px 0' }}>
+            <div style={{ fontSize: 11.5, fontWeight: 800, color: '#0f172a', marginBottom: 3 }}>การยินยอมใช้ข้อมูลส่วนบุคคล (PDPA Consent)</div>
+            <div style={{ fontSize: 11.5, color: '#334155' }}>{box} ข้าพเจ้าให้ความยินยอมในการเก็บรวบรวม ใช้ และเปิดเผยข้อมูลส่วนบุคคลของข้าพเจ้าเพื่อวัตถุประสงค์ในการจัดทำแผนการเงินเท่านั้น และรับทราบสิทธิของข้าพเจ้าตาม PDPA แล้ว</div>
+          </div>
+          <p style={{ fontSize: 11.5, color: '#334155', marginBottom: 12 }}>คู่สัญญาทั้งสองฝ่ายได้อ่านและเข้าใจข้อความในหนังสือข้อตกลงฉบับนี้โดยตลอดแล้ว จึงลงลายมือชื่อไว้เป็นหลักฐาน</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, marginTop: 6 }}>
+            {[['ผู้ให้บริการ / นักวางแผนการเงิน'], ['ผู้รับบริการ / ลูกค้า']].map(([role]) => (
+              <div key={role} style={{ textAlign: 'center', fontSize: 11.5, color: '#334155' }}>
+                <div>ลงชื่อ .................................................</div>
+                <div style={{ marginTop: 3 }}>({role})</div>
+                <div style={{ marginTop: 3 }}>วันที่ ......... / .................. / ..........</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: '#64748b', textAlign: 'center', marginTop: 12 }}>
+            พยาน: ลงชื่อ ..................................................... (.....................................................) วันที่ ......... / ................... / ..........
+          </div>
+        </div>
+      )
+    }
     if (kind === 'letter') {
       const custom = (secs['letter']?.text || '').trim()
       const paras = custom ? custom.split('\n').filter(Boolean) : DEFAULT_LETTER
@@ -340,6 +414,26 @@ export default function ReportPage() {
       derived.push('บริหารภาษีอย่างมีประสิทธิภาพภายใต้สิทธิประโยชน์ที่กฎหมายกำหนด')
       derived.push(profile?.estatePlan ? 'ส่งมอบทรัพย์สินให้ทายาทอย่างเป็นระบบตามความประสงค์' : 'จัดทำแผนมรดกและพินัยกรรมเพื่อส่งมอบทรัพย์สินตามความประสงค์')
       const goals = custom ? custom.split('\n').filter(Boolean) : derived
+      // ตารางแผนดำเนินการ (แหล่งเดียวกับหน้าแผนปฏิบัติการ) — เติมใต้เป้าหมาย
+      type Pl = { plan: string; amount: number; schedule: string; owner: string; priority: string; done: boolean }
+      const ownerTh = (o: string) => o === 'client' ? 'ลูกค้า' : o === 'advisor' ? 'ที่ปรึกษา' : o === 'spouse' ? 'คู่สมรส' : (o || '—')
+      const planLines: Pl[] = []
+      for (const it of actionItems) {
+        const rows: any[] = Array.isArray(it.subPlan) ? it.subPlan : []
+        if (!rows.length) { planLines.push({ plan: it.title, amount: toNum(it.target), schedule: it.dueDate || '', owner: ownerTh(it.owner), priority: '', done: it.status === 'done' }); continue }
+        for (const r of rows) {
+          const plan = String(r?.desc || r?.method || r?.who || '').trim()
+          const amount = toNum(r?.amount ?? r?.premium)
+          if (!plan && amount <= 0 && !r?.schedule) continue
+          planLines.push({ plan: plan || it.title, amount, schedule: r?.schedule || '', owner: String(r?.owner || '').trim() || ownerTh(it.owner), priority: String(r?.priority || ''), done: !!r?.done })
+        }
+      }
+      const PR_ORDER: Record<string, number> = { 'สูง': 0, 'กลาง': 1, 'ต่ำ': 2 }
+      planLines.sort((a, b) => (PR_ORDER[a.priority] ?? 3) - (PR_ORDER[b.priority] ?? 3))
+      const PR_COLOR: Record<string, string> = { 'สูง': REDR, 'กลาง': AMBERR, 'ต่ำ': '#64748b' }
+      const fmtD = (s: string) => { const d = new Date(s); return isNaN(d.getTime()) ? s : d.toLocaleDateString('th-TH', { year: '2-digit', month: 'short', day: 'numeric' }) }
+      const thG: React.CSSProperties = { padding: '6px 8px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'left' }
+      const tdG: React.CSSProperties = { padding: '7px 8px', fontSize: 12.5, color: '#1e293b' }
       return (
         <div style={{ marginBottom: 16 }}>
           <p style={{ fontSize: 13, color: '#64748b', lineHeight: 1.7, marginBottom: 14 }}>เป้าหมายต่อไปนี้คือสิ่งที่เราให้ความสำคัญที่สุดในการจัดทำแผน ทุกข้อเสนอแนะในรายงานล้วนมุ่งไปสู่เป้าหมายเหล่านี้</p>
@@ -349,6 +443,38 @@ export default function ReportPage() {
               <span style={{ fontSize: 14, color: '#0f172a', fontWeight: 600, lineHeight: 1.7 }}>{g}</span>
             </div>
           ))}
+          {planLines.length > 0 && (
+            <div style={{ marginTop: 22 }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', borderLeft: `5px solid ${TEAL}`, paddingLeft: 10, marginBottom: 10 }}>แผนดำเนินการเพื่อบรรลุเป้าหมาย</div>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1.5px solid #cbd5e1' }}>
+                    <th style={thG}>แผนดำเนินการ</th>
+                    <th style={{ ...thG, textAlign: 'right' }}>จำนวนเงิน</th>
+                    <th style={thG}>กำหนดการ</th>
+                    <th style={thG}>ผู้รับผิดชอบ</th>
+                    <th style={thG}>ความสำคัญ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {planLines.map((l, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ ...tdG, color: l.done ? '#94a3b8' : '#1e293b', textDecoration: l.done ? 'line-through' : 'none' }}>{l.done ? '✓ ' : ''}{l.plan}</td>
+                      <td style={{ ...tdG, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: l.amount > 0 ? '#0f172a' : '#94a3b8' }}>{l.amount > 0 ? fmt(l.amount) : '—'}</td>
+                      <td style={{ ...tdG, color: '#475569' }}>{l.schedule ? fmtD(l.schedule) : '—'}</td>
+                      <td style={{ ...tdG, color: '#475569' }}>{l.owner}</td>
+                      <td style={{ ...tdG, fontWeight: 700, color: PR_COLOR[l.priority] || '#94a3b8' }}>{l.priority || '—'}</td>
+                    </tr>
+                  ))}
+                  <tr style={{ borderTop: '2px solid #cbd5e1' }}>
+                    <td style={{ ...tdG, fontWeight: 800, color: '#0f172a' }}>รวมเงินสำหรับทุกเป้าหมาย</td>
+                    <td style={{ ...tdG, textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: TEAL }}>{fmt(planLines.reduce((a, l) => a + l.amount, 0))}</td>
+                    <td /><td /><td />
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )
     }
