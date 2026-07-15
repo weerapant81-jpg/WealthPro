@@ -99,6 +99,8 @@ const SECTIONS: Sec[] = [
   { k: 'domains_spouse', t: 'บทวิเคราะห์และการดำเนินการ (คู่สมรส)', lvl: 1, auto: 'domains_spouse' },
   { k: 'action', t: 'แผนปฏิบัติการ', lvl: 1, auto: 'action' },
   { k: 'finance', t: 'สรุปผลการวิเคราะห์ข้อมูลทางการเงินส่วนบุคคล', lvl: 1, auto: 'finance' },
+  { k: 'fin_cf2', t: 'งบกระแสเงินสด (Cash Flow Statement)', lvl: 2, auto: 'fin_cf2' },
+  { k: 'fin_ratio2', t: 'อัตราส่วนทางการเงิน (Financial Ratio)', lvl: 2, auto: 'fin_ratio2' },
   { k: 'goals', t: 'ผลการวิเคราะห์เป้าหมายทางการเงิน', lvl: 1 },
   { k: 'g_debt', t: 'สรุปผลการวิเคราะห์ด้านหนี้สิน', lvl: 2, auto: 'debt' },
   { k: 'g_insurance', t: 'การวิเคราะห์ความเสี่ยงภัยและความต้องการด้านการประกันภัย', lvl: 2, auto: 'insurance' },
@@ -476,37 +478,54 @@ export default function ReportPage() {
     if (kind === 'action') {
       // checklist แยกฝั่งผู้รับผิดชอบ (สไตล์ Immediate Action Items)
       const ownerTh = (o: string) => o === 'client' ? 'ลูกค้า' : o === 'advisor' ? 'ที่ปรึกษา' : o === 'spouse' ? 'คู่สมรส' : (o || '')
-      type Ln = { plan: string; amount: number; schedule: string; owner: string; done: boolean }
+      const PR_LBL: Record<string, string> = { high: 'สูง', medium: 'กลาง', low: 'ต่ำ' }
+      type Ln = { plan: string; amount: number; schedule: string; owner: string; priority: string; done: boolean }
       const lines: Ln[] = []
       for (const it of actionItems) {
         const rows: any[] = Array.isArray(it.subPlan) ? it.subPlan : []
         const done = it.status === 'done' || !!it.completedAt
-        if (!rows.length) { lines.push({ plan: it.title, amount: toNum(it.target), schedule: it.dueDate || '', owner: ownerTh(it.owner), done }); continue }
+        if (!rows.length) { lines.push({ plan: it.title, amount: toNum(it.target), schedule: it.dueDate || '', owner: ownerTh(it.owner), priority: PR_LBL[it.priority] ?? '', done }); continue }
         for (const r of rows) {
           const plan = String(r?.desc || r?.method || r?.who || '').trim()
           const amount = toNum(r?.amount ?? r?.premium)
           if (!plan && amount <= 0 && !r?.schedule) continue
-          lines.push({ plan: plan || it.title, amount, schedule: r?.schedule || '', owner: String(r?.owner || '').trim() || ownerTh(it.owner), done: !!r?.done || done })
+          lines.push({ plan: plan || it.title, amount, schedule: r?.schedule || '', owner: String(r?.owner || '').trim() || ownerTh(it.owner), priority: String(r?.priority || '') || (PR_LBL[it.priority] ?? ''), done: !!r?.done || done })
         }
       }
       if (!lines.length) return <div style={{ fontSize: 12.5, color: '#94a3b8', marginBottom: 12 }}>ยังไม่มีรายการในแผนปฏิบัติการ — เพิ่มได้ที่หน้า "แผนปฏิบัติการ"</div>
+      const PR_ORD: Record<string, number> = { 'สูง': 0, 'กลาง': 1, 'ต่ำ': 2 }
+      const PR_CLR: Record<string, string> = { 'สูง': REDR, 'กลาง': AMBERR, 'ต่ำ': '#64748b' }
+      lines.sort((a, b) => (PR_ORD[a.priority] ?? 3) - (PR_ORD[b.priority] ?? 3))
       const advisorLines = lines.filter(l => l.owner === 'ที่ปรึกษา')
       const clientLines = lines.filter(l => l.owner !== 'ที่ปรึกษา')
-      const fmtDate = (s: string) => { const d = new Date(s); return isNaN(d.getTime()) ? s : d.toLocaleDateString('th-TH', { year: 'numeric', month: 'short' }) }
+      const fmtDate = (s: string) => { const d = new Date(s); return isNaN(d.getTime()) ? s : d.toLocaleDateString('th-TH', { year: '2-digit', month: 'short', day: 'numeric' }) }
+      const thA: React.CSSProperties = { padding: '6px 8px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'left' }
+      const tdA: React.CSSProperties = { padding: '7px 8px', fontSize: 12.5, color: '#1e293b' }
       const Group = ({ title, items }: { title: string; items: Ln[] }) => items.length === 0 ? null : (
-        <div style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', borderBottom: `2px solid ${TEAL}`, paddingBottom: 6, marginBottom: 8 }}>{title}</div>
-          {items.map((l, i) => (
-            <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '7px 2px', borderBottom: '1px solid #f8fafc' }}>
-              <span style={{ fontSize: 15, lineHeight: 1.5, color: l.done ? GREENR : '#94a3b8' }}>{l.done ? '☑' : '☐'}</span>
-              <span style={{ flex: 1, fontSize: 13, color: l.done ? '#94a3b8' : '#1e293b', lineHeight: 1.7, textDecoration: l.done ? 'line-through' : 'none' }}>
-                {l.plan}
-                {l.owner && l.owner !== 'ที่ปรึกษา' && <span style={{ color: '#94a3b8', fontSize: 11.5 }}> · {l.owner}</span>}
-              </span>
-              {l.amount > 0 && <span style={{ fontSize: 12.5, fontWeight: 700, fontFamily: 'monospace', color: '#0f172a', whiteSpace: 'nowrap' }}>{fmt(l.amount)} ฿</span>}
-              {l.schedule && <span style={{ fontSize: 11.5, color: '#64748b', whiteSpace: 'nowrap' }}>{fmtDate(l.schedule)}</span>}
-            </div>
-          ))}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', borderBottom: `2px solid ${TEAL}`, paddingBottom: 6, marginBottom: 4 }}>{title}</div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                <th style={{ ...thA, width: 26 }} />
+                <th style={thA}>แผนดำเนินการ</th>
+                <th style={{ ...thA, textAlign: 'right' }}>จำนวนเงิน</th>
+                <th style={thA}>กำหนดการ</th>
+                <th style={thA}>ผู้รับผิดชอบ</th>
+                <th style={thA}>ความสำคัญ</th>
+              </tr>
+            </thead>
+            <tbody>{items.map((l, i) => (
+              <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ ...tdA, fontSize: 14, color: l.done ? GREENR : '#94a3b8' }}>{l.done ? '☑' : '☐'}</td>
+                <td style={{ ...tdA, color: l.done ? '#94a3b8' : '#1e293b', textDecoration: l.done ? 'line-through' : 'none' }}>{l.plan}</td>
+                <td style={{ ...tdA, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: l.amount > 0 ? '#0f172a' : '#94a3b8' }}>{l.amount > 0 ? fmt(l.amount) : '—'}</td>
+                <td style={{ ...tdA, color: '#475569' }}>{l.schedule ? fmtDate(l.schedule) : '—'}</td>
+                <td style={{ ...tdA, color: '#475569' }}>{l.owner || '—'}</td>
+                <td style={{ ...tdA, fontWeight: 700, color: PR_CLR[l.priority] || '#94a3b8' }}>{l.priority || '—'}</td>
+              </tr>
+            ))}</tbody>
+          </table>
         </div>
       )
       return (
@@ -767,7 +786,7 @@ export default function ReportPage() {
         </div>
       )
     }
-    if (kind === 'finance') {
+    if (kind === 'finance' || kind === 'fin_cf2' || kind === 'fin_ratio2') {
       // ── งบการเงินเต็มรูปแบบ 3 งบ: งบดุล · งบกระแสเงินสด · อัตราส่วนทางการเงิน ──
       const toMonthly2 = (a: number, f: string) => f === 'QUARTERLY' ? a / 3 : f === 'ANNUALLY' ? a / 12 : a
       const inv: any = invProfile ?? {}
@@ -810,7 +829,6 @@ export default function ReportPage() {
       }
       const fmtRat = (v: number | null, unit: string) => v == null ? '—' : unit === 'times' ? `${v.toFixed(2)} เท่า` : unit === 'months' ? `${v.toFixed(1)} เดือน` : `${v.toFixed(1)}%`
       // ── ชิ้นส่วน UI ──
-      const H2 = ({ t }: { t: string }) => <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', borderLeft: `5px solid ${TEAL}`, paddingLeft: 10, margin: '26px 0 12px' }}>{t}</div>
       const Sect = ({ title, accent, total, rows, base, monthly }: { title: string; accent: string; total: number; rows: { name: string; note?: string; m?: number; v: number }[]; base: number; monthly?: boolean }) => (
         <div style={{ border: '1px solid #f1f5f9', borderRadius: 10, marginBottom: 10, overflow: 'hidden', breakInside: 'avoid' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
@@ -837,7 +855,7 @@ export default function ReportPage() {
           <span style={{ fontFamily: 'monospace', color: c, fontWeight: 800 }}>{sign && v > 0 ? '+' : ''}{fmt(v)} ฿</span>
         </div>
       )
-      return (
+      if (kind === 'finance') return (
         <div style={{ marginBottom: 16 }}>
           {/* ── 1. งบดุลส่วนบุคคล ── */}
           <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', borderLeft: `5px solid ${TEAL}`, paddingLeft: 10, marginBottom: 12 }}>งบดุลส่วนบุคคล (Balance Sheet)</div>
@@ -855,8 +873,10 @@ export default function ReportPage() {
             <SumRow l="ความมั่งคั่งสุทธิ (Net Worth = 1 − 2)" v={netWT} c={netWT >= 0 ? GREENR : REDR} strong sign />
           </div>
 
-          {/* ── 2. งบกระแสเงินสด ── */}
-          <H2 t="งบกระแสเงินสด (Cash Flow Statement)" />
+        </div>
+      )
+      if (kind === 'fin_cf2') return (
+        <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 22, fontSize: 10.5, color: '#94a3b8', margin: '0 14px 4px' }}><span>บาท/เดือน</span><span>บาท/ปี</span><span>% รายรับ</span></div>
           <Sect title="รายรับ (Income)" accent={GREENR} total={incT} rows={incRows} base={incT} monthly />
           <Sect title="รายจ่ายคงที่ (Fixed Expenses)" accent={AMBERR} total={fixT} rows={fixRows} base={incT} monthly />
@@ -872,8 +892,10 @@ export default function ReportPage() {
             <SumRow l="กระแสเงินสดสุทธิ (Net Cash Flow)" v={netCF2} c={netCF2 >= 0 ? GREENR : REDR} strong sign />
           </div>
 
-          {/* ── 3. อัตราส่วนทางการเงิน ── */}
-          <H2 t="อัตราส่วนทางการเงิน (Financial Ratio)" />
+        </div>
+      )
+      return (
+        <div style={{ marginBottom: 16 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
             <thead>
               <tr style={{ borderBottom: '1.5px solid #cbd5e1' }}>
