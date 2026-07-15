@@ -468,13 +468,13 @@ export default function ReportPage() {
         <div style={{ marginBottom: 16 }}>
           <p style={{ fontSize: 13, color: '#64748b', lineHeight: 1.7, marginBottom: 14 }}>เป้าหมายต่อไปนี้คือสิ่งที่เราให้ความสำคัญที่สุดในการจัดทำแผน ทุกข้อเสนอแนะในรายงานล้วนมุ่งไปสู่เป้าหมายเหล่านี้</p>
           {goals.map((g, i) => (
-            <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 14px', marginBottom: 8, background: '#f8fafc', borderRadius: 10, borderLeft: `4px solid ${TEAL}` }}>
-              <span style={{ color: TEAL, fontWeight: 800, fontSize: 15, lineHeight: 1.5 }}>›</span>
-              <span style={{ fontSize: 14, color: '#0f172a', fontWeight: 600, lineHeight: 1.7 }}>{g}</span>
+            <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '7px 12px', marginBottom: 6, background: '#f8fafc', borderRadius: 10, borderLeft: `4px solid ${TEAL}` }}>
+              <span style={{ color: TEAL, fontWeight: 800, fontSize: 12.5, lineHeight: 1.5 }}>›</span>
+              <span style={{ fontSize: 12, color: '#0f172a', fontWeight: 600, lineHeight: 1.6 }}>{g}</span>
             </div>
           ))}
           {planLines.length > 0 && (
-            <div style={{ marginTop: 22 }}>
+            <div style={{ marginTop: 44 }}>
               <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', borderLeft: `5px solid ${TEAL}`, paddingLeft: 10, marginBottom: 10 }}>แผนดำเนินการเพื่อบรรลุเป้าหมาย</div>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
