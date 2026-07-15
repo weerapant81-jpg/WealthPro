@@ -5,19 +5,19 @@ import { FileText, Printer, Check, Loader2, FileStack, Presentation, Pencil, Dow
 import { useIsCompact } from '../hooks/useViewport'
 import { PageHeader } from '../components/ui'
 import PresentationDeck, { SlideEditor, OverlayLayer, type SlideEl, type CustomSlide } from './report/PresentationDeck'
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { PieChart, Pie, Cell, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis, ComposedChart, Line, ReferenceLine } from 'recharts'
 import { useRetirementReadiness } from '../hooks/useRetirementReadiness'
 import { useInsuranceReadiness } from '../hooks/useInsuranceReadiness'
 import { useEducationReadiness } from '../hooks/useEducationReadiness'
 import { calc as calcTaxCalc, defaultState as defaultTaxState } from '../lib/tax'
 import { hasSpouseInfo } from '../lib/spouse'
+import { useInsuranceCoverage } from '../components/InsuranceCoverageSummary'
+import { PORTFOLIO_SETS, DEFAULT_ASSETS, DEFAULT_CORR, computePortfolio, applyMarketData, applyCorrelation } from '../lib/portfolioReturns'
 
 const fmt = (n: number) => (isFinite(n) ? Math.round(n) : 0).toLocaleString('th-TH')
 const toNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
 
 /* ── financial math (mirror of feature pages) ── */
-function pvAnnuity(rate: number, n: number, pmt: number) { return rate === 0 ? pmt * n : pmt * (1 - Math.pow(1 + rate, -n)) / rate }
-function pmtForFV(rate: number, n: number, fv: number) { return rate === 0 ? fv / n : fv * rate / (Math.pow(1 + rate, n) - 1) }
 
 const EDU_LEVELS = [
   { key: 'kindergarten', ages: [3, 4, 5] }, { key: 'primary', ages: [6, 7, 8, 9, 10, 11] },
@@ -41,45 +41,6 @@ function eduForChild(age: number, setting: any, eduCosts: any, inf: number, fund
   return { totalNominal, totalPV, annual, monthly: annual / 12 }
 }
 
-function insNeed(plan: any, autoIncome: number) {
-  if (!plan) return null
-  const income = plan.income || autoIncome
-  const sum = (arr: any[]) => (arr ?? []).reduce((s, it) => s + toNum(it.amount), 0)
-  const familyExpense = Math.max(0, income - sum(plan.deductions))
-  const realRate = (1 + (plan.returnRate ?? 5.9) / 100) / (1 + (plan.incomeGrowth ?? 5) / 100) - 1
-  const pv = pvAnnuity(realRate, plan.years ?? 20, familyExpense)
-  const debt = sum(plan.debts), assets = sum(plan.assets)
-  const need = pv + debt, net = Math.max(0, need - assets)
-  return { familyExpense, pv, debt, assets, need, net }
-}
-
-function calcRetire(p: any, asset: number) {
-  if (!p) return null
-  const yearsTo = Math.max(0, (p.retirementAge ?? 60) - (p.currentAge ?? 45))
-  const yearsAfter = Math.max(0, (p.lifeExpectancy ?? 85) - (p.retirementAge ?? 60))
-  const g = (p.inflationRate ?? 3) / 100, i = (p.preRetirementReturn ?? 8) / 100, r = (p.postRetirementReturn ?? 5) / 100
-  const realRate = (1 + r) / (1 + g) - 1
-  const annualAtRet = p.needMethod === 'replacement'
-    ? (p.annualIncome ?? 0) * Math.pow(1 + (p.savingsGrowthRate ?? 0) / 100, yearsTo) * ((p.replacementRate ?? 70) / 100)
-    : ((p.monthlyLiving ?? 0) + (p.monthlyHealth ?? 0)) * 12 * Math.pow(1 + g, yearsTo)
-  const pvLiving = pvAnnuity(realRate, yearsAfter, annualAtRet)
-  const pvLegacy = (p.legacy ?? 0) / Math.pow(1 + r, yearsAfter)
-  let pvGoals = 0
-  for (const goal of (p.goals ?? [])) {
-    let k = goal.startYear
-    while (k <= yearsAfter) {
-      pvGoals += (goal.amount * Math.pow(1 + g, yearsTo + k)) / Math.pow(1 + r, k)
-      if (!goal.everyYears) break
-      k += goal.everyYears
-    }
-  }
-  const totalNeeded = pvLiving + pvLegacy + pvGoals
-  const gap = Math.max(0, totalNeeded - asset)
-  const annualSavings = gap > 0 ? pmtForFV(i, yearsTo, gap) : 0
-  return { totalNeeded, asset, gap, annualSavings, monthly: annualSavings / 12, yearsTo, yearsAfter }
-}
-
-/* ── Monte Carlo success rate: โอกาสที่เงินพอใช้ถึงอายุขัย ── */
 function mulberry32(seed: number) {
   return function () {
     seed |= 0; seed = (seed + 0x6D2B79F5) | 0
@@ -88,6 +49,7 @@ function mulberry32(seed: number) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
 }
+
 interface Sec { k: string; t: string; lvl: 1 | 2; auto?: string }
 const SECTIONS: Sec[] = [
   { k: 'letter', t: 'จดหมายจากนักวางแผนการเงิน', lvl: 1, auto: 'letter' },
@@ -112,6 +74,7 @@ const SECTIONS: Sec[] = [
   { k: 'g_tax', t: 'กลยุทธ์ในการวางแผนภาษี', lvl: 2 },
   { k: 'g_estate', t: 'แนวทางการจัดการทรัพย์สินและมรดก', lvl: 2 },
   { k: 'g_port', t: 'รูปแบบพอร์ตลงทุนที่เหมาะสม', lvl: 2, auto: 'portfolio' },
+  { k: 'g_port_reco', t: 'พอร์ตการลงทุนที่แนะนำ', lvl: 2, auto: 'portfolio_reco' },
   { k: 'g_monitor', t: 'แนวทางในการควบคุมและวัดผลการดำเนินงาน', lvl: 2 },
   { k: 'g_calendar', t: 'สรุปปฏิทินชีวิต', lvl: 2 },
   { k: 'assumptions', t: 'สมมติฐานที่ใช้ในการวางแผน', lvl: 1, auto: 'assumptions' },
@@ -140,7 +103,6 @@ export default function ReportPage() {
   const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: () => api.get('/profile').then(r => r.data), retry: false })
   const { data: retPlan } = useQuery({ queryKey: ['retirement-plan'], queryFn: () => api.get('/retirement-plan').then(r => r.data), retry: false })
   const { data: eduPlan } = useQuery({ queryKey: ['education-plan'], queryFn: () => api.get('/education-plan').then(r => r.data), retry: false })
-  const { data: insPlan } = useQuery({ queryKey: ['insurance-plan'], queryFn: () => api.get('/insurance-plan').then(r => r.data), retry: false })
   const { data: saved, isFetched } = useQuery({ queryKey: ['report-plan'], queryFn: () => api.get('/report-plan').then(r => r.data), retry: false })
   const { data: taxPlanQ } = useQuery({ queryKey: ['tax-plan'], queryFn: () => api.get('/tax-plan').then(r => r.data), retry: false })
   const { data: actionData } = useQuery({ queryKey: ['action-items'], queryFn: () => api.get('/action-items').then(r => r.data), retry: false })
@@ -156,6 +118,9 @@ export default function ReportPage() {
   const retRSp = useRetirementReadiness('spouse')
   const insRSp = useInsuranceReadiness('spouse')
   const { data: ratiosSp } = useQuery({ queryKey: ['financial-ratios', 'spouse'], queryFn: () => api.get('/financial-ratios', { params: { person: 'spouse' } }).then(r => r.data), retry: false })
+  const covSelf = useInsuranceCoverage('self')
+  const covSp = useInsuranceCoverage('spouse')
+  const { data: marketData } = useQuery({ queryKey: ['market-data'], queryFn: () => api.get('/market-data').then(r => r.data), staleTime: 5 * 60 * 1000, retry: 1 })
 
   const [title, setTitle] = useState('แผนการเงินส่วนบุคคล')
   const [mode, setMode] = useState<'full' | 'pres'>('full')
@@ -229,9 +194,6 @@ export default function ReportPage() {
   const PIE_COLORS = ['#0284c7', '#10b981', '#f59e0b', '#a78bfa', '#f87171', '#22d3ee', '#fb923c', '#34d399']
 
   // recompute inputs for plan-based sections
-  const spouseJob = Array.isArray(client?.spouseJobs) ? client.spouseJobs[0] : null
-  const autoIncSelf = toNum(client?.salary) * 12
-  const autoIncSpouse = (toNum(spouseJob?.salary) || toNum(client?.spouseIncome)) * 12
   const invAssets: any[] = invProfile?.investmentAssets ?? []
   const totalInv = invAssets.reduce((s, a) => s + toNum(a.currentValue), 0)
   let _wr = 0, _cv = 0
@@ -244,7 +206,6 @@ export default function ReportPage() {
   let _wrS = 0, _cvS = 0
   invAssetsSp.forEach(a => { const v = toNum(a.currentValue), rr = parseFloat(a.annualReturn); if (!isNaN(rr) && v > 0) { _cvS += v; _wrS += rr * v } })
   const portRetSp = _cvS > 0 ? _wrS / _cvS : 0
-  const assetAtRet = (p: any) => { const yt = Math.max(0, (p?.retirementAge ?? 60) - (p?.currentAge ?? 45)); return totalInv * Math.pow(1 + portRet / 100, yt) }
   const eduCosts = profile?.educationCosts ?? {}
   const eduInf = profile?.educationInflation ?? 5, eduRet = profile?.educationFundReturn ?? 4
   const children: any[] = client?.children ?? []
@@ -957,81 +918,246 @@ export default function ReportPage() {
       ]} />
     }
     if (kind === 'insurance') {
-      const rows: any[] = []
-      const a = insNeed(insPlan?.self, autoIncSelf), b = insNeed(insPlan?.spouse, autoIncSpouse)
-      const block = (name: string, x: any) => x && (
-        <div key={name} style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f2a43', marginBottom: 4 }}>{name}</div>
-          <DataTable rows={[
-            ['ทุนประกันที่ต้องการ', x.need, '#f59e0b'],
-            ['(−) สินทรัพย์/เงินชดเชยที่มี', x.assets, '#10b981'],
-            ['ทุนประกันที่ต้องการเพิ่ม (สุทธิ)', x.net, '#0284c7'],
-          ]} />
+      // ── การวิเคราะห์ความเสี่ยงภัยและความต้องการด้านการประกันภัย (ตามเอกสารตัวอย่าง) ──
+      const persons = [
+        { name: `คุณ${client?.firstName || 'ลูกค้า'}`, cov: covSelf, ins: insR, tint: TEAL },
+        ...(hasSpouse ? [{ name: client?.spouseProfile?.firstName ? `คุณ${client.spouseProfile.firstName}` : 'คู่สมรส', cov: covSp, ins: insRSp, tint: '#8b5cf6' }] : []),
+      ]
+      const subH: React.CSSProperties = { fontSize: 15, fontWeight: 800, color: '#0f172a', borderLeft: `5px solid ${TEAL}`, paddingLeft: 10, margin: '20px 0 10px' }
+      // ตารางแนะนำแบบประกัน (พิมพ์ได้ · เก็บใน secs.ins_reco เป็นบรรทัด "แบบ|คุ้มครอง|เบี้ย")
+      const recoLines = (secs['ins_reco']?.text || '').split('\n')
+      const recoRow = (i2: number): string[] => (recoLines[i2] || '').split('|')
+      const setReco = (i2: number, c: number, v: string) => {
+        const rows = Array.from({ length: 5 }, (_, k) => recoRow(k))
+        rows[i2][c] = v
+        setText('ins_reco', rows.map(r => [r[0] || '', r[1] || '', r[2] || ''].join('|')).join('\n'))
+      }
+      const recoInp: React.CSSProperties = { width: '100%', border: 'none', outline: 'none', background: 'transparent', fontFamily: 'inherit', fontSize: 12.5, color: '#1e293b', padding: '2px 0' }
+      return (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ ...subH, marginTop: 0 }}>ความคุ้มครองที่มี</div>
+          <div style={{ display: 'grid', gridTemplateColumns: persons.length > 1 ? '1fr 1fr' : '1fr', gap: 16 }}>
+            {persons.map(p => (
+              <div key={p.name} style={{ border: '1px solid #f1f5f9', borderRadius: 12, padding: '12px 14px', breakInside: 'avoid' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: p.tint, marginBottom: 6 }}>{p.name}</div>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <div style={{ flex: 1, height: 170 }}>
+                    {p.cov.hasPolicies ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart data={p.cov.radarData} outerRadius="68%">
+                          <PolarGrid stroke="#e2e8f0" />
+                          <PolarAngleAxis dataKey="subject" tick={{ fontSize: 8.5, fill: '#64748b' }} />
+                          <Radar name="ความคุ้มครองที่มี" dataKey="actual" stroke={p.tint} strokeWidth={2} fill={p.tint} fillOpacity={0.25} />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    ) : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 12, color: '#94a3b8' }}>ยังไม่มีกรมธรรม์</div>}
+                  </div>
+                  <div style={{ width: 118, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ textAlign: 'center', background: '#f8fafc', borderRadius: 8, padding: '6px 4px' }}>
+                      <div style={{ fontSize: 10, color: '#94a3b8' }}>คะแนนคุ้มครอง</div>
+                      <div style={{ fontSize: 22, fontWeight: 800, fontFamily: 'monospace', color: p.cov.avg >= 70 ? GREENR : p.cov.avg >= 40 ? AMBERR : REDR }}>{p.cov.avg}</div>
+                    </div>
+                    {p.ins && ([['ทุนที่ควรมี', p.ins.need, AMBERR], ['มีอยู่', p.ins.have, GREENR], ['ยังขาด', p.ins.gap, p.ins.gap > 0 ? REDR : GREENR]] as const).map(([l, v, c]) => (
+                      <div key={l} style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 9.5, color: '#94a3b8' }}>{l}</div>
+                        <div style={{ fontSize: 12, fontWeight: 800, fontFamily: 'monospace', color: c }}>{fmt(v)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {p.cov.radarData.some((d: any) => toNum(d.amount) > 0) && (
+                  <div style={{ marginTop: 8, borderTop: '1px solid #f1f5f9', paddingTop: 6 }}>
+                    <div style={{ fontSize: 10.5, fontWeight: 800, color: '#94a3b8', marginBottom: 3 }}>ความคุ้มครองที่มี (แยกประเภท)</div>
+                    {p.cov.radarData.filter((d: any) => toNum(d.amount) > 0).map((d: any) => (
+                      <div key={d.subject} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: '#475569', padding: '2px 0' }}>
+                        <span>{d.subject}</span>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0f172a' }}>{fmt(toNum(d.amount))} บาท</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div style={subH}>ทุนประกันที่ควรทำเพิ่ม</div>
+          <div style={{ display: 'grid', gridTemplateColumns: persons.length > 1 ? '1fr 1fr' : '1fr', gap: 16 }}>
+            {persons.map(p => p.ins && (
+              <div key={p.name} style={{ border: '1px solid #f1f5f9', borderRadius: 12, overflow: 'hidden', breakInside: 'avoid' }}>
+                <div style={{ padding: '7px 12px', background: '#f8fafc', fontSize: 12.5, fontWeight: 800, color: p.tint }}>{p.name}</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      {['วิธีคำนวณ', 'ทุนที่ควรมี', 'มีอยู่', 'ยังขาด'].map((h, i2) => (
+                        <th key={h} style={{ padding: '5px 8px', fontSize: 10, fontWeight: 700, color: '#64748b', textAlign: i2 === 0 ? 'left' : 'right' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {([
+                      ['Human Life Value', p.ins.hlvNeed, p.ins.hlvGap, p.ins.method === 'hlv'],
+                      ['Need Base Analysis', p.ins.needsNeed, p.ins.needsGap, p.ins.method !== 'hlv'],
+                      ['ทุนทุพพลภาพ', p.ins.disNeed, p.ins.disGap, false],
+                    ] as const).map(([l, need, gap, sel]) => (
+                      <tr key={String(l)} style={{ borderBottom: '1px solid #f8fafc', background: sel ? '#f0fdfa' : 'transparent' }}>
+                        <td style={{ padding: '6px 8px', color: sel ? '#0f172a' : '#64748b', fontWeight: sel ? 800 : 400 }}>{sel ? '☑ ' : ''}{l}{sel ? ' (วิธีที่เลือก)' : ''}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'right', fontFamily: 'monospace', color: AMBERR, fontWeight: 700 }}>{fmt(need as number)}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'right', fontFamily: 'monospace', color: GREENR, fontWeight: 700 }}>{fmt(l === 'ทุนทุพพลภาพ' ? p.ins!.disHave : p.ins!.have)}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'right', fontFamily: 'monospace', color: (gap as number) > 0 ? REDR : GREENR, fontWeight: 800 }}>{fmt(gap as number)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+
+          <div style={subH}>แบบประกันและเบี้ยประกันที่แนะนำ</div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+            <thead>
+              <tr style={{ borderBottom: '1.5px solid #cbd5e1' }}>
+                <th style={{ padding: '6px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'left' }}>แบบประกัน</th>
+                <th style={{ padding: '6px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'right', width: 150 }}>ความคุ้มครอง</th>
+                <th style={{ padding: '6px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'right', width: 160 }}>เบี้ยประกันโดยประมาณ</th>
+              </tr>
+            </thead>
+            <tbody>{Array.from({ length: 5 }, (_, i2) => (
+              <tr key={i2} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ padding: '4px 10px' }}><input value={recoRow(i2)[0] || ''} onChange={e => setReco(i2, 0, e.target.value)} placeholder="พิมพ์ชื่อแบบประกัน..." style={recoInp} /></td>
+                <td style={{ padding: '4px 10px' }}><input value={recoRow(i2)[1] || ''} onChange={e => setReco(i2, 1, e.target.value)} style={{ ...recoInp, textAlign: 'right', fontFamily: 'monospace' }} /></td>
+                <td style={{ padding: '4px 10px' }}><input value={recoRow(i2)[2] || ''} onChange={e => setReco(i2, 2, e.target.value)} style={{ ...recoInp, textAlign: 'right', fontFamily: 'monospace' }} /></td>
+              </tr>
+            ))}</tbody>
+          </table>
         </div>
       )
-      rows.push(block(`คุณ${[client?.firstName].filter(Boolean).join('') || 'ลูกค้า'}`, a))
-      rows.push(block(client?.spouseProfile?.firstName ? `คุณ${client.spouseProfile.firstName}` : 'คู่สมรส', b))
-      return <div style={{ background: '#f8fafc', borderRadius: 8, padding: 14, marginBottom: 14 }}>{rows}</div>
     }
     if (kind === 'education') {
       if (!children.length) return <div style={{ fontSize: 12.5, color: '#94a3b8', marginBottom: 12 }}>ยังไม่มีข้อมูลบุตร</div>
+      const LV_TH: Record<string, string> = { kindergarten: 'อนุบาล', primary: 'ประถม', secondary: 'มัธยม', bachelor: 'ปริญญาตรี', master: 'ปริญญาโท' }
+      const nowYearBE = new Date().getFullYear() + 543
+      const totalAll = children.reduce((acc, c, i2) => {
+        const e = eduForChild(toNum(c.age), eduPlan?.[i2], eduCosts, eduInf, eduRet)
+        return { nominal: acc.nominal + e.totalNominal, pv: acc.pv + e.totalPV, monthly: acc.monthly + e.monthly }
+      }, { nominal: 0, pv: 0, monthly: 0 })
+      const Stat = ({ l, v, c, unit = 'บาท' }: { l: string; v: string; c: string; unit?: string }) => (
+        <div style={{ border: '1px solid #f1f5f9', borderLeft: `4px solid ${c}`, borderRadius: 10, padding: '10px 14px' }}>
+          <div style={{ fontSize: 11, color: '#94a3b8' }}>{l}</div>
+          <div style={{ fontSize: 19, fontWeight: 800, fontFamily: 'monospace', color: c, marginTop: 2 }}>{v}</div>
+          <div style={{ fontSize: 10, color: '#cbd5e1' }}>{unit}</div>
+        </div>
+      )
       return (
-        <div style={{ background: '#f8fafc', borderRadius: 8, padding: 14, marginBottom: 14, overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
-            <thead><tr style={{ borderBottom: '1px solid #cbd5e1' }}>
-              <th style={{ ...thL }}>บุตร</th><th style={thRr}>ค่าเล่าเรียนรวม</th><th style={thRr}>เงินก้อนวันนี้</th><th style={thRr}>ออม/ปี</th><th style={thRr}>ออม/เดือน</th>
-            </tr></thead>
-            <tbody>{children.map((c, i) => {
-              const e = eduForChild(toNum(c.age), eduPlan?.[i], eduCosts, eduInf, eduRet)
-              return <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                <td style={tdL}>{c.name || `บุตรคนที่ ${i + 1}`} (อายุ {toNum(c.age)})</td>
-                <td style={tdRr}>{fmt(e.totalNominal)}</td>
-                <td style={{ ...tdRr, color: '#f59e0b' }}>{fmt(e.totalPV)}</td>
-                <td style={{ ...tdRr, color: '#10b981' }}>{fmt(e.annual)}</td>
-                <td style={{ ...tdRr, color: '#10b981' }}>{fmt(e.monthly)}</td>
-              </tr>
-            })}</tbody>
-          </table>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', borderLeft: `5px solid ${TEAL}`, paddingLeft: 10, marginBottom: 12 }}>ทุนการศึกษาบุตรที่ต้องการ</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 18 }}>
+            <Stat l="จำนวนบุตร" v={String(children.length)} c="#0f172a" unit="คน" />
+            <Stat l="ค่าเล่าเรียนรวม (อนาคต)" v={fmt(totalAll.nominal)} c={AMBERR} />
+            <Stat l="เงินก้อนวันนี้ (PV)" v={fmt(totalAll.pv)} c={TEAL} />
+            <Stat l="ต้องออม/เดือน" v={fmt(totalAll.monthly)} c={GREENR} />
+          </div>
+          {children.map((c, ci) => {
+            const setting = eduPlan?.[ci] ?? {}
+            const type = setting?.type ?? 'private'
+            const includeMaster = setting?.includeMaster ?? false
+            const ageNow = toNum(c.age)
+            const rows: { age: number; year: number; lvl: string; cur: number; fut: number }[] = []
+            for (let a = Math.max(ageNow, 3); a <= 23; a++) {
+              const lvl = EDU_LEVELS.find(l => l.ages.includes(a)); if (!lvl) continue
+              if (lvl.key === 'master' && !includeMaster) continue
+              const base = toNum(eduCosts?.[lvl.key]?.[type]); if (base <= 0) continue
+              rows.push({ age: a, year: nowYearBE + (a - ageNow), lvl: LV_TH[lvl.key], cur: base, fut: base * Math.pow(1 + eduInf / 100, a - ageNow) })
+            }
+            if (!rows.length) return null
+            const tdE: React.CSSProperties = { padding: '4px 10px', fontSize: 11.5, color: '#334155' }
+            return (
+              <div key={ci} style={{ border: '1px solid #f1f5f9', borderRadius: 12, overflow: 'hidden', marginBottom: 12, breakInside: 'avoid' }}>
+                <div style={{ padding: '7px 12px', background: '#f8fafc', fontSize: 12.5, fontWeight: 800, color: '#0f172a' }}>
+                  {c.name || `บุตรคนที่ ${ci + 1}`} · อายุปัจจุบัน {ageNow} ปี <span style={{ color: '#94a3b8', fontWeight: 600 }}>({type === 'private' ? 'เอกชน' : type === 'inter' ? 'นานาชาติ' : 'รัฐบาล'}{includeMaster ? ' · รวมปริญญาโท' : ''})</span>
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      {['อายุ', 'ปี พ.ศ.', 'ระดับ', 'ค่าเล่าเรียน (ปัจจุบัน)', 'ปรับเงินเฟ้อแล้ว'].map((h, i2) => (
+                        <th key={h} style={{ padding: '5px 10px', fontSize: 10, fontWeight: 700, color: '#64748b', textAlign: i2 >= 3 ? 'right' : 'left' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map(r => (
+                      <tr key={r.age} style={{ borderBottom: '1px solid #f8fafc' }}>
+                        <td style={tdE}>{r.age}</td>
+                        <td style={tdE}>{r.year}</td>
+                        <td style={tdE}>{r.lvl}</td>
+                        <td style={{ ...tdE, textAlign: 'right', fontFamily: 'monospace' }}>{fmt(r.cur)}</td>
+                        <td style={{ ...tdE, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: '#0f172a' }}>{fmt(r.fut)}</td>
+                      </tr>
+                    ))}
+                    <tr style={{ borderTop: '1.5px solid #cbd5e1' }}>
+                      <td colSpan={4} style={{ ...tdE, fontWeight: 800, color: '#0f172a' }}>รวม (ตามราคาอนาคต)</td>
+                      <td style={{ ...tdE, textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: AMBERR }}>{fmt(rows.reduce((x, r) => x + r.fut, 0))}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )
+          })}
+          <p style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.7 }}>* เงินเฟ้อค่าการศึกษา {eduInf}% ต่อปี · ผลตอบแทนกองทุนเพื่อการศึกษา {eduRet}% ต่อปี (จากหน้าสมมติฐาน)</p>
         </div>
       )
     }
     if (kind === 'retirement') {
-      // อายุเกษียณ/อายุขัย = แหล่งเดียวจากหน้าสมมติฐาน (profile) override ค่าที่บันทึกในแผน
-      const selfP = retPlan?.self ? { ...retPlan.self, retirementAge: profile?.retirementAgeSelf ?? retPlan.self.retirementAge, lifeExpectancy: profile?.lifeExpectancySelf ?? retPlan.self.lifeExpectancy } : retPlan?.self
-      const spouseP = retPlan?.spouse ? { ...retPlan.spouse, retirementAge: profile?.retirementAgeSpouse ?? retPlan.spouse.retirementAge, lifeExpectancy: profile?.lifeExpectancySpouse ?? retPlan.spouse.lifeExpectancy } : retPlan?.spouse
-      const a = calcRetire(selfP, assetAtRet(retPlan?.self)), b = calcRetire(spouseP, assetAtRet(retPlan?.spouse))
       const persons = [
-        { name: `คุณ${client?.firstName || 'ลูกค้า'}`, c: a },
-        { name: client?.spouseProfile?.firstName ? `คุณ${client.spouseProfile.firstName}` : 'คู่สมรส', c: b },
-      ].filter(x => x.c)
+        { name: `คุณ${client?.firstName || 'ลูกค้า'}`, r: retR, tint: TEAL },
+        ...(hasSpouse ? [{ name: client?.spouseProfile?.firstName ? `คุณ${client.spouseProfile.firstName}` : 'คู่สมรส', r: retRSp, tint: '#8b5cf6' }] : []),
+      ].filter(p => p.r)
+      if (!persons.length) return <div style={{ fontSize: 12.5, color: '#94a3b8', marginBottom: 12 }}>ยังไม่มีข้อมูลแผนเกษียณ</div>
+      const Stat = ({ l, v, c }: { l: string; v: number; c: string }) => (
+        <div style={{ border: '1px solid #f1f5f9', borderLeft: `4px solid ${c}`, borderRadius: 10, padding: '8px 12px' }}>
+          <div style={{ fontSize: 10, color: '#94a3b8' }}>{l}</div>
+          <div style={{ fontSize: 14.5, fontWeight: 800, fontFamily: 'monospace', color: c, marginTop: 2 }}>{fmt(v)}</div>
+        </div>
+      )
       return (
-        <div style={{ background: '#f8fafc', borderRadius: 8, padding: 14, marginBottom: 14 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, marginBottom: 12 }}>
-            <thead><tr style={{ borderBottom: '1px solid #cbd5e1' }}>
-              <th style={thL}>ผู้เกษียณ</th><th style={thRr}>เงินที่ต้องการ</th><th style={thRr}>สินทรัพย์ ณ เกษียณ</th><th style={thRr}>ส่วนที่ขาด</th><th style={thRr}>ออม/เดือน</th>
-            </tr></thead>
-            <tbody>{persons.map((p, i) => (
-              <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                <td style={tdL}>{p.name}</td>
-                <td style={tdRr}>{fmt(p.c!.totalNeeded)}</td>
-                <td style={{ ...tdRr, color: '#10b981' }}>{fmt(p.c!.asset)}</td>
-                <td style={{ ...tdRr, color: '#f87171' }}>{fmt(p.c!.gap)}</td>
-                <td style={{ ...tdRr, color: '#0284c7' }}>{fmt(p.c!.monthly)}</td>
-              </tr>
-            ))}</tbody>
-          </table>
-          <div style={{ height: 200 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={persons.map(p => ({ name: p.name, ต้องการ: Math.round(p.c!.totalNeeded), มีอยู่: Math.round(p.c!.asset) }))}>
-                <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#475569' }} />
-                <YAxis tickFormatter={v => `${(v / 1e6).toFixed(0)}M`} tick={{ fontSize: 11, fill: '#94a3b8' }} width={42} />
-                <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="ต้องการ" fill="#f59e0b" radius={[5, 5, 0, 0]} />
-                <Bar dataKey="มีอยู่" fill="#10b981" radius={[5, 5, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+        <div style={{ marginBottom: 16 }}>
+          {persons.map(p => {
+            const R3 = p.r!
+            const chart = (R3.projectionRows ?? []).map((row: any) => ({
+              age: row.age,
+              มูลค่ารวม: Math.round(row.phase === 'accumulation' ? (row.totalAccum ?? 0) : (row.closeBalance ?? 0)),
+              ค่าใช้จ่าย: row.phase === 'retirement' ? Math.round((row.withdrawalLiving ?? 0) + (row.withdrawalGoals ?? 0)) : 0,
+            }))
+            return (
+              <div key={p.name} style={{ marginBottom: 20, breakInside: 'avoid' }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: p.tint, borderLeft: `5px solid ${p.tint}`, paddingLeft: 10, marginBottom: 10 }}>เงินเกษียณที่ต้องการ · {p.name} (เกษียณอายุ {R3.retireAge} ปี)</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 12 }}>
+                  <Stat l="เงินเกษียณที่ต้องการ" v={R3.needed} c="#0f172a" />
+                  <Stat l="มูลค่าสินทรัพย์ที่มี" v={R3.have} c={GREENR} />
+                  <Stat l="ส่วนที่ยังขาด" v={R3.gap} c={R3.gap > 0 ? REDR : GREENR} />
+                  <Stat l="ต้องออมเพิ่ม (เท่ากันทุกปี)" v={R3.annualSavings} c="#0284c7" />
+                  <Stat l="ออมเพิ่มขึ้นทุกปี (ปีแรก)" v={R3.gradFirst} c="#8b5cf6" />
+                </div>
+                {chart.length > 0 && (
+                  <div style={{ background: '#f8fafc', borderRadius: 12, padding: '10px 12px 4px' }}>
+                    <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 0.6, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 4 }}>การคาดการณ์มูลค่าเงินในอนาคต (สะสม → ใช้เงินหลังเกษียณ)</div>
+                    <div style={{ height: 190 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={chart} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
+                          <XAxis dataKey="age" tick={{ fontSize: 9.5, fill: '#94a3b8' }} interval={4} />
+                          <YAxis tickFormatter={(v: any) => `${(v / 1e6).toFixed(0)}M`} tick={{ fontSize: 9.5, fill: '#94a3b8' }} width={34} />
+                          <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} labelFormatter={(l: any) => `อายุ ${l} ปี`} />
+                          <Legend wrapperStyle={{ fontSize: 10.5 }} />
+                          <ReferenceLine x={R3.retireAge} stroke={p.tint} strokeDasharray="4 3" />
+                          <Bar dataKey="ค่าใช้จ่าย" barSize={4} fill="#f59e0bb0" />
+                          <Line dataKey="มูลค่ารวม" stroke={p.tint} strokeWidth={2} dot={false} />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )
     }
@@ -1053,6 +1179,43 @@ export default function ReportPage() {
             <DataTable rows={allocation.rows.map((r, i) => [r.name, r.value, PIE_COLORS[i % PIE_COLORS.length]] as [string, number, string])} />
             <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0f2a43', textAlign: 'right' }}>รวม {fmt(allocation.total)} บาท</div>
           </div>
+        </div>
+      )
+    }
+    if (kind === 'portfolio_reco') {
+      // พอร์ตแนะนำ 3 ระดับความเสี่ยง — ทางเลือกที่ Sharpe สูงสุดของแต่ละชุด (ข้อมูลตลาดล่าสุดถ้ามี)
+      const assets = applyMarketData(DEFAULT_ASSETS, marketData)
+      const { matrix } = applyCorrelation(DEFAULT_CORR, marketData)
+      const W_LBL = ['ตราสารหนี้', 'หุ้นไทย', 'หุ้นโลก', 'หุ้นสหรัฐฯ']
+      return (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+          {PORTFOLIO_SETS.map(set => {
+            const results = set.options.map(o => computePortfolio(o.weights, assets, matrix))
+            const bi = results.reduce((b, r, i2) => r.sharpe > results[b].sharpe ? i2 : b, 0)
+            const best = results[bi], w = set.options[bi].weights
+            return (
+              <div key={set.id} style={{ border: `1px solid ${set.color}44`, borderRadius: 12, padding: '12px 14px', breakInside: 'avoid' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: set.color }}>{set.label}</div>
+                <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 8 }}>{set.sub} · {set.options[bi].label}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 4, marginBottom: 10 }}>
+                  {w.map((wt, i2) => (
+                    <div key={i2} style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 8.5, color: '#94a3b8', whiteSpace: 'nowrap' }}>{W_LBL[i2]}</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>{wt}%</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: 8 }}>
+                  {([['ผลตอบแทน', `+${best.ret.toFixed(2)}%`, GREENR], ['ความผันผวน σ', `${best.sigma.toFixed(2)}%`, AMBERR], ['Sharpe', best.sharpe.toFixed(2), '#0f172a']] as const).map(([l, v, c]) => (
+                    <div key={l} style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 9, color: '#94a3b8' }}>{l}</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 800, fontFamily: 'monospace', color: c }}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
       )
     }
@@ -1382,10 +1545,6 @@ function Page({ children, pageId }: { children: React.ReactNode; pageId?: string
   )
 }
 
-const thL: React.CSSProperties = { padding: '6px 6px', textAlign: 'left', fontSize: 11, color: '#64748b', fontWeight: 700 }
-const thRr: React.CSSProperties = { padding: '6px 6px', textAlign: 'right', fontSize: 11, color: '#64748b', fontWeight: 700 }
-const tdL: React.CSSProperties = { padding: '6px 6px', textAlign: 'left', color: '#334155' }
-const tdRr: React.CSSProperties = { padding: '6px 6px', textAlign: 'right', fontFamily: 'monospace', color: '#0f2a43', fontWeight: 600 }
 
 const ecard: React.CSSProperties = { background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 10, padding: '10px 12px' }
 const elbl: React.CSSProperties = { fontSize: 11.5, color: 'var(--text-secondary)', display: 'block', marginBottom: 5 }
