@@ -188,6 +188,8 @@ export default function ReportPage() {
   const [overlays, setOverlays] = useState<Record<string, SlideEl[]>>({})
   const [customSlides, setCustomSlides] = useState<CustomSlide[]>([])
   const [thankYouPhoto, setThankYouPhoto] = useState('')
+  const [signatures, setSignatures] = useState<Record<string, string>>({})   // ลายเซ็นหน้าข้อตกลง (advisor/client/witness)
+  const [signing, setSigning] = useState<string | null>(null)
   const [secs, setSecs] = useState<Record<string, SecData>>(() =>
     Object.fromEntries(SECTIONS.map(s => [s.k, { include: true, text: '' }])))
   const loadedRef = useRef(false)
@@ -207,6 +209,7 @@ export default function ReportPage() {
       if (saved.overlays && typeof saved.overlays === 'object') setOverlays(saved.overlays)
       if (Array.isArray(saved.customSlides)) setCustomSlides(saved.customSlides)
       if (typeof saved.thankYouPhoto === 'string') setThankYouPhoto(saved.thankYouPhoto)
+      if (saved.signatures && typeof saved.signatures === 'object') setSignatures(saved.signatures)
       if (saved.secs) setSecs(prev => {
         const next = { ...prev }
         for (const k of Object.keys(saved.secs)) next[k] = { ...next[k], ...saved.secs[k] }
@@ -227,9 +230,9 @@ export default function ReportPage() {
     if (!loadedRef.current) return
     setStatus('saving')
     if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(() => save.mutate({ title, secs, mode, pres, overlays, customSlides, thankYouPhoto }), 800)
+    timer.current = setTimeout(() => save.mutate({ title, secs, mode, pres, overlays, customSlides, thankYouPhoto, signatures }), 800)
     return () => { if (timer.current) clearTimeout(timer.current) }
-  }, [title, secs, mode, pres, overlays, customSlides, thankYouPhoto])
+  }, [title, secs, mode, pres, overlays, customSlides, thankYouPhoto, signatures])
 
   const setText = (k: string, v: string) => setSecs(p => ({ ...p, [k]: { ...p[k], text: v } }))
   const setInc = (k: string, v: boolean) => setSecs(p => ({ ...p, [k]: { ...p[k], include: v } }))
@@ -310,6 +313,9 @@ export default function ReportPage() {
   function autoNode(kind: string) {
     if (kind === 'service') {
       // หนังสือข้อตกลงการให้บริการ (Letter of Engagement) — บีบให้จบ 1 หน้า A4 พอดี
+      const now = new Date()
+      const dueDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+      const dueTh = dueDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
       const Blank = ({ w = 120, v }: { w?: number; v?: string }) => v
         ? <span style={{ fontWeight: 700, color: '#0f172a', borderBottom: '1px dotted #94a3b8', padding: '0 6px' }}>{v}</span>
         : <span style={{ display: 'inline-block', minWidth: w, borderBottom: '1px dotted #94a3b8', verticalAlign: 'bottom' }}>&nbsp;</span>
@@ -341,19 +347,19 @@ export default function ReportPage() {
               <div style={{ fontSize: 11, fontWeight: 800, color: TEAL, marginBottom: 6 }}>ผู้รับบริการ (ลูกค้า)</div>
               <div style={{ fontSize: 11.5, color: '#334155', display: 'grid', gap: 4 }}>
                 <div>ชื่อ: <Blank w={150} v={clientName !== 'ลูกค้า' ? `คุณ${clientName}` : undefined} /></div>
-                <div>เลขบัตรประชาชน: <Blank w={110} /></div>
+                <div>เลขบัตรประชาชน: <Blank w={110} v={client?.nationalId} /></div>
                 <div>ที่อยู่: <Blank w={160} v={client?.address} /></div>
-                <div>โทรศัพท์: <Blank w={70} v={client?.phone} /> อีเมล: <Blank w={80} v={client?.email} /></div>
+                <div>โทรศัพท์: <Blank w={70} v={client?.phone} /> อีเมล: <Blank w={80} v={client?.contactEmail} /></div>
               </div>
             </div>
           </div>
           <p style={{ fontSize: 11.5, color: '#334155', marginBottom: 9 }}>
-            คู่สัญญาทั้งสองฝ่ายตกลงทำหนังสือข้อตกลงการให้บริการวางแผนการเงินฉบับนี้ขึ้น ณ วันที่ <Blank w={30} /> เดือน <Blank w={80} /> พ.ศ. <Blank w={45} /> โดยมีรายละเอียดดังต่อไปนี้
+            คู่สัญญาทั้งสองฝ่ายตกลงทำหนังสือข้อตกลงการให้บริการวางแผนการเงินฉบับนี้ขึ้น ณ วันที่ <Blank w={30} v={String(now.getDate())} /> เดือน <Blank w={80} v={now.toLocaleDateString('th-TH', { month: 'long' })} /> พ.ศ. <Blank w={45} v={String(now.getFullYear() + 543)} /> โดยมีรายละเอียดดังต่อไปนี้
           </p>
           {clause(1, 'ขอบเขตการให้บริการ', 'ผู้ให้บริการตกลงจัดทำแผนการเงินส่วนบุคคลให้แก่ผู้รับบริการ ครอบคลุมการวิเคราะห์ฐานะทางการเงิน การวางแผนเกษียณอายุ การวางแผนภาษี การวางแผนประกันชีวิตและสุขภาพ รวมถึงการวางแผนการลงทุน ทั้งนี้ตามข้อมูลที่ผู้รับบริการให้ไว้เท่านั้น')}
           <div style={{ marginBottom: 7 }}>
             <span style={{ fontSize: 11.5, fontWeight: 800, color: '#0f172a' }}>2. ระยะเวลาและการส่งมอบ — </span>
-            <span style={{ fontSize: 11.5, color: '#334155' }}>ผู้ให้บริการจะส่งมอบแผนการเงินฉบับสมบูรณ์ภายใน <Blank w={35} /> วันทำการ นับจากวันที่ได้รับข้อมูลครบถ้วนจากผู้รับบริการ พร้อมนัดหมายนำเสนอแผนและตอบข้อซักถาม จำนวน 1 ครั้ง</span>
+            <span style={{ fontSize: 11.5, color: '#334155' }}>ผู้ให้บริการจะส่งมอบแผนการเงินฉบับสมบูรณ์ภายใน <Blank w={35} v="7" /> วัน นับจากวันทำสัญญา (ภายในวันที่ <Blank w={90} v={dueTh} />) พร้อมนัดหมายนำเสนอแผนและตอบข้อซักถาม จำนวน 1 ครั้ง</span>
           </div>
           {clause(3, 'ความรับผิดชอบและข้อจำกัด', 'แผนการเงินที่จัดทำขึ้นเป็นเพียงคำแนะนำบนพื้นฐานข้อมูลที่ผู้รับบริการให้ไว้ ณ วันที่จัดทำ มิใช่การรับประกันผลตอบแทนหรือการรับประกันความสำเร็จทางการเงิน ผู้ให้บริการไม่รับผิดชอบต่อความเสียหายอันเกิดจากการตัดสินใจของผู้รับบริการ หรือจากการเปลี่ยนแปลงของสภาวะตลาดและกฎหมายที่เกิดขึ้นภายหลัง')}
           {clause(4, 'การรักษาความลับและคุ้มครองข้อมูลส่วนบุคคล', 'ผู้ให้บริการตกลงเก็บรักษาข้อมูลของผู้รับบริการไว้เป็นความลับ และจะใช้ข้อมูลดังกล่าวเพื่อวัตถุประสงค์ในการจัดทำแผนการเงินเท่านั้น สอดคล้องกับพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA) ผู้รับบริการมีสิทธิขอตรวจสอบ แก้ไข หรือลบข้อมูลของตนได้ตลอดเวลา')}
@@ -365,16 +371,29 @@ export default function ReportPage() {
           </div>
           <p style={{ fontSize: 11.5, color: '#334155', marginBottom: 12 }}>คู่สัญญาทั้งสองฝ่ายได้อ่านและเข้าใจข้อความในหนังสือข้อตกลงฉบับนี้โดยตลอดแล้ว จึงลงลายมือชื่อไว้เป็นหลักฐาน</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, marginTop: 6 }}>
-            {[['ผู้ให้บริการ / นักวางแผนการเงิน'], ['ผู้รับบริการ / ลูกค้า']].map(([role]) => (
-              <div key={role} style={{ textAlign: 'center', fontSize: 11.5, color: '#334155' }}>
-                <div>ลงชื่อ .................................................</div>
+            {([['sig_advisor', 'ผู้ให้บริการ / นักวางแผนการเงิน', advisor?.fullName || ''], ['sig_client', 'ผู้รับบริการ / ลูกค้า', clientName !== 'ลูกค้า' ? `คุณ${clientName}` : '']] as const).map(([k, role, name]) => (
+              <div key={k} style={{ textAlign: 'center', fontSize: 11.5, color: '#334155' }}>
+                <div onClick={() => setSigning(k)} title="คลิกเพื่อลงนามบนหน้าจอ"
+                  style={{ height: 54, margin: '0 auto 4px', maxWidth: 230, borderBottom: '1px dotted #94a3b8', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', cursor: 'pointer' }}>
+                  {signatures[k]
+                    ? <img src={signatures[k]} alt="" style={{ maxHeight: 52, maxWidth: '100%' }} />
+                    : <span className="no-print" style={{ fontSize: 10, color: '#cbd5e1', paddingBottom: 4 }}>คลิกเพื่อลงนาม</span>}
+                </div>
+                <div>ลงชื่อ {name ? <span style={{ fontWeight: 700, color: '#0f172a' }}>({name})</span> : '(.................................................)'}</div>
                 <div style={{ marginTop: 3 }}>({role})</div>
-                <div style={{ marginTop: 3 }}>วันที่ ......... / .................. / ..........</div>
+                <div style={{ marginTop: 3 }}>วันที่ {today}</div>
               </div>
             ))}
           </div>
-          <div style={{ fontSize: 11, color: '#64748b', textAlign: 'center', marginTop: 12 }}>
-            พยาน: ลงชื่อ ..................................................... (.....................................................) วันที่ ......... / ................... / ..........
+          <div style={{ fontSize: 11, color: '#64748b', textAlign: 'center', marginTop: 12, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 8 }}>
+            <span>พยาน: ลงชื่อ</span>
+            <span onClick={() => setSigning('sig_witness')} title="คลิกเพื่อลงนามบนหน้าจอ"
+              style={{ display: 'inline-flex', alignItems: 'flex-end', justifyContent: 'center', width: 150, height: 38, borderBottom: '1px dotted #94a3b8', cursor: 'pointer' }}>
+              {signatures.sig_witness
+                ? <img src={signatures.sig_witness} alt="" style={{ maxHeight: 36, maxWidth: '100%' }} />
+                : <span className="no-print" style={{ fontSize: 10, color: '#cbd5e1', paddingBottom: 3 }}>คลิกเพื่อลงนาม</span>}
+            </span>
+            <span>(.....................................................) วันที่ {today}</span>
           </div>
         </div>
       )
@@ -1096,6 +1115,57 @@ export default function ReportPage() {
         </div>
       </div>
       )}
+
+      {/* modal ลงนามบนหน้าจอ (ขยายใหญ่ เซ็นด้วยนิ้ว/เมาส์) */}
+      {signing && (
+        <SignModal
+          title={signing === 'sig_advisor' ? 'ลงนาม — ผู้ให้บริการ (นักวางแผนการเงิน)' : signing === 'sig_client' ? 'ลงนาม — ผู้รับบริการ (ลูกค้า)' : 'ลงนาม — พยาน'}
+          value={signatures[signing] || ''}
+          onSave={v => { setSignatures(s => ({ ...s, [signing]: v })); setSigning(null) }}
+          onClear={() => { setSignatures(s => { const n = { ...s }; delete n[signing]; return n }); setSigning(null) }}
+          onClose={() => setSigning(null)} />
+      )}
+    </div>
+  )
+}
+
+/* ── modal ลายเซ็น: canvas ใหญ่ เซ็นบนหน้าจอ/ทัชสกรีนได้ ── */
+function SignModal({ title, value, onSave, onClear, onClose }: { title: string; value: string; onSave: (v: string) => void; onClear: () => void; onClose: () => void }) {
+  const ref = useRef<HTMLCanvasElement>(null)
+  const drawing = useRef(false)
+  const dirty = useRef(false)
+  useEffect(() => {
+    const c = ref.current; if (!c) return
+    const ctx = c.getContext('2d')!
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height)
+    if (value) { const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, c.width, c.height); img.src = value }
+  }, [])
+  const pos = (e: any) => {
+    const c = ref.current!, r = c.getBoundingClientRect(), t = e.touches?.[0]
+    // แปลงพิกัดจอ → พิกัด canvas จริง (กัน canvas ถูกย่อบนจอเล็กแล้วเส้นเพี้ยน)
+    const sx = c.width / r.width, sy = c.height / r.height
+    return { x: ((t ? t.clientX : e.clientX) - r.left) * sx, y: ((t ? t.clientY : e.clientY) - r.top) * sy }
+  }
+  const start = (e: any) => { drawing.current = true; const ctx = ref.current!.getContext('2d')!; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y) }
+  const move = (e: any) => { if (!drawing.current) return; e.preventDefault(); const ctx = ref.current!.getContext('2d')!; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.strokeStyle = '#0f2a43'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.stroke(); dirty.current = true }
+  const end = () => { drawing.current = false }
+  const clearCanvas = () => { const c = ref.current!; const ctx = c.getContext('2d')!; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); dirty.current = true }
+  return (
+    <div className="no-print" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 16 }} onClick={onClose}>
+      <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, padding: '18px 20px', width: '100%', maxWidth: 720 }} onClick={e => e.stopPropagation()}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{title}</div>
+        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 12 }}>เซ็นในกรอบสีขาวด้วยเมาส์หรือนิ้ว (ทัชสกรีน) แล้วกด "บันทึกลายเซ็น"</div>
+        <canvas ref={ref} width={660} height={240}
+          style={{ width: '100%', background: '#fff', borderRadius: 10, border: '1px solid var(--card-border)', touchAction: 'none', cursor: 'crosshair', display: 'block' }}
+          onMouseDown={start} onMouseMove={move} onMouseUp={end} onMouseLeave={end}
+          onTouchStart={start} onTouchMove={move} onTouchEnd={end} />
+        <div style={{ display: 'flex', gap: 10, marginTop: 14, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          <button onClick={clearCanvas} style={{ padding: '8px 16px', background: 'none', border: '1px solid var(--card-border)', borderRadius: 9, color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer' }}>ล้างกระดาน</button>
+          <button onClick={onClear} style={{ padding: '8px 16px', background: 'none', border: '1px solid #ef4444', borderRadius: 9, color: '#ef4444', fontSize: 13, cursor: 'pointer' }}>ลบลายเซ็นที่บันทึกไว้</button>
+          <button onClick={onClose} style={{ padding: '8px 16px', background: 'none', border: '1px solid var(--card-border)', borderRadius: 9, color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer' }}>ปิด</button>
+          <button onClick={() => onSave(ref.current!.toDataURL('image/png'))} style={{ padding: '8px 20px', background: 'var(--cyan)', border: 'none', borderRadius: 9, color: '#00201d', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>บันทึกลายเซ็น</button>
+        </div>
+      </div>
     </div>
   )
 }
