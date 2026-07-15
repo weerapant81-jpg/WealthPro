@@ -346,6 +346,7 @@ export default function ReportPage() {
             <div style={{ fontSize: 14, color: '#1e293b' }}>ด้วยความเคารพ</div>
             <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', marginTop: 22 }}>{advisor?.fullName || 'นักวางแผนการเงิน'}</div>
             {advisor?.position && <div style={{ fontSize: 12.5, color: '#64748b' }}>{advisor.position}</div>}
+            {advisor?.company && <div style={{ fontSize: 12.5, color: '#64748b' }}>{advisor.company}</div>}
             <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{today}</div>
           </div>
         </div>
@@ -1721,14 +1722,17 @@ export default function ReportPage() {
                 </div>
               </div>
               {/* prepared for / advisor */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, padding: '30px 0', borderTop: '1px solid #f1f5f9', marginTop: 28 }}>
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 8 }}>จัดทำเพื่อ</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a' }}>คุณ{clientName}</div>
-                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>เอกสารเฉพาะบุคคล · ห้ามเผยแพร่</div>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: '#94a3b8', textTransform: 'uppercase', margin: '18px 0 4px' }}>วันที่จัดทำรายงาน</div>
-                  <div style={{ fontSize: 14, color: '#334155' }}>{today}</div>
-                </div>
+              {/* ข้อมูลลูกค้า — เหนือเส้นคั่น */}
+              <div style={{ padding: '24px 0 20px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 8 }}>จัดทำเพื่อ</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a' }}>คุณ{clientName}</div>
+                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>เอกสารเฉพาะบุคคล · ห้ามเผยแพร่</div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: '#94a3b8', textTransform: 'uppercase', margin: '18px 0 4px' }}>วันที่จัดทำรายงาน</div>
+                <div style={{ fontSize: 14, color: '#334155' }}>{today}</div>
+              </div>
+              {/* ข้อมูลนักวางแผน — ใต้เส้นคั่น ขยับลงล่าง */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, padding: '34px 0 26px', borderTop: '1px solid #f1f5f9' }}>
+                <div />
                 <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', justifyContent: 'flex-end' }}>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 8 }}>นักวางแผนการเงิน</div>

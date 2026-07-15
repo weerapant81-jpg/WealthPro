@@ -579,6 +579,25 @@ export default function ActionPlanPage() {
         </>}
       </div>
     }
+    if (key === 'estate') {
+      if (!s) return <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>ยังไม่มีข้อมูลงบดุล — กรอกข้อมูลสินทรัพย์/หนี้สินก่อน</div>
+      const TL = ({ label, value, color, strong }: { label: string; value: string; color?: string; strong?: boolean }) => (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, padding: '3px 0' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{label}</span>
+          <span style={{ fontSize: 12.5, fontWeight: strong ? 700 : 600, fontFamily: 'monospace', color: color ?? 'var(--text-primary)' }}>{value}</span>
+        </div>
+      )
+      const toN = (v: any) => Number(String(v ?? '').replace(/,/g, '')) || 0
+      return <div style={{ marginBottom: 14 }}>
+        <TL label="สินทรัพย์สภาพคล่อง" value={money(toN(s.liquidAssets))} />
+        <TL label="สินทรัพย์ลงทุน" value={money(toN(s.investAssets))} />
+        <TL label="สินทรัพย์ส่วนตัว" value={money(toN(s.personalTotal))} />
+        <div style={{ borderTop: '1px solid var(--divider)', margin: '3px 0' }} />
+        <TL label="สินทรัพย์รวม" value={money(toN(s.totalAssets))} strong />
+        <TL label="(−) หนี้สินรวม" value={money(toN(s.totalDebtBalance))} color="#fb7185" />
+        <TL label="ความมั่งคั่งสุทธิ (กองมรดกโดยประมาณ)" value={money(toN(s.netWorth))} color="#a78bfa" strong />
+      </div>
+    }
     return null
   }
 
