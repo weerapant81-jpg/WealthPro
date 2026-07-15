@@ -1678,7 +1678,7 @@ export default function ReportPage() {
           })} />
       ) : (
       <SlideEditor.Provider value={{ editMode, snap: false, overlays, setEls: (id, els) => setOverlays(o => ({ ...o, [id]: els })), advisorName: advisor?.fullName, advisorPhone: advisor?.phone }}>
-      <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : '360px 1fr', gap: 20, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : '250px 1fr', gap: 20, alignItems: 'start' }}>
         {/* Editor */}
         <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 'calc(100vh - 140px)', overflowY: 'auto', paddingRight: 4 }}>
           <div style={ecard}>
