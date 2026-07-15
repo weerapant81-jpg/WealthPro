@@ -153,25 +153,6 @@ const SECTIONS: Sec[] = [
 // หัวข้อที่ autoNode จัดการข้อความเองทั้งหมด (ช่องพิมพ์ = แก้ข้อความ default ไม่ใช่ต่อท้าย)
 const TEXT_HANDLED = new Set(['letter', 'clientgoals', 'exec'])
 
-/* ข้อสังเกตสำคัญ (Key Observations) — ข้อความตั้งต้นแปลจากตัวอย่าง Modera · แก้ไขได้ในช่องหัวข้อ "บทสรุปผู้บริหาร"
-   รูปแบบ: บรรทัดขึ้นต้น "## " = หัวข้อหมวด · "1." = ข้อแนะนำหลัก · "› " = รายละเอียดย่อย */
-const DEFAULT_EXEC_OBS = `## ความมั่งคั่งสุทธิ (Net Worth)
-1. รักษาเงินสำรองสภาพคล่องไว้ประมาณ 250,000 บาท (ภายหลังการก่อสร้างบ้านและการชำระภาษีจากการขายกิจการ)
-› เงินสำรอง 250,000 บาท คิดเป็นค่าใช้จ่ายในการดำรงชีวิตประมาณ 18 เดือน โดยทั่วไปเราแนะนำให้กันเงินสดไว้ 2–3 ปีของค่าใช้จ่ายในช่วงเกษียณ แต่เมื่อรวมบัญชีตราสารหนี้และรายได้อื่นของท่านแล้ว เราเห็นว่าจำนวนนี้เพียงพอ
-› ท่านอาจพิจารณาบัญชีออมทรัพย์ดอกเบี้ยสูงที่มีความคุ้มครองเงินฝาก เพื่อให้เงินสำรองได้รับดอกเบี้ยเพิ่มขึ้น
-› ท่านแจ้งว่าค่าใช้จ่ายต่อปีอยู่ที่ประมาณ 144,000 บาท เมื่อบ้านหลังใหม่สร้างเสร็จ ค่าใช้จ่ายมีแนวโน้มเพิ่มขึ้น ในแผนนี้เราจึงบวกค่าใช้จ่ายเพิ่มอีกปีละ 20,000 บาท (ตัวเลขจะปรับปรุงอีกครั้งเมื่อการก่อสร้างแล้วเสร็จ)
-## กระแสเงินสด (Cash Flow)
-1. กรุณายืนยันว่าบำนาญของคู่สมรสเป็นแบบจ่ายตลอดชีพเฉพาะตน (single life) หรือมีเงื่อนไขจ่ายต่อให้คู่สมรส (joint & survivor)
-› ในการประมาณการของแผนนี้ เราตั้งสมมติฐานว่าบำนาญเป็นแบบจ่ายตลอดชีพเฉพาะตน โดยไม่มีการปรับตามค่าครองชีพ
-2. ท่านได้ส่งเอกสารสรุปสิทธิบำนาญที่ระบุเงินรายเดือนแบบ Single Life กรุณาติดต่อกองทุนเพื่อขอตัวเลขกรณีเลือกแบบจ่ายต่อให้คู่สมรส (joint & survivor) มาเปรียบเทียบ
-3. กรุณายืนยันประมาณการภาษีจากการขายกิจการกับนักบัญชีของท่าน รวมถึงงบประมาณก่อสร้างบ้านหลังใหม่
-› เราตั้งสมมติฐานเงินสดรับเพิ่มจากการขายกิจการประมาณ 825,000 บาท งบก่อสร้างบ้านประมาณ 1,000,000 บาท และภาษีที่ต้องชำระประมาณ 1,865,000 บาท
-## พอร์ตการลงทุน (Investment Portfolio)
-4. พอร์ตการลงทุนที่อยู่ภายใต้การดูแลของเรากำลังบริหารตามรายละเอียดด้านล่าง หากงบประมาณบ้านหรือภาระภาษีของท่านเปลี่ยนแปลง กรุณาแจ้งเราเพื่อปรับแผนให้สอดคล้อง
-› ท่านได้ลงนามนโยบายการลงทุน (Investment Policy Statement) กำหนดสัดส่วนหุ้น 60% และตราสารหนี้ 40% โดยเราทยอยลงทุนส่วนของหุ้นแบบถัวเฉลี่ยต้นทุน (DCA) ในระยะเวลา 8 เดือน มูลค่าพอร์ตรวมประมาณ 3,000,000 บาท
-› ท่านยังมีบัญชีร่วมมูลค่า 300,000 บาท ที่บริหารโดยผู้จัดการภายนอก เน้นตราสารหนี้เพื่อเพิ่มประสิทธิภาพทางภาษี บริหารความเสี่ยงอัตราดอกเบี้ย และกระจายความเสี่ยงของพอร์ตโดยรวม
-5. ดำเนินการโอนย้ายกรมธรรม์บำนาญเดิมไปยังบัญชีลงทุนใหม่ที่ค่าธรรมเนียมต่ำกว่า
-› กรมธรรม์บำนาญเดิมมูลค่าประมาณ 29,074 บาท มีค่าธรรมเนียมรวมประมาณปีละ 921 บาท (3.17%) เมื่อเทียบต้นทุนแล้ว เราแนะนำให้โอนย้ายไปบัญชีใหม่ซึ่งค่าธรรมเนียมจะลดเหลือประมาณ 328 บาท (1.13%)`
 
 const DEFAULT_LETTER = [
   'เป้าหมายของคุณคือหัวใจของแผนฉบับนี้ — จากการพูดคุยร่วมกัน เราได้เรียนรู้ถึงตัวตน คุณค่าที่คุณยึดถือ และเป้าหมายที่คุณต้องการ เราไม่ได้พิจารณาเพียงผลกระทบทางตัวเลขของการตัดสินใจแต่ละครั้ง แต่รวมถึงมิติด้านความรู้สึกด้วย ความตั้งใจของเราคือช่วยให้คุณควบคุมการเงินของตนเองได้ดีขึ้น ปราศจากความกังวล เพื่อให้คุณมีอิสระในการใช้ชีวิตตามที่ต้องการ',
@@ -195,6 +176,7 @@ export default function ReportPage() {
   const { data: saved, isFetched } = useQuery({ queryKey: ['report-plan'], queryFn: () => api.get('/report-plan').then(r => r.data), retry: false })
   const { data: taxPlanQ } = useQuery({ queryKey: ['tax-plan'], queryFn: () => api.get('/tax-plan').then(r => r.data), retry: false })
   const { data: actionData } = useQuery({ queryKey: ['action-items'], queryFn: () => api.get('/action-items').then(r => r.data), retry: false })
+  const { data: expensesQ = [] } = useQuery<any[]>({ queryKey: ['expenses'], queryFn: () => api.get('/expenses').then(r => r.data), retry: false })
   const actionItems: any[] = Array.isArray(actionData) ? actionData : (actionData?.items ?? [])
   // คำแนะนำรายหมวดที่ที่ปรึกษาพิมพ์ไว้ในหน้าแผนปฏิบัติการ (แหล่งเดียวกัน — ไม่ต้องพิมพ์ซ้ำ)
   const domainAdvice: Record<string, string> = (!Array.isArray(actionData) && actionData?.advice) || {}
@@ -659,68 +641,159 @@ export default function ReportPage() {
       )
     }
     if (kind === 'exec') {
+      // ── บทสรุปผู้บริหารตามเอกสารตัวอย่าง: 4 ส่วน ซ้าย=ภาพข้อมูล (จากงานนำเสนอ) ขวา=กล่องข้อเสนอแนะ ──
+      const toMonthly = (a: number, f: string) => f === 'QUARTERLY' ? a / 3 : f === 'ANNUALLY' ? a / 12 : a
+      const expAnnualR = (prefix: string, exclude?: string) => (expensesQ ?? [])
+        .filter((e: any) => String(e.category).startsWith(prefix) && e.category !== exclude && (e.person === 'client' || e.person === 'shared'))
+        .reduce((sum: number, e: any) => { const m = toMonthly(toNum(e.amount), e.frequency) * 12; return sum + (e.person === 'shared' ? m / 2 : m) }, 0)
+      const liquid = toNum(sm.liquidAssets), invest = toNum(sm.investAssets), personal = toNum(sm.personalTotal)
+      const totalA = toNum(sm.totalAssets), debt = toNum(sm.totalDebtBalance), netW = toNum(sm.netWorth)
+      const income = toNum(sm.totalAnnualIncome)
+      const fixedE = expAnnualR('fixed_'), varE = expAnnualR('var_'), saveE = expAnnualR('saving_') || toNum(sm.annualSavings)
+      const totalE = fixedE + varE + saveE, netCF = income - totalE
+      const pctOf = (v: number, t: number) => t > 0 ? `${Math.round(v / t * 100)}%` : ''
+      // Monte Carlo มูลค่าพอร์ต ณ เกษียณ (ตรรกะเดียวกับสไลด์ลงทุน)
+      const mcInv = (() => {
+        const curAge = retPlan?.self?.currentAge ?? age
+        const retAge = profile?.retirementAgeSelf ?? retPlan?.self?.retirementAge ?? 60
+        const years = curAge != null ? Math.max(0, retAge - curAge) : 0
+        if (totalInv <= 0 || years <= 0 || portRet <= 0) return null
+        const riskLabel = String(profile?.riskLabel ?? profile?.riskLevel ?? '')
+        const sigma = (/สูง/.test(riskLabel) ? 16 : /กลาง|ปานกลาง/.test(riskLabel) ? 11 : /ต่ำ/.test(riskLabel) ? 6 : (portRet >= 8 ? 16 : portRet >= 4 ? 11 : 6)) / 100
+        const mu = portRet / 100
+        const rng = mulberry32((Math.round(totalInv) ^ (years << 5) ^ 0x51ed) >>> 0)
+        const finals: number[] = []
+        for (let i = 0; i < 500; i++) {
+          let v = totalInv
+          for (let y = 0; y < years; y++) {
+            let u1 = rng(); if (u1 < 1e-12) u1 = 1e-12
+            const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * rng())
+            v *= Math.exp((mu - sigma * sigma / 2) + sigma * z)
+          }
+          finals.push(v)
+        }
+        finals.sort((a, b) => a - b)
+        const pc = (q: number) => { const idx = (finals.length - 1) * q, lo = Math.floor(idx), hi = Math.ceil(idx); return lo === hi ? finals[lo] : finals[lo] + (finals[hi] - finals[lo]) * (idx - lo) }
+        return { p10: pc(0.1), p50: pc(0.5), p90: pc(0.9), retAge }
+      })()
+      const RATIO_META: Record<string, { name: string; unit: string }> = {
+        ratio1: { name: 'สภาพคล่อง', unit: 'times' }, ratio2: { name: 'เงินสำรองฉุกเฉิน', unit: 'months' },
+        ratio3: { name: 'สภาพคล่อง/ความมั่งคั่ง', unit: 'pct' }, ratio4: { name: 'หนี้สินต่อสินทรัพย์', unit: 'pct' },
+        ratio5: { name: 'ชำระหนี้ต่อรายได้', unit: 'pct' }, ratio6: { name: 'หนี้ไม่จดจำนอง', unit: 'pct' },
+        ratio7: { name: 'การออม', unit: 'pct' }, ratio8: { name: 'การลงทุน', unit: 'pct' },
+      }
+      const stateCol: Record<string, string> = { good: GREENR, warning: AMBERR, danger: REDR, nodata: '#94a3b8' }
+      const fmtRatio = (v: number | null, unit: string) => v == null ? '—' : unit === 'times' ? `${v.toFixed(2)} เท่า` : unit === 'months' ? `${v.toFixed(1)} เดือน` : `${v.toFixed(0)}%`
       const score: number | null = ratios?.healthScore ?? null
-      const scoreLabel: string = ratios?.healthLabel ?? ''
-      const emMonths = sm.totalMonthlyExp > 0 ? sm.liquidAssets / sm.totalMonthlyExp : 0
-      const gaps: string[] = []
-      if (sm.totalMonthlyExp > 0 && emMonths < 6) gaps.push(`เงินสำรองฉุกเฉินครอบคลุม ~${emMonths.toFixed(1)} เดือน ต่ำกว่าเกณฑ์ 6 เดือน`)
-      if (insR && insR.gap > 0) gaps.push(`ทุนประกันชีวิตยังขาดอีก ${fmt(insR.gap)} บาท จากทุนที่แนะนำ ${fmt(insR.need)} บาท`)
-      if (retR && retR.gap > 0) gaps.push(`ทุนเกษียณยังขาดอีก ${fmt(retR.gap)} บาท (ควรออมเพิ่ม ~${fmt(retR.annualSavings)} บาท/ปี)`)
-      if (eduR && eduR.childCount > 0) gaps.push(`ทุนการศึกษาบุตร ${eduR.childCount} คน ต้องเตรียมรวม ${fmt(eduR.totalNominal)} บาท (~${fmt(eduR.monthlySaving)} บาท/เดือน)`)
-      if (!gaps.length) gaps.push('ไม่พบช่องว่างสำคัญ — สถานะการเงินโดยรวมอยู่ในเกณฑ์ดี')
-      const circ = 2 * Math.PI * 52
+      const circ = 2 * Math.PI * 42
+      const MiniTable = ({ rows, total }: { rows: [string, number, string, boolean?][]; total?: number }) => (
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <tbody>{rows.map(([l, v, c, strong], i) => (
+            <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', fontWeight: strong ? 800 : 400 }}>
+              <td style={{ padding: '6px 4px', color: strong ? '#0f172a' : '#64748b' }}>{l}</td>
+              <td style={{ padding: '6px 4px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: c }}>{fmt(v)}</td>
+              <td style={{ padding: '6px 4px', textAlign: 'right', color: '#94a3b8', width: 40, fontSize: 11 }}>{total != null ? pctOf(v, total) : ''}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      )
+      const AdviceB = ({ k }: { k: string }) => (
+        <div style={{ border: '1px solid #cbd5e1', borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>ข้อเสนอแนะ</div>
+          <textarea value={secs[k]?.text ?? ''} onChange={e => setText(k, e.target.value)}
+            placeholder="พิมพ์ข้อเสนอแนะของนักวางแผนการเงิน..."
+            style={{ flex: 1, minHeight: 110, border: 'none', outline: 'none', resize: 'none', background: 'transparent', fontFamily: 'inherit', fontSize: 12.5, color: '#334155', lineHeight: 1.8 }} />
+        </div>
+      )
+      const Row = ({ title, adviceKey, children }: { title: string; adviceKey: string; children: React.ReactNode }) => (
+        <div style={{ marginBottom: 24, breakInside: 'avoid' }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>{title}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '330px 1fr', gap: 18, alignItems: 'stretch' }}>
+            <div>{children}</div>
+            <AdviceB k={adviceKey} />
+          </div>
+        </div>
+      )
       return (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '215px 1fr', gap: 16, marginBottom: 16 }}>
-            {/* Health score ring */}
-            <div style={{ background: '#f8fafc', borderRadius: 12, padding: '20px 14px', textAlign: 'center' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 12 }}>Financial Health Score</div>
-              <div style={{ position: 'relative', width: 120, height: 120, margin: '0 auto' }}>
-                <svg width={120} height={120} style={{ transform: 'rotate(-90deg)' }}>
-                  <circle cx={60} cy={60} r={52} fill="none" stroke="#e2e8f0" strokeWidth={9} />
-                  <circle cx={60} cy={60} r={52} fill="none" stroke={TEAL} strokeWidth={9} strokeLinecap="round"
+          <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>ข้อสังเกตสำคัญ (Key Observations)</div>
+          <p style={{ fontSize: 12.5, color: '#64748b', margin: '4px 0 18px' }}>จากการทบทวนข้อมูลเบื้องต้น เรามีข้อสังเกตและข้อเสนอแนะสำคัญดังต่อไปนี้</p>
+          <Row title="ความมั่งคั่งสุทธิ (Net Worth)" adviceKey="exec_nw">
+            <MiniTable total={totalA} rows={[
+              ['สินทรัพย์สภาพคล่อง', liquid, '#0284c7'], ['สินทรัพย์ลงทุน', invest, TEAL], ['สินทรัพย์ส่วนตัว', personal, AMBERR],
+              ['รวมสินทรัพย์', totalA, '#0f172a', true], ['หนี้สินรวม', debt, REDR], ['ความมั่งคั่งสุทธิ', netW, netW >= 0 ? GREENR : REDR, true],
+            ]} />
+          </Row>
+          <Row title="กระแสเงินสด (Cash Flow)" adviceKey="exec_cf">
+            <MiniTable total={income} rows={[
+              ['กระแสเงินสดรับ', income, GREENR], ['ค่าใช้จ่ายคงที่', fixedE, AMBERR], ['ค่าใช้จ่ายผันแปร', varE, REDR],
+              ['ค่าใช้จ่ายเพื่อการออม/ลงทุน', saveE, '#8b5cf6'], ['ค่าใช้จ่ายรวม', totalE, REDR, true], ['กระแสเงินสดสุทธิ', netCF, netCF >= 0 ? TEAL : REDR, true],
+            ]} />
+          </Row>
+          <Row title="สถานะสุขภาพทางการเงิน (Financial Health)" adviceKey="exec_health">
+            <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+              <div style={{ position: 'relative', width: 100, height: 100, flexShrink: 0 }}>
+                <svg width={100} height={100} style={{ transform: 'rotate(-90deg)' }}>
+                  <circle cx={50} cy={50} r={42} fill="none" stroke="#e2e8f0" strokeWidth={8} />
+                  <circle cx={50} cy={50} r={42} fill="none" stroke={TEAL} strokeWidth={8} strokeLinecap="round"
                     strokeDasharray={circ} strokeDashoffset={circ * (1 - Math.max(0, Math.min(100, score ?? 0)) / 100)} />
                 </svg>
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, fontWeight: 800, color: '#0f172a' }}>{score ?? '—'}</div>
-              </div>
-              <div style={{ marginTop: 10, fontSize: 13, fontWeight: 800, color: TEAL, textTransform: 'uppercase', letterSpacing: 1 }}>{scoreLabel || 'สุขภาพการเงิน'}</div>
-            </div>
-            {/* Key gaps */}
-            <div style={{ border: '1px solid #f1f5f9', borderRadius: 12, padding: '16px 18px' }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 10 }}>⚠ ประเด็นสำคัญที่ตรวจพบ</div>
-              {gaps.map((g, i) => (
-                <div key={i} style={{ display: 'flex', gap: 8, fontSize: 12.5, color: '#475569', lineHeight: 1.7 }}>
-                  <span style={{ color: TEAL, fontWeight: 800 }}>•</span>{g}
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{score ?? '—'}</span>
+                  <span style={{ fontSize: 9, color: '#94a3b8' }}>/ 100</span>
+                  {ratios?.healthLabel && <span style={{ fontSize: 9.5, fontWeight: 700, color: TEAL }}>{ratios.healthLabel}</span>}
                 </div>
-              ))}
-            </div>
-          </div>
-          {/* stat cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-            {([['สินทรัพย์รวม', sm.totalAssets], ['หนี้สินรวม', sm.totalDebtBalance], ['ความมั่งคั่งสุทธิ', sm.netWorth]] as const).map(([l, v]) => (
-              <div key={l} style={{ border: '1px solid #f1f5f9', borderRadius: 12, padding: '14px 16px' }}>
-                <div style={{ fontSize: 11, color: '#94a3b8' }}>{l}</div>
-                <div style={{ fontSize: 19, fontWeight: 800, color: l === 'หนี้สินรวม' ? AMBERR : '#0f172a', fontFamily: 'monospace', marginTop: 4 }}>{fmt(toNum(v))} ฿</div>
               </div>
-            ))}
-          </div>
-          {/* ข้อสังเกตสำคัญ (Key Observations) — แก้ข้อความได้ในช่องหัวข้อนี้ (## หมวด · 1. ข้อแนะนำ · › รายละเอียด) */}
-          <div style={{ marginTop: 26 }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>ข้อสังเกตสำคัญ (Key Observations)</div>
-            <p style={{ fontSize: 12.5, color: '#64748b', marginBottom: 12 }}>จากการทบทวนข้อมูลเบื้องต้น เรามีข้อสังเกตและข้อเสนอแนะสำคัญดังต่อไปนี้</p>
-            {((secs['exec']?.text || '').trim() || DEFAULT_EXEC_OBS).split('\n').map((ln, i) => {
-              const t = ln.trim()
-              if (!t) return null
-              if (t.startsWith('## ')) return <div key={i} style={{ fontSize: 14.5, fontWeight: 800, color: TEAL, letterSpacing: 0.5, margin: '16px 0 6px', textTransform: 'uppercase' }}>{t.slice(3)}</div>
-              if (/^›/.test(t)) return (
-                <div key={i} style={{ display: 'flex', gap: 8, padding: '3px 0 3px 34px', fontSize: 12.5, color: '#475569', lineHeight: 1.75 }}>
-                  <span style={{ color: TEAL, fontWeight: 800 }}>›</span><span>{t.replace(/^›\s*/, '')}</span>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {(ratios?.ratios ?? []).map((e: any) => {
+                  const m = RATIO_META[e.key]; if (!m) return null
+                  const col = stateCol[e.state] ?? '#94a3b8'
+                  return (
+                    <div key={e.key} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                      <span style={{ width: 7, height: 7, borderRadius: 999, background: col, flexShrink: 0 }} />
+                      <span style={{ flex: 1, fontSize: 11, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</span>
+                      <span style={{ fontSize: 11, fontWeight: 800, fontFamily: 'monospace', color: col }}>{fmtRatio(e.value, m.unit)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </Row>
+          <Row title="การออม/ลงทุน (Investment Portfolio)" adviceKey="exec_inv">
+            {allocation.total > 0 ? (
+              <div>
+                <div style={{ background: '#f8fafc', borderRadius: 10, padding: '6px 8px 2px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.8, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 2 }}>สัดส่วนสินทรัพย์ลงทุน</div>
+                  <div style={{ height: 130 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={allocation.rows} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={30} outerRadius={50} label={(e: any) => `${(e.percent * 100).toFixed(0)}%`} labelLine={false}>
+                          {allocation.rows.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                        </Pie>
+                        <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div style={{ fontSize: 10.5, color: '#64748b', textAlign: 'center', paddingBottom: 6 }}>
+                    รวม {fmt(allocation.total)} บาท · ผลตอบแทน ~{portRet.toFixed(1)}%/ปี
+                  </div>
                 </div>
-              )
-              if (/^\d+\./.test(t)) return <div key={i} style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', lineHeight: 1.75, padding: '6px 0 2px 12px' }}>{t}</div>
-              return <p key={i} style={{ fontSize: 12.5, color: '#475569', lineHeight: 1.75, padding: '2px 0' }}>{t}</p>
-            })}
-          </div>
+                {mcInv && (
+                  <div style={{ marginTop: 8, background: '#f8fafc', borderRadius: 10, padding: '8px 10px' }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.8, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 6 }}>มูลค่า ณ เกษียณ (อายุ {mcInv.retAge} ปี) · Monte Carlo</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+                      {([['ดี (P90)', mcInv.p90, GREENR], ['ค่ากลาง (P50)', mcInv.p50, '#0f172a'], ['แย่ (P10)', mcInv.p10, REDR]] as const).map(([l, v, c]) => (
+                        <div key={l} style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: 8, padding: '6px 8px', textAlign: 'center' }}>
+                          <div style={{ fontSize: 9.5, color: '#94a3b8' }}>{l}</div>
+                          <div style={{ fontSize: 12, fontWeight: 800, fontFamily: 'monospace', color: c }}>{fmt(v)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : <div style={{ fontSize: 12, color: '#94a3b8' }}>ยังไม่มีข้อมูลสินทรัพย์ลงทุน</div>}
+          </Row>
         </div>
       )
     }
@@ -1102,7 +1175,7 @@ export default function ReportPage() {
                   {s.lvl === 2 ? '— ' : ''}{s.t}
                 </span>
               </div>
-              {!['letter', 'clientgoals', 'service'].includes(s.k) && (
+              {!['letter', 'clientgoals', 'service', 'exec'].includes(s.k) && (
                 <textarea value={secs[s.k]?.text ?? ''} onChange={e => setText(s.k, e.target.value)}
                   placeholder="พิมพ์เนื้อหา/ข้อเสนอแนะสำหรับหัวข้อนี้..." rows={3}
                   style={{ ...einp, resize: 'vertical', minHeight: 56 }} />
