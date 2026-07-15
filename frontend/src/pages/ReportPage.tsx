@@ -88,38 +88,6 @@ function mulberry32(seed: number) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
 }
-type McOpts = {
-  curAge: number; retAge: number; lifeExp: number
-  startAssets: number; annualSaving: number; savingGrowth: number
-  mu: number; sigma: number; lumpAtRet: number; expense1: number; inflation: number
-}
-function mcSuccessRate(o: McOpts): number {
-  const N = 600
-  if (o.lifeExp <= o.curAge) return 0
-  const seed = (Math.round(o.startAssets) ^ (Math.round(o.mu * 10000) << 2) ^ (o.retAge << 8) ^ (o.lifeExp << 3) ^ Math.round(o.expense1)) >>> 0
-  const rng = mulberry32(seed || 1)
-  let ok = 0
-  for (let p = 0; p < N; p++) {
-    let v = o.startAssets, save = o.annualSaving, exp = o.expense1, alive = true
-    for (let age = o.curAge; age < o.lifeExp; age++) {
-      let u1 = rng(); if (u1 < 1e-12) u1 = 1e-12
-      const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * rng())
-      const growth = Math.exp((o.mu - (o.sigma * o.sigma) / 2) + o.sigma * z)
-      if (age < o.retAge) {
-        v = v * growth + save
-        save *= 1 + o.savingGrowth
-        if (age + 1 === o.retAge) v += o.lumpAtRet
-      } else {
-        v = (v - exp) * growth
-        exp *= 1 + o.inflation
-        if (v < 0) { alive = false; break }
-      }
-    }
-    if (alive) ok++
-  }
-  return Math.round((ok / N) * 100)
-}
-
 interface Sec { k: string; t: string; lvl: 1 | 2; auto?: string }
 const SECTIONS: Sec[] = [
   { k: 'letter', t: 'จดหมายจากนักวางแผนการเงิน', lvl: 1, auto: 'letter' },
@@ -129,14 +97,8 @@ const SECTIONS: Sec[] = [
   { k: 'exec_spouse', t: 'บทสรุปผู้บริหาร (คู่สมรส)', lvl: 1, auto: 'exec_spouse' },
   { k: 'domains', t: 'บทวิเคราะห์และการดำเนินการ', lvl: 1, auto: 'domains' },
   { k: 'domains_spouse', t: 'บทวิเคราะห์และการดำเนินการ (คู่สมรส)', lvl: 1, auto: 'domains_spouse' },
-  { k: 'reco', t: 'ข้อเสนอแนะ', lvl: 1 },
-  { k: 'scenarios', t: 'การทดสอบความทนทานของแผน (Scenario & Monte Carlo)', lvl: 1, auto: 'scenarios' },
   { k: 'action', t: 'แผนปฏิบัติการ', lvl: 1, auto: 'action' },
-  { k: 'personal', t: 'สรุปผลการวิเคราะห์ข้อมูลส่วนบุคคลเบื้องต้น', lvl: 1, auto: 'personal' },
   { k: 'finance', t: 'สรุปผลการวิเคราะห์ข้อมูลทางการเงินส่วนบุคคล', lvl: 1, auto: 'finance' },
-  { k: 'fin_balance', t: 'งบดุล', lvl: 2, auto: 'balance' },
-  { k: 'fin_cashflow', t: 'งบกระแสเงินสด', lvl: 2, auto: 'cashflow' },
-  { k: 'fin_ratio', t: 'การวิเคราะห์อัตราส่วนทางการเงิน', lvl: 2 },
   { k: 'goals', t: 'ผลการวิเคราะห์เป้าหมายทางการเงิน', lvl: 1 },
   { k: 'g_debt', t: 'สรุปผลการวิเคราะห์ด้านหนี้สิน', lvl: 2, auto: 'debt' },
   { k: 'g_insurance', t: 'การวิเคราะห์ความเสี่ยงภัยและความต้องการด้านการประกันภัย', lvl: 2, auto: 'insurance' },
@@ -511,60 +473,6 @@ export default function ReportPage() {
         </div>
       )
     }
-    if (kind === 'scenarios') {
-      const rp = retPlan?.self
-      if (!rp) return <div style={{ fontSize: 12.5, color: '#94a3b8', marginBottom: 12 }}>ยังไม่มีข้อมูลแผนเกษียณ — กรอกที่หน้า "วางแผนเกษียณ" ก่อน</div>
-      const curAge = rp.currentAge ?? age ?? 45
-      const retAge = profile?.retirementAgeSelf ?? rp.retirementAge ?? 60
-      const lifeExp = profile?.lifeExpectancySelf ?? rp.lifeExpectancy ?? 85
-      const inflation = (rp.inflationRate ?? profile?.inflationRate ?? 3) / 100
-      const sgr = (rp.savingsGrowthRate ?? 0) / 100
-      // ความผันผวนตามระดับความเสี่ยง (ตรรกะเดียวกับแบบจำลองหน้ามูลค่าสินทรัพย์ลงทุน)
-      const riskLabel = String(profile?.riskLabel ?? profile?.riskLevel ?? '')
-      const sigmaPct = /สูง/.test(riskLabel) ? 16 : /กลาง|ปานกลาง/.test(riskLabel) ? 11 : /ต่ำ/.test(riskLabel) ? 6 : (portRet >= 8 ? 16 : portRet >= 4 ? 11 : 6)
-      const mu = (portRet > 0 ? portRet : (rp.preRetirementReturn ?? 5)) / 100
-      const lump = retR ? retR.sources.sso + retR.sources.pvd + retR.sources.severance : 0
-      const saving = retR?.annualSavings ?? 0
-      const expenseAt = (ra: number) => rp.needMethod === 'replacement'
-        ? (rp.annualIncome ?? 0) * Math.pow(1 + sgr, Math.max(0, ra - curAge)) * ((rp.replacementRate ?? 70) / 100)
-        : ((rp.monthlyLiving ?? 0) + (rp.monthlyHealth ?? 0)) * 12 * Math.pow(1 + inflation, Math.max(0, ra - curAge))
-      const base: McOpts = { curAge, retAge, lifeExp, startAssets: totalInv, annualSaving: saving, savingGrowth: sgr, mu, sigma: sigmaPct / 100, lumpAtRet: lump, expense1: expenseAt(retAge), inflation }
-      const scenarios: { name: string; desc: string; o: McOpts }[] = [
-        { name: 'แผนพื้นฐาน', desc: `ออมเพิ่มตามแผน ${fmt(saving)} บาท/ปี · เกษียณอายุ ${retAge} · อายุขัย ${lifeExp} ปี · เงินเฟ้อ ${(inflation * 100).toFixed(1)}%`, o: base },
-        { name: 'ไม่ออมเพิ่มจากปัจจุบัน', desc: 'เหมือนแผนพื้นฐาน แต่ไม่มีการออมเพิ่ม — ใช้เฉพาะสินทรัพย์ที่มีและเงินก้อน ณ เกษียณ', o: { ...base, annualSaving: 0 } },
-        { name: `อายุยืนถึง ${lifeExp + 5} ปี`, desc: 'เหมือนแผนพื้นฐาน แต่ต้องใช้เงินหลังเกษียณนานขึ้นอีก 5 ปี', o: { ...base, lifeExp: lifeExp + 5 } },
-        { name: 'เงินเฟ้อสูงขึ้น +1%', desc: `เงินเฟ้อตลอดแผนเพิ่มเป็น ${(inflation * 100 + 1).toFixed(1)}% ต่อปี`, o: { ...base, inflation: inflation + 0.01, expense1: expenseAt(retAge) * Math.pow(1.01, Math.max(0, retAge - curAge)) } },
-        ...(retAge - 5 > curAge ? [{ name: `เกษียณเร็วขึ้น 5 ปี (อายุ ${retAge - 5})`, desc: 'ระยะเวลาออมสั้นลงและใช้เงินหลังเกษียณนานขึ้น', o: { ...base, retAge: retAge - 5, expense1: expenseAt(retAge - 5) } }] : []),
-        { name: 'ผลตอบแทนต่ำกว่าคาด −2%', desc: `ผลตอบแทนพอร์ตเฉลี่ยลดจาก ${(mu * 100).toFixed(1)}% เหลือ ${(mu * 100 - 2).toFixed(1)}% ต่อปี`, o: { ...base, mu: mu - 0.02 } },
-      ]
-      const results = scenarios.map(s => ({ ...s, pct: mcSuccessRate(s.o) }))
-      const tone = (p: number) => p >= 80 ? GREENR : p >= 60 ? AMBERR : REDR
-      return (
-        <div style={{ marginBottom: 16 }}>
-          <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.8, marginBottom: 6 }}>
-            เพื่อทดสอบความยั่งยืนของแผน เราจำลอง "ชีวิตทางการเงิน" ของคุณ 600 เส้นทางด้วยเทคนิค Monte Carlo โดยสุ่มลำดับผลตอบแทนตามความผันผวนของพอร์ต ({sigmaPct}% ต่อปี) ตัวเลขที่แสดงคือสัดส่วนของเส้นทางที่เงินยังเหลือถึงอายุขัยที่วางแผนไว้
-          </p>
-          <p style={{ fontSize: 11.5, color: '#94a3b8', lineHeight: 1.7, marginBottom: 14 }}>
-            หมายเหตุ: การเปลี่ยนตัวแปรเพียงเล็กน้อยอาจทำให้ผลลัพธ์ต่างกันมาก ผล Monte Carlo จึงเหมาะกับการ "เปรียบเทียบระหว่างทางเลือก" มากกว่าการชี้ขาดว่าแผนสำเร็จหรือล้มเหลว — ค่าที่ต่ำหมายถึงความยืดหยุ่นในอนาคตน้อยลง ไม่ใช่ความล้มเหลวแน่นอน
-          </p>
-          {results.map((s, i) => (
-            <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'center', border: '1px solid #f1f5f9', borderRadius: 12, padding: '12px 16px', marginBottom: 8, breakInside: 'avoid' }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 800, color: '#0f172a' }}>{i + 1}. {s.name}</div>
-                <div style={{ fontSize: 11.5, color: '#64748b', lineHeight: 1.6, marginTop: 3 }}>{s.desc}</div>
-                <div style={{ height: 6, borderRadius: 999, background: '#f1f5f9', marginTop: 8, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${Math.max(3, s.pct)}%`, borderRadius: 999, background: tone(s.pct) }} />
-                </div>
-              </div>
-              <div style={{ width: 76, textAlign: 'center' }}>
-                <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'monospace', color: tone(s.pct) }}>{s.pct}%</div>
-                <div style={{ fontSize: 9.5, color: '#94a3b8', letterSpacing: 0.5 }}>โอกาสสำเร็จ</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )
-    }
     if (kind === 'action') {
       // checklist แยกฝั่งผู้รับผิดชอบ (สไตล์ Immediate Action Items)
       const ownerTh = (o: string) => o === 'client' ? 'ลูกค้า' : o === 'advisor' ? 'ที่ปรึกษา' : o === 'spouse' ? 'คู่สมรส' : (o || '')
@@ -859,63 +767,141 @@ export default function ReportPage() {
         </div>
       )
     }
-    if (kind === 'personal') return (
-      <div style={{ background: '#f8fafc', borderRadius: 8, padding: '12px 16px', marginBottom: 14 }}>
-        {[
-          `ชื่อ-นามสกุล: คุณ${clientName}`,
-          age != null ? `อายุ: ${age} ปี` : '',
-          client?.maritalStatus ? `สถานภาพสมรส: ${client.maritalStatus}` : '',
-          client?.occupation ? `อาชีพ: ${client.occupation}` : '',
-          client?.dependents != null ? `จำนวนผู้อยู่ในอุปการะ: ${client.dependents} คน` : '',
-        ].filter(Boolean).map((l, i) => <div key={i} style={{ fontSize: 13, color: '#334155', padding: '3px 0' }}>{l}</div>)}
-      </div>
-    )
-    if (kind === 'finance') return (
-      <DataTable rows={[
-        ['สินทรัพย์รวม', toNum(sm.totalAssets), '#0284c7'],
-        ['หนี้สินรวม', toNum(sm.totalDebtBalance), '#f87171'],
-        ['ความมั่งคั่งสุทธิ', toNum(sm.netWorth), '#10b981'],
-        ['รายได้รวมต่อปี', toNum(sm.totalAnnualIncome)],
-        ['กระแสเงินสดสุทธิต่อปี', toNum(sm.netAnnualCashFlow)],
-      ]} />
-    )
-    if (kind === 'balance') {
-      const A = toNum(sm.totalAssets), L = toNum(sm.totalDebtBalance), NW = toNum(sm.netWorth)
-      return (
-        <div style={{ background: '#f8fafc', borderRadius: 8, padding: 14, marginBottom: 14 }}>
-          <DataTable rows={[['สินทรัพย์รวม', A, '#0284c7'], ['หนี้สินรวม', L, '#f87171'], ['ความมั่งคั่งสุทธิ', NW, '#10b981']]} />
-          <div style={{ height: 200 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={[{ name: 'สินทรัพย์', v: A }, { name: 'หนี้สิน', v: L }, { name: 'ความมั่งคั่งสุทธิ', v: NW }]}>
-                <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#475569' }} />
-                <YAxis tickFormatter={v => `${(v / 1e6).toFixed(1)}M`} tick={{ fontSize: 11, fill: '#94a3b8' }} width={48} />
-                <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} />
-                <Bar dataKey="v" radius={[6, 6, 0, 0]}>
-                  {['#0284c7', '#f87171', '#10b981'].map((c, i) => <Cell key={i} fill={c} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+    if (kind === 'finance') {
+      // ── งบการเงินเต็มรูปแบบ 3 งบ: งบดุล · งบกระแสเงินสด · อัตราส่วนทางการเงิน ──
+      const toMonthly2 = (a: number, f: string) => f === 'QUARTERLY' ? a / 3 : f === 'ANNUALLY' ? a / 12 : a
+      const inv: any = invProfile ?? {}
+      const savRows = (inv.savingsAccounts ?? []).map((a: any, i2: number) => ({ name: a.depositType || `เงินฝากที่ ${i2 + 1}`, v: toNum(a.currentValue) })).filter((r: any) => r.v > 0)
+      const invRows = (inv.investmentAssets ?? []).map((a: any, i2: number) => ({ name: a.assetName || `สินทรัพย์ลงทุนที่ ${i2 + 1}`, v: toNum(a.currentValue) })).filter((r: any) => r.v > 0)
+      const perRows = (inv.personalAssets ?? []).map((a: any, i2: number) => ({ name: a.customLabel || a.assetType || `สินทรัพย์ที่ ${i2 + 1}`, v: toNum(a.currentValue) })).filter((r: any) => r.v > 0)
+      const liabs: any[] = inv.liabilities ?? []
+      const shortDebt = liabs.filter(l => !((parseFloat(l.termYears) || 0) > 1) && toNum(l.currentBalance) > 0).map(l => ({ name: l.debtType || 'หนี้สินระยะสั้น', note: l.creditor, v: toNum(l.currentBalance) }))
+      const longDebt = liabs.filter(l => (parseFloat(l.termYears) || 0) > 1 && toNum(l.currentBalance) > 0).map(l => ({ name: l.debtType || 'หนี้สินระยะยาว', note: l.creditor, v: toNum(l.currentBalance) }))
+      const sumV = (rows: { v: number }[]) => rows.reduce((x, r) => x + r.v, 0)
+      const savT = sumV(savRows), invT = sumV(invRows), perT = sumV(perRows)
+      const assetT = savT + invT + perT
+      const shortT = sumV(shortDebt), longT = sumV(longDebt), debtT = shortT + longT
+      const netWT = assetT - debtT
+      // งบกระแสเงินสด — รายรับจาก incomeSources + รายจ่ายรายรายการจาก /expenses (ลูกค้า + แชร์ครึ่ง)
+      const incRows = ((client?.incomeSources ?? []) as any[])
+        .filter(sc => toNum(sc.amount) > 0)
+        .map(sc => { const m = sc.label === 'โบนัส' ? toNum(sc.amount) / 12 : toNum(sc.amount); return { name: sc.label || 'รายรับ', note: sc.source, m, v: m * 12 } })
+      const expRows = (prefix: string) => (expensesQ ?? [])
+        .filter((e: any) => String(e.category).startsWith(prefix) && (e.person === 'client' || e.person === 'shared'))
+        .map((e: any) => { const m0 = toMonthly2(toNum(e.amount), e.frequency); const m = e.person === 'shared' ? m0 / 2 : m0; return { name: e.name, note: e.person === 'shared' ? 'แชร์ร่วมกัน (ครึ่งหนึ่ง)' : undefined, m, v: m * 12 } })
+        .filter((r: any) => r.v > 0)
+      const fixRows = expRows('fixed_'), varRows = expRows('var_'), savERows = expRows('saving_')
+      const incT = sumV(incRows), fixT = sumV(fixRows), varT = sumV(varRows), savET = sumV(savERows)
+      const expT = fixT + varT + savET, netCF2 = incT - expT
+      // อัตราส่วน 8 ตัว
+      const RM: Record<string, { name: string; std: string; unit: string }> = {
+        ratio1: { name: 'อัตราส่วนสภาพคล่อง', std: '> 1 เท่า', unit: 'times' },
+        ratio2: { name: 'เงินสำรองฉุกเฉิน (สภาพคล่องพื้นฐาน)', std: '3–6 เดือน', unit: 'months' },
+        ratio3: { name: 'สินทรัพย์สภาพคล่องต่อความมั่งคั่งสุทธิ', std: '> 15%', unit: 'pct' },
+        ratio4: { name: 'หนี้สินต่อสินทรัพย์', std: '< 50%', unit: 'pct' },
+        ratio5: { name: 'การชำระคืนหนี้สินจากรายได้', std: '< 35–45%', unit: 'pct' },
+        ratio6: { name: 'การชำระคืนหนี้ที่ไม่จดจำนอง', std: '< 15–20%', unit: 'pct' },
+        ratio7: { name: 'อัตราการออม', std: '≥ 10%', unit: 'pct' },
+        ratio8: { name: 'อัตราการลงทุน (สินทรัพย์ลงทุน/ความมั่งคั่งสุทธิ)', std: '≥ 50%', unit: 'pct' },
+      }
+      const stChip: Record<string, { label: string; c: string }> = {
+        good: { label: 'ผ่านเกณฑ์', c: GREENR }, warning: { label: 'ควรปรับปรุง', c: AMBERR },
+        danger: { label: 'ต่ำกว่าเกณฑ์', c: REDR }, nodata: { label: 'รอข้อมูล', c: '#94a3b8' },
+      }
+      const fmtRat = (v: number | null, unit: string) => v == null ? '—' : unit === 'times' ? `${v.toFixed(2)} เท่า` : unit === 'months' ? `${v.toFixed(1)} เดือน` : `${v.toFixed(1)}%`
+      // ── ชิ้นส่วน UI ──
+      const H2 = ({ t }: { t: string }) => <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', borderLeft: `5px solid ${TEAL}`, paddingLeft: 10, margin: '26px 0 12px' }}>{t}</div>
+      const Sect = ({ title, accent, total, rows, base, monthly }: { title: string; accent: string; total: number; rows: { name: string; note?: string; m?: number; v: number }[]; base: number; monthly?: boolean }) => (
+        <div style={{ border: '1px solid #f1f5f9', borderRadius: 10, marginBottom: 10, overflow: 'hidden', breakInside: 'avoid' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: accent }}>{title}</span>
+            <span style={{ fontSize: 13.5, fontWeight: 800, fontFamily: 'monospace', color: accent }}>{fmt(total)} ฿</span>
           </div>
+          {rows.length === 0
+            ? <div style={{ padding: '8px 14px', fontSize: 12, color: '#94a3b8' }}>— ไม่มีรายการ —</div>
+            : <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <tbody>{rows.map((r, i2) => (
+                  <tr key={i2} style={{ borderBottom: '1px solid #f8fafc' }}>
+                    <td style={{ padding: '5px 14px', color: '#334155' }}>{r.name}{r.note && <span style={{ color: '#94a3b8', fontSize: 10.5 }}> · {r.note}</span>}</td>
+                    {monthly && <td style={{ padding: '5px 8px', textAlign: 'right', fontFamily: 'monospace', color: '#64748b', width: 100 }}>{fmt(r.m ?? 0)}</td>}
+                    <td style={{ padding: '5px 8px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: '#0f172a', width: 110 }}>{fmt(r.v)}</td>
+                    <td style={{ padding: '5px 14px 5px 8px', textAlign: 'right', color: '#94a3b8', width: 56, fontSize: 11 }}>{base > 0 ? `${(r.v / base * 100).toFixed(1)}%` : ''}</td>
+                  </tr>
+                ))}</tbody>
+              </table>}
         </div>
       )
-    }
-    if (kind === 'cashflow') {
-      const inc = toNum(sm.totalAnnualIncome), net = toNum(sm.netAnnualCashFlow), exp = inc - net
+      const SumRow = ({ l, v, c, strong, sign }: { l: string; v: number; c: string; strong?: boolean; sign?: boolean }) => (
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 14px', borderBottom: '1px solid #f1f5f9', fontSize: strong ? 14 : 12.5, fontWeight: strong ? 800 : 600 }}>
+          <span style={{ color: strong ? '#0f172a' : '#64748b' }}>{l}</span>
+          <span style={{ fontFamily: 'monospace', color: c, fontWeight: 800 }}>{sign && v > 0 ? '+' : ''}{fmt(v)} ฿</span>
+        </div>
+      )
       return (
-        <div style={{ background: '#f8fafc', borderRadius: 8, padding: 14, marginBottom: 14 }}>
-          <DataTable rows={[['รายได้รวมต่อปี', inc, '#10b981'], ['ค่าใช้จ่าย+ชำระหนี้ต่อปี', exp, '#f87171'], ['กระแสเงินสดสุทธิต่อปี', net, '#0284c7']]} />
-          <div style={{ height: 200 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={[{ name: 'รายได้', v: inc }, { name: 'รายจ่าย', v: exp }, { name: 'คงเหลือ', v: net }]}>
-                <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#475569' }} />
-                <YAxis tickFormatter={v => `${(v / 1e6).toFixed(1)}M`} tick={{ fontSize: 11, fill: '#94a3b8' }} width={48} />
-                <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} />
-                <Bar dataKey="v" radius={[6, 6, 0, 0]}>
-                  {['#10b981', '#f87171', '#0284c7'].map((c, i) => <Cell key={i} fill={c} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+        <div style={{ marginBottom: 16 }}>
+          {/* ── 1. งบดุลส่วนบุคคล ── */}
+          <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', borderLeft: `5px solid ${TEAL}`, paddingLeft: 10, marginBottom: 12 }}>งบดุลส่วนบุคคล (Balance Sheet)</div>
+          <Sect title="สินทรัพย์สภาพคล่อง (Liquid Assets)" accent="#0284c7" total={savT} rows={savRows} base={assetT} />
+          <Sect title="สินทรัพย์เพื่อการลงทุน (Investment Assets)" accent={TEAL} total={invT} rows={invRows} base={assetT} />
+          <Sect title="สินทรัพย์ส่วนตัว (Personal Assets)" accent={AMBERR} total={perT} rows={perRows} base={assetT} />
+          <Sect title="หนี้สินระยะสั้น (ครบกำหนด ≤ 1 ปี)" accent={REDR} total={shortT} rows={shortDebt} base={debtT} />
+          <Sect title="หนี้สินระยะยาว (ครบกำหนด > 1 ปี)" accent="#f97316" total={longT} rows={longDebt} base={debtT} />
+          <div style={{ border: `1px solid ${TEAL}55`, borderRadius: 10, overflow: 'hidden', breakInside: 'avoid' }}>
+            <div style={{ padding: '8px 14px', background: '#f0fdfa', fontSize: 13, fontWeight: 800, color: '#0f172a' }}>สรุปงบดุลส่วนบุคคล</div>
+            <SumRow l="สินทรัพย์รวม (1)" v={assetT} c="#0284c7" />
+            <SumRow l="หนี้สินระยะสั้นรวม" v={-shortT} c={REDR} />
+            <SumRow l="หนี้สินระยะยาวรวม" v={-longT} c={REDR} />
+            <SumRow l="หนี้สินรวม (2)" v={-debtT} c={REDR} />
+            <SumRow l="ความมั่งคั่งสุทธิ (Net Worth = 1 − 2)" v={netWT} c={netWT >= 0 ? GREENR : REDR} strong sign />
           </div>
+
+          {/* ── 2. งบกระแสเงินสด ── */}
+          <H2 t="งบกระแสเงินสด (Cash Flow Statement)" />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 22, fontSize: 10.5, color: '#94a3b8', margin: '0 14px 4px' }}><span>บาท/เดือน</span><span>บาท/ปี</span><span>% รายรับ</span></div>
+          <Sect title="รายรับ (Income)" accent={GREENR} total={incT} rows={incRows} base={incT} monthly />
+          <Sect title="รายจ่ายคงที่ (Fixed Expenses)" accent={AMBERR} total={fixT} rows={fixRows} base={incT} monthly />
+          <Sect title="รายจ่ายผันแปร (Variable Expenses)" accent={REDR} total={varT} rows={varRows} base={incT} monthly />
+          <Sect title="รายจ่ายเพื่อการออม/ลงทุน (Saving / Investment)" accent="#8b5cf6" total={savET} rows={savERows} base={incT} monthly />
+          <div style={{ border: `1px solid ${TEAL}55`, borderRadius: 10, overflow: 'hidden', breakInside: 'avoid' }}>
+            <div style={{ padding: '8px 14px', background: '#f0fdfa', fontSize: 13, fontWeight: 800, color: '#0f172a' }}>สรุปงบกระแสเงินสด (ต่อปี)</div>
+            <SumRow l="รายรับรวม" v={incT} c={GREENR} sign />
+            <SumRow l="รายจ่ายคงที่รวม" v={-fixT} c={AMBERR} />
+            <SumRow l="รายจ่ายผันแปรรวม" v={-varT} c={REDR} />
+            <SumRow l="รายจ่ายเพื่อการออม/ลงทุนรวม" v={-savET} c="#8b5cf6" />
+            <SumRow l="รายจ่ายรวม" v={-expT} c={REDR} />
+            <SumRow l="กระแสเงินสดสุทธิ (Net Cash Flow)" v={netCF2} c={netCF2 >= 0 ? GREENR : REDR} strong sign />
+          </div>
+
+          {/* ── 3. อัตราส่วนทางการเงิน ── */}
+          <H2 t="อัตราส่วนทางการเงิน (Financial Ratio)" />
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+            <thead>
+              <tr style={{ borderBottom: '1.5px solid #cbd5e1' }}>
+                {['อัตราส่วน', 'ค่าที่คำนวณได้', 'เกณฑ์มาตรฐาน', 'สถานะ'].map((h, i2) => (
+                  <th key={h} style={{ padding: '7px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: i2 === 0 ? 'left' : i2 === 3 ? 'center' : 'right' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>{(ratios?.ratios ?? []).map((e: any) => {
+              const m = RM[e.key]; if (!m) return null
+              const st = stChip[e.state] ?? stChip.nodata
+              return (
+                <tr key={e.key} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: '8px 10px', color: '#334155' }}>{m.name}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: st.c }}>{fmtRat(e.value, m.unit)}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', color: '#64748b' }}>{m.std}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                    <span style={{ padding: '2px 10px', borderRadius: 999, background: `${st.c}14`, color: st.c, fontSize: 10.5, fontWeight: 800, whiteSpace: 'nowrap' }}>{st.label}</span>
+                  </td>
+                </tr>
+              )
+            })}</tbody>
+          </table>
+          {ratios?.healthScore != null && (
+            <div style={{ marginTop: 10, padding: '9px 14px', background: '#f0fdfa', border: `1px solid ${TEAL}55`, borderRadius: 10, fontSize: 12.5, color: '#0f172a', fontWeight: 700 }}>
+              คะแนนสุขภาพทางการเงินรวม: <span style={{ fontFamily: 'monospace', fontWeight: 800, color: TEAL }}>{ratios.healthScore} / 100</span>{ratios.healthLabel ? ` · ${ratios.healthLabel}` : ''}
+            </div>
+          )}
         </div>
       )
     }
