@@ -367,7 +367,10 @@ export default function ReportPage() {
           {clause(6, 'การรับทราบและข้อจำกัดของรายงาน', 'ข้อเสนอแนะในรายงานจัดทำขึ้นจากข้อมูลที่ผู้รับบริการให้ไว้และสมมติฐานที่ระบุในหัวข้อ "สมมติฐานที่ใช้ในการวางแผน" หากข้อมูลส่วนบุคคล สถานการณ์ทางการเงิน หรือภาวะตลาดเปลี่ยนแปลงไป ข้อเสนอแนะอาจเปลี่ยนแปลงตาม จึงควรทบทวนแผนอย่างน้อยปีละ 1 ครั้ง ประมาณการต่าง ๆ (รวมถึงผลการจำลอง Monte Carlo) เป็นเพียงการคาดการณ์ตามสมมติฐาน ไม่ใช่การรับประกันผลตอบแทน ผลการดำเนินงานในอดีตไม่ได้ยืนยันถึงผลการดำเนินงานในอนาคต และรายงานนี้ไม่ถือเป็นคำแนะนำด้านกฎหมาย บัญชี หรือภาษีเฉพาะกรณี คู่สัญญาได้อ่านและรับทราบสมมติฐานและข้อจำกัดข้างต้นแล้ว')}
           <div style={{ border: `1px solid ${TEAL}55`, background: '#f0fdfa', borderRadius: 10, padding: '8px 12px', margin: '10px 0' }}>
             <div style={{ fontSize: 11.5, fontWeight: 800, color: '#0f172a', marginBottom: 3 }}>การยินยอมใช้ข้อมูลส่วนบุคคล (PDPA Consent)</div>
-            <div style={{ fontSize: 11.5, color: '#334155' }}>{box} ข้าพเจ้าให้ความยินยอมในการเก็บรวบรวม ใช้ และเปิดเผยข้อมูลส่วนบุคคลของข้าพเจ้าเพื่อวัตถุประสงค์ในการจัดทำแผนการเงินเท่านั้น และรับทราบสิทธิของข้าพเจ้าตาม PDPA แล้ว</div>
+            <div onClick={() => setSignatures(s => s.pdpa_consent ? (() => { const n = { ...s }; delete n.pdpa_consent; return n })() : { ...s, pdpa_consent: '1' })}
+              title="คลิกเพื่อติ๊ก/ยกเลิกความยินยอม" style={{ fontSize: 11.5, color: '#334155', cursor: 'pointer', userSelect: 'none' }}>
+              <span style={{ fontWeight: 800, color: signatures.pdpa_consent ? GREENR : '#334155' }}>{signatures.pdpa_consent ? '☑' : box}</span> ข้าพเจ้าให้ความยินยอมในการเก็บรวบรวม ใช้ และเปิดเผยข้อมูลส่วนบุคคลของข้าพเจ้าเพื่อวัตถุประสงค์ในการจัดทำแผนการเงินเท่านั้น และรับทราบสิทธิของข้าพเจ้าตาม PDPA แล้ว
+            </div>
           </div>
           <p style={{ fontSize: 11.5, color: '#334155', marginBottom: 12 }}>คู่สัญญาทั้งสองฝ่ายได้อ่านและเข้าใจข้อความในหนังสือข้อตกลงฉบับนี้โดยตลอดแล้ว จึงลงลายมือชื่อไว้เป็นหลักฐาน</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, marginTop: 6 }}>
@@ -877,7 +880,22 @@ export default function ReportPage() {
 
   // ── Export PDF เอง (jsPDF + html2canvas) — ชัวร์ทุกอุปกรณ์ โดยเฉพาะ iPad ที่ print เบราว์เซอร์เพี้ยน ──
   const [exporting, setExporting] = useState(false)
+  // ตรวจความครบถ้วนของหน้าข้อตกลง (ติ๊ก PDPA + ลายเซ็น 3 จุด) ก่อนพิมพ์/export ฉบับเต็ม
+  function checkSigned(): boolean {
+    if (mode !== 'full' || !secs.service?.include) return true
+    const missing: string[] = []
+    if (!signatures.pdpa_consent) missing.push('ติ๊กช่องความยินยอม PDPA')
+    if (!signatures.sig_advisor) missing.push('ลายเซ็นผู้ให้บริการ (นักวางแผนการเงิน)')
+    if (!signatures.sig_client) missing.push('ลายเซ็นผู้รับบริการ (ลูกค้า)')
+    if (!signatures.sig_witness) missing.push('ลายเซ็นพยาน')
+    if (missing.length) {
+      alert('ยังไม่สามารถ export ได้ — กรุณาดำเนินการในหน้า "ข้อตกลงในการให้บริการ" ให้ครบก่อน:\n\n• ' + missing.join('\n• '))
+      return false
+    }
+    return true
+  }
   async function exportPdf() {
+    if (!checkSigned()) return
     const paper = document.getElementById('report-paper')
     if (!paper) return
     // pres → จับ .pd-slide (16:9) · full → จับ .rp-page (A4 portrait)
@@ -972,7 +990,7 @@ export default function ReportPage() {
               )}
               {status === 'saving' && <span style={{ fontSize: 12.5, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}><Loader2 size={14} className="rp-spin" /> กำลังบันทึก...</span>}
               {status === 'saved' && <span style={{ fontSize: 12.5, color: '#4ade80', display: 'flex', alignItems: 'center', gap: 6 }}><Check size={14} /> บันทึกแล้ว</span>}
-              <button onClick={() => window.print()} title="ใช้ระบบพิมพ์ของเบราว์เซอร์ (เหมาะกับเดสก์ท็อป)"
+              <button onClick={() => { if (checkSigned()) window.print() }} title="ใช้ระบบพิมพ์ของเบราว์เซอร์ (เหมาะกับเดสก์ท็อป)"
                 style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: 'transparent', border: '1px solid var(--card-border)', borderRadius: 10, color: 'var(--text-secondary)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
                 <Printer size={16} /> พิมพ์
               </button>
