@@ -411,24 +411,22 @@ export default function ReportPage() {
       derived.push('บริหารภาษีอย่างมีประสิทธิภาพภายใต้สิทธิประโยชน์ที่กฎหมายกำหนด')
       derived.push(profile?.estatePlan ? 'ส่งมอบทรัพย์สินให้ทายาทอย่างเป็นระบบตามความประสงค์' : 'จัดทำแผนมรดกและพินัยกรรมเพื่อส่งมอบทรัพย์สินตามความประสงค์')
       const goals = custom ? custom.split('\n').filter(Boolean) : derived
-      // ตารางแผนดำเนินการ (แหล่งเดียวกับหน้าแผนปฏิบัติการ) — เติมใต้เป้าหมาย
-      type Pl = { plan: string; amount: number; schedule: string; owner: string; priority: string; done: boolean }
-      const ownerTh = (o: string) => o === 'client' ? 'ลูกค้า' : o === 'advisor' ? 'ที่ปรึกษา' : o === 'spouse' ? 'คู่สมรส' : (o || '—')
-      const planLines: Pl[] = []
-      for (const it of actionItems) {
-        const rows: any[] = Array.isArray(it.subPlan) ? it.subPlan : []
-        if (!rows.length) { planLines.push({ plan: it.title, amount: toNum(it.target), schedule: it.dueDate || '', owner: ownerTh(it.owner), priority: '', done: it.status === 'done' }); continue }
-        for (const r of rows) {
-          const plan = String(r?.desc || r?.method || r?.who || '').trim()
-          const amount = toNum(r?.amount ?? r?.premium)
-          if (!plan && amount <= 0 && !r?.schedule) continue
-          planLines.push({ plan: plan || it.title, amount, schedule: r?.schedule || '', owner: String(r?.owner || '').trim() || ownerTh(it.owner), priority: String(r?.priority || ''), done: !!r?.done })
+      // ตารางเป้าหมายทางการเงิน (ระยะสั้น/กลาง/ยาว จากหน้าเป้าหมายทางการเงิน)
+      type Gl = { name: string; amount: number; when: string; owner: string; band: string }
+      const BANDS: { key: 'short' | 'medium' | 'long'; label: string }[] = [
+        { key: 'short', label: 'ระยะสั้น (≤3 ปี)' }, { key: 'medium', label: 'ระยะกลาง (3–7 ปี)' }, { key: 'long', label: 'ระยะยาว (>7 ปี)' },
+      ]
+      const goalLines: Gl[] = []
+      const fg: any = client?.financialGoals || {}
+      const srcs = (fg.self || fg.spouse) ? [fg.self, fg.spouse] : [fg]
+      for (const g of srcs) {
+        if (!g) continue
+        for (const b of BANDS) for (const r of (g[b.key] ?? [])) {
+          if (!String(r?.name || '').trim() && toNum(r?.targetAmount) <= 0) continue
+          const td = String(r?.targetDate || '').trim()
+          goalLines.push({ name: r.name || '—', amount: toNum(r.targetAmount), when: td ? (/^\d+$/.test(td) ? `ภายใน ${td} ปี` : td) : '', owner: r.owner || '', band: b.key })
         }
       }
-      const PR_ORDER: Record<string, number> = { 'สูง': 0, 'กลาง': 1, 'ต่ำ': 2 }
-      planLines.sort((a, b) => (PR_ORDER[a.priority] ?? 3) - (PR_ORDER[b.priority] ?? 3))
-      const PR_COLOR: Record<string, string> = { 'สูง': REDR, 'กลาง': AMBERR, 'ต่ำ': '#64748b' }
-      const fmtD = (s: string) => { const d = new Date(s); return isNaN(d.getTime()) ? s : d.toLocaleDateString('th-TH', { year: '2-digit', month: 'short', day: 'numeric' }) }
       const thG: React.CSSProperties = { padding: '6px 8px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'left' }
       const tdG: React.CSSProperties = { padding: '7px 8px', fontSize: 12.5, color: '#1e293b' }
       return (
@@ -440,33 +438,43 @@ export default function ReportPage() {
               <span style={{ fontSize: 12, color: '#0f172a', fontWeight: 600, lineHeight: 1.6 }}>{g}</span>
             </div>
           ))}
-          {planLines.length > 0 && (
+          {goalLines.length > 0 && (
             <div style={{ marginTop: 44 }}>
-              <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', borderLeft: `5px solid ${TEAL}`, paddingLeft: 10, marginBottom: 10 }}>แผนดำเนินการเพื่อบรรลุเป้าหมาย</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', borderLeft: `5px solid ${TEAL}`, paddingLeft: 10, marginBottom: 10 }}>เป้าหมายทางการเงิน</div>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '1.5px solid #cbd5e1' }}>
-                    <th style={thG}>แผนดำเนินการ</th>
-                    <th style={{ ...thG, textAlign: 'right' }}>จำนวนเงิน</th>
-                    <th style={thG}>กำหนดการ</th>
+                    <th style={thG}>เป้าหมาย</th>
+                    <th style={{ ...thG, textAlign: 'right' }}>จำนวนเงินเป้าหมาย</th>
+                    <th style={thG}>กำหนดเวลา</th>
                     <th style={thG}>ผู้รับผิดชอบ</th>
-                    <th style={thG}>ความสำคัญ</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {planLines.map((l, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ ...tdG, color: l.done ? '#94a3b8' : '#1e293b', textDecoration: l.done ? 'line-through' : 'none' }}>{l.done ? '✓ ' : ''}{l.plan}</td>
-                      <td style={{ ...tdG, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: l.amount > 0 ? '#0f172a' : '#94a3b8' }}>{l.amount > 0 ? fmt(l.amount) : '—'}</td>
-                      <td style={{ ...tdG, color: '#475569' }}>{l.schedule ? fmtD(l.schedule) : '—'}</td>
-                      <td style={{ ...tdG, color: '#475569' }}>{l.owner}</td>
-                      <td style={{ ...tdG, fontWeight: 700, color: PR_COLOR[l.priority] || '#94a3b8' }}>{l.priority || '—'}</td>
-                    </tr>
-                  ))}
+                  {BANDS.map(b => {
+                    const rows = goalLines.filter(g => g.band === b.key)
+                    if (!rows.length) return null
+                    return [
+                      <tr key={b.key}><td colSpan={4} style={{ padding: '9px 8px 4px', fontSize: 12, fontWeight: 800, color: TEAL }}>{b.label}</td></tr>,
+                      ...rows.map((g, i) => (
+                        <tr key={`${b.key}${i}`} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ ...tdG, paddingLeft: 20 }}>{g.name}</td>
+                          <td style={{ ...tdG, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: g.amount > 0 ? '#0f172a' : '#94a3b8' }}>{g.amount > 0 ? fmt(g.amount) : '—'}</td>
+                          <td style={{ ...tdG, color: '#475569' }}>{g.when || '—'}</td>
+                          <td style={{ ...tdG, color: '#475569' }}>{g.owner || '—'}</td>
+                        </tr>
+                      )),
+                      <tr key={`${b.key}t`} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ ...tdG, fontWeight: 700, color: '#64748b', paddingLeft: 20 }}>รวม{b.label.split(' ')[0]}</td>
+                        <td style={{ ...tdG, textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: '#0f172a' }}>{fmt(rows.reduce((a, g) => a + g.amount, 0))}</td>
+                        <td /><td />
+                      </tr>,
+                    ]
+                  })}
                   <tr style={{ borderTop: '2px solid #cbd5e1' }}>
                     <td style={{ ...tdG, fontWeight: 800, color: '#0f172a' }}>รวมเงินสำหรับทุกเป้าหมาย</td>
-                    <td style={{ ...tdG, textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: TEAL }}>{fmt(planLines.reduce((a, l) => a + l.amount, 0))}</td>
-                    <td /><td /><td />
+                    <td style={{ ...tdG, textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: TEAL }}>{fmt(goalLines.reduce((a, g) => a + g.amount, 0))}</td>
+                    <td /><td />
                   </tr>
                 </tbody>
               </table>
