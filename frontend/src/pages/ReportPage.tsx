@@ -396,7 +396,12 @@ export default function ReportPage() {
                 ? <img src={signatures.sig_witness} alt="" style={{ maxHeight: 36, maxWidth: '100%' }} />
                 : <span className="no-print" style={{ fontSize: 10, color: '#cbd5e1', paddingBottom: 3 }}>คลิกเพื่อลงนาม</span>}
             </span>
-            <span>(.....................................................) วันที่ {today}</span>
+            <span style={{ display: 'inline-flex', alignItems: 'flex-end' }}>
+              (<input value={signatures.witness_name || ''} onChange={e => setSignatures(s => ({ ...s, witness_name: e.target.value }))}
+                placeholder="พิมพ์ชื่อพยาน" title="พิมพ์ชื่อ-นามสกุลพยาน"
+                style={{ width: 170, border: 'none', borderBottom: '1px dotted #94a3b8', outline: 'none', background: 'transparent', textAlign: 'center', fontSize: 11, fontFamily: 'inherit', color: '#0f172a', fontWeight: 700, padding: '0 2px' }} />)
+            </span>
+            <span>วันที่ {today}</span>
           </div>
         </div>
       )
