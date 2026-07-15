@@ -9,7 +9,7 @@ import { PieChart, Pie, Cell, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, L
 import { useRetirementReadiness } from '../hooks/useRetirementReadiness'
 import { useInsuranceReadiness } from '../hooks/useInsuranceReadiness'
 import { useEducationReadiness } from '../hooks/useEducationReadiness'
-import { calc as calcTaxCalc, defaultState as defaultTaxState } from '../lib/tax'
+import { calc as calcTaxCalc, defaultState as defaultTaxState, expenseFor, BRACKETS, type TaxState } from '../lib/tax'
 import { hasSpouseInfo } from '../lib/spouse'
 import { useInsuranceCoverage } from '../components/InsuranceCoverageSummary'
 import { PORTFOLIO_SETS, DEFAULT_ASSETS, DEFAULT_CORR, computePortfolio, applyMarketData, applyCorrelation } from '../lib/portfolioReturns'
@@ -66,13 +66,11 @@ const SECTIONS: Sec[] = [
   { k: 'finance_sp', t: 'สรุปผลการวิเคราะห์ข้อมูลทางการเงินส่วนบุคคล (คู่สมรส)', lvl: 1, auto: 'finance_sp' },
   { k: 'fin_cf2_sp', t: 'งบกระแสเงินสด — คู่สมรส', lvl: 2, auto: 'fin_cf2_sp' },
   { k: 'fin_ratio2_sp', t: 'อัตราส่วนทางการเงิน — คู่สมรส', lvl: 2, auto: 'fin_ratio2_sp' },
-  { k: 'goals', t: 'ผลการวิเคราะห์เป้าหมายทางการเงิน', lvl: 1 },
-  { k: 'g_debt', t: 'สรุปผลการวิเคราะห์ด้านหนี้สิน', lvl: 2, auto: 'debt' },
   { k: 'g_insurance', t: 'การวิเคราะห์ความเสี่ยงภัยและความต้องการด้านการประกันภัย', lvl: 2, auto: 'insurance' },
   { k: 'g_education', t: 'เป้าหมายทางการเงินเพื่อการศึกษาบุตร', lvl: 2, auto: 'education' },
   { k: 'g_retire', t: 'ความต้องการทางการเงินเพื่อการเกษียณ', lvl: 2, auto: 'retirement' },
-  { k: 'g_tax', t: 'กลยุทธ์ในการวางแผนภาษี', lvl: 2 },
-  { k: 'g_estate', t: 'แนวทางการจัดการทรัพย์สินและมรดก', lvl: 2 },
+  { k: 'g_tax', t: 'การวิเคราะห์ภาษีเงินได้', lvl: 2, auto: 'taxfull' },
+  { k: 'g_estate', t: 'แนวทางการจัดการทรัพย์สินและมรดก', lvl: 2, auto: 'estatefull' },
   { k: 'g_port', t: 'รูปแบบพอร์ตลงทุนที่เหมาะสม', lvl: 2, auto: 'portfolio' },
   { k: 'g_port_reco', t: 'พอร์ตการลงทุนที่แนะนำ', lvl: 2, auto: 'portfolio_reco' },
   { k: 'assumptions', t: 'สมมติฐานที่ใช้ในการวางแผน', lvl: 1, auto: 'assumptions' },
@@ -120,6 +118,7 @@ export default function ReportPage() {
   const covSelf = useInsuranceCoverage('self')
   const covSp = useInsuranceCoverage('spouse')
   const { data: marketData } = useQuery({ queryKey: ['market-data'], queryFn: () => api.get('/market-data').then(r => r.data), staleTime: 5 * 60 * 1000, retry: 1 })
+  const { data: estatePlanQ } = useQuery({ queryKey: ['estate-plan'], queryFn: () => api.get('/estate-plan').then(r => r.data), retry: false })
 
   const [title, setTitle] = useState('แผนการเงินส่วนบุคคล')
   const [mode, setMode] = useState<'full' | 'pres'>('full')
@@ -511,9 +510,9 @@ export default function ReportPage() {
       // ── คำรับทราบ (หน้าสุดท้ายเสมอ · บีบ 1 หน้า) — ชื่อนักวางแผน/ลูกค้าเติมอัตโนมัติ ──
       const advName = advisor?.fullName || 'นักวางแผนการเงิน'
       const clName = `คุณ${clientName}${hasSpouse ? ' และคู่สมรส' : ''}`
-      const P = ({ children }: { children: React.ReactNode }) => <p style={{ fontSize: 9.5, color: '#334155', lineHeight: 1.65, marginBottom: 7, textAlign: 'justify' }}>{children}</p>
+      const P = ({ children }: { children: React.ReactNode }) => <p style={{ fontSize: 11.5, color: '#334155', lineHeight: 1.85, marginBottom: 11, textAlign: 'justify' }}>{children}</p>
       const U = ({ v }: { v: string }) => <span style={{ fontWeight: 800, color: '#0f172a', borderBottom: '1px solid #64748b', padding: '0 2px' }}>{v}</span>
-      const H = ({ t }: { t: string }) => <div style={{ fontSize: 11.5, fontWeight: 800, color: '#0f172a', margin: '10px 0 5px' }}>{t}</div>
+      const H = ({ t }: { t: string }) => <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', margin: '14px 0 7px' }}>{t}</div>
       return (
         <div style={{ marginBottom: 8 }}>
           <H t="คำรับทราบ" />
@@ -527,6 +526,250 @@ export default function ReportPage() {
           <P>รายงานฉบับนี้จัดทำขึ้นจากข้อมูลและสมมติฐานที่ท่าน (ลูกค้า) ให้ไว้ รายงานนี้นำเสนอแนวทางทั่วไปในภาพรวมเกี่ยวกับประโยชน์ของแนวคิดบางประการในการวางแผนทางการเงิน และไม่ถือเป็นคำแนะนำหรือข้อเสนอให้ทำธุรกรรมใดโดยเฉพาะ รายงานฉบับรวมนี้จัดทำขึ้นเพื่อให้ข้อมูลและเพื่ออำนวยความสะดวกแก่ท่าน เราขอแนะนำให้ท่านทบทวนแผนอย่างน้อยปีละครั้ง เว้นแต่สถานการณ์ส่วนบุคคลหรือสถานะทางการเงินของท่านจะเปลี่ยนแปลงจนจำเป็นต้องทบทวนบ่อยกว่านั้น ควรพิจารณารายงานทั้งหมดควบคู่กับสรุปข้อเท็จจริงและหน้าข้อจำกัดความรับผิด</P>
           <P>คำว่า "แผน" หรือ "การวางแผน" ที่ใช้ในรายงานนี้ ไม่ได้หมายความว่ามีการให้คำแนะนำเพื่อนำแผนทางการเงินอย่างใดอย่างหนึ่งไปใช้ หรือให้ลงทุนในลักษณะใดโดยเฉพาะ และรายงานนี้ไม่ได้ให้คำแนะนำด้านกฎหมาย บัญชี การเงิน ภาษี หรือด้านอื่น ๆ แต่เป็นการสรุปกลยุทธ์ทางการเงินที่อาจนำไปใช้ได้ ภาพประกอบในรายงานนี้เป็นการคาดการณ์ตามสมมติฐานต่าง ๆ จึงเป็นเพียงข้อมูลสมมติ และไม่รับประกันผลตอบแทนจากการลงทุน ท่านควรปรึกษาที่ปรึกษาด้านภาษี และ/หรือที่ปรึกษาด้านกฎหมาย ก่อนนำธุรกรรมหรือกลยุทธ์ใด ๆ ที่เกี่ยวข้องกับการเงินของท่านไปใช้</P>
           <P>นอกจากนี้ รายงานนี้อาจไม่ได้แสดงรายการสินทรัพย์หรือธุรกรรมทั้งหมด ต้นทุนของรายการเหล่านั้น หรือเงินที่ท่านได้รับ รายงานอาจมีข้อมูลเกี่ยวกับสินทรัพย์ที่ไม่ได้ถืออยู่กับนายหน้า/ผู้ค้าหลักทรัพย์ที่ผู้แทนทางการเงินของท่านสังกัดอยู่ ดังนั้น สินทรัพย์ดังกล่าวจึงจะไม่ปรากฏอยู่ในสมุดบัญชีและบันทึกของนายหน้า/ผู้ค้าหลักทรัพย์ ราคาที่ระบุไว้ในรายงานนี้ได้มาจากแหล่งข้อมูลที่เราเชื่อว่ามีความน่าเชื่อถือ แต่ไม่มีการรับประกันความถูกต้อง ผลการดำเนินงานในอดีตไม่สามารถรับประกันผลการดำเนินงานในอนาคตได้ และสิ่งสำคัญคือต้องตระหนักว่าผลลัพธ์จริงอาจแตกต่างจากการคาดการณ์ในรายงานนี้ การนำเสนอผลตอบแทนจากการลงทุนในรายงานนี้ไม่ได้สะท้อนการหักค่าคอมมิชชันใด ๆ มูลค่าและ/หรืออัตราผลตอบแทนที่คาดการณ์อาจไม่ได้คำนึงถึงค่าธรรมเนียมการเวนคืนผลิตภัณฑ์ที่ท่านอาจถือครองอยู่ แต่จะแสดงค่าธรรมเนียมหรือค่าใช้จ่ายของผลิตภัณฑ์เมื่อที่ปรึกษา/ผู้แทนได้บันทึกข้อมูลดังกล่าวไว้ การหักค่าใช้จ่ายเหล่านี้จะทำให้อัตราผลตอบแทนลดลง</P>
+        </div>
+      )
+    }
+    if (kind === 'taxfull') {
+      // ── การวิเคราะห์ภาษีเงินได้ — จำลองหน้าวางแผนภาษีต่อคน ──
+      const persons = [
+        { name: `คุณ${client?.firstName || 'ลูกค้า'}`, st: taxPlanQ?.self, tint: TEAL },
+        ...(hasSpouse ? [{ name: client?.spouseProfile?.firstName ? `คุณ${client.spouseProfile.firstName}` : 'คู่สมรส', st: taxPlanQ?.spouse, tint: '#8b5cf6' }] : []),
+      ].filter(p2 => p2.st)
+      if (!persons.length) return <div style={{ fontSize: 12.5, color: '#94a3b8', marginBottom: 12 }}>ยังไม่มีข้อมูลแผนภาษี — กรอกที่หน้า "วางแผนภาษี" ก่อน</div>
+      const INC_ROWS: { l: string; sec: string; k: string; expKey?: string }[] = [
+        { l: 'เงินเดือน/ค่าจ้าง', sec: '40(1)', k: 'income40_1', expKey: 'income40_1' },
+        { l: 'ค่าจ้าง/คอมมิชชั่น', sec: '40(2)', k: 'income40_2', expKey: 'income40_2' },
+        { l: 'ค่าลิขสิทธิ์/Goodwill', sec: '40(3)', k: 'income40_3', expKey: 'income40_3' },
+        { l: 'ดอกเบี้ย', sec: '40(4)', k: 'interest' },
+        { l: 'เงินปันผล', sec: '40(4)', k: 'dividend' },
+        { l: 'วิชาชีพอิสระ', sec: '40(6)', k: 'prof40_6', expKey: 'prof40_6' },
+        { l: 'รับเหมา (มีค่าของ)', sec: '40(7)', k: 'income40_7', expKey: 'income40_7' },
+        { l: 'ค่าเช่าทรัพย์สิน', sec: '40(5)', k: 'rental', expKey: 'rental' },
+        { l: 'เงินได้อื่นๆ', sec: '40(8)', k: 'other40', expKey: 'other40' },
+      ]
+      const tdT: React.CSSProperties = { padding: '5px 8px', fontSize: 11.5, color: '#334155' }
+      return (
+        <div style={{ marginBottom: 16 }}>
+          {persons.map(p2 => {
+            const st = { ...defaultTaxState(), ...(p2.st as TaxState) }
+            const c = calcTaxCalc(st)
+            const incRows = INC_ROWS
+              .map(r => ({ ...r, inc: toNum((st as any)[r.k]), exp: r.expKey ? expenseFor(st, r.expKey as any) : 0 }))
+              .filter(r => r.inc > 0)
+            // ภาษีแต่ละขั้นจากเงินได้สุทธิ
+            const brRows = BRACKETS.map(b => ({
+              label: b.rate === 0 ? `ยกเว้น · 0–${fmt(b.max)}` : `${b.rate * 100}% · ${fmt(b.min)}–${b.max > 9e9 ? 'ขึ้นไป' : fmt(b.max)}`,
+              amt: c.ni > b.min ? (Math.min(c.ni, b.max) - b.min) * b.rate : null,
+            })).filter(b => b.amt !== null)
+            return (
+              <div key={p2.name} style={{ marginBottom: 22, breakInside: 'avoid' }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: p2.tint, borderLeft: `5px solid ${p2.tint}`, paddingLeft: 10, marginBottom: 10 }}>{p2.name} · ปีภาษี {new Date().getFullYear() + 543}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.35fr 1fr', gap: 14 }}>
+                  {/* ซ้าย: เงินได้พึงประเมิน + ภาษีแต่ละขั้น */}
+                  <div>
+                    <div style={{ border: '1px solid #f1f5f9', borderRadius: 10, overflow: 'hidden', marginBottom: 10 }}>
+                      <div style={{ padding: '7px 12px', background: '#f8fafc', fontSize: 12, fontWeight: 800, color: '#0f172a' }}>เงินได้พึงประเมิน</div>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                            {['ประเภทเงินได้', 'เงินได้', 'ค่าใช้จ่าย', 'หลังหักค่าใช้จ่าย'].map((h, i2) => (
+                              <th key={h} style={{ padding: '4px 8px', fontSize: 9.5, fontWeight: 700, color: '#64748b', textAlign: i2 === 0 ? 'left' : 'right' }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {incRows.map(r => (
+                            <tr key={r.k} style={{ borderBottom: '1px solid #f8fafc' }}>
+                              <td style={tdT}>{r.l} <span style={{ fontSize: 9, color: '#94a3b8', background: '#f1f5f9', borderRadius: 4, padding: '1px 5px' }}>{r.sec}</span></td>
+                              <td style={{ ...tdT, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700 }}>{fmt(r.inc)}</td>
+                              <td style={{ ...tdT, textAlign: 'right', fontFamily: 'monospace', color: AMBERR }}>{r.exp > 0 ? `−${fmt(r.exp)}` : '—'}</td>
+                              <td style={{ ...tdT, textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: '#0f172a' }}>{fmt(r.inc - r.exp)}</td>
+                            </tr>
+                          ))}
+                          <tr style={{ borderTop: '1.5px solid #cbd5e1' }}>
+                            <td style={{ ...tdT, fontWeight: 800, color: '#0f172a' }}>รวม</td>
+                            <td style={{ ...tdT, textAlign: 'right', fontFamily: 'monospace', fontWeight: 800 }}>{fmt(c.ti)}</td>
+                            <td style={{ ...tdT, textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: AMBERR }}>−{fmt(c.expD)}</td>
+                            <td style={{ ...tdT, textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: '#0f172a' }}>{fmt(c.ti - c.expD)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <div style={{ border: '1px solid #f1f5f9', borderRadius: 10, overflow: 'hidden' }}>
+                      <div style={{ padding: '7px 12px', background: '#f8fafc', fontSize: 12, fontWeight: 800, color: '#0f172a' }}>ภาษีแต่ละขั้น (เงินได้สุทธิ {fmt(c.ni)} บาท)</div>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <tbody>{brRows.map(b => (
+                          <tr key={b.label} style={{ borderBottom: '1px solid #f8fafc' }}>
+                            <td style={tdT}>{b.label}</td>
+                            <td style={{ ...tdT, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700 }}>{fmt(b.amt as number)}</td>
+                          </tr>
+                        ))}</tbody>
+                      </table>
+                    </div>
+                  </div>
+                  {/* ขวา: ภาษีสุทธิ + สรุป + รายการลดหย่อน */}
+                  <div>
+                    <div style={{ border: `1px solid ${p2.tint}55`, background: '#f0fdfa', borderRadius: 10, padding: '10px 14px', marginBottom: 10 }}>
+                      <div style={{ fontSize: 10.5, color: '#64748b' }}>ภาษีที่ต้องชำระ (สุทธิ)</div>
+                      <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'monospace', color: p2.tint }}>{fmt(c.netTax)} <span style={{ fontSize: 12 }}>บาท</span></div>
+                      <div style={{ fontSize: 10, color: '#94a3b8' }}>≈ {fmt(c.mth)} บาท/เดือน{st.prepaid > 0 ? ` · ภาษีก่อนหัก ณ ที่จ่าย ${fmt(c.tax)}` : ''}</div>
+                    </div>
+                    <div style={{ border: '1px solid #f1f5f9', borderRadius: 10, padding: '8px 12px', marginBottom: 10 }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>สรุป</div>
+                      {([
+                        ['เงินได้พึงประเมินรวม', fmt(c.ti), '#0f172a'],
+                        ['หักค่าใช้จ่าย', `−${fmt(c.expD)}`, AMBERR],
+                        ['หักค่าลดหย่อนรวม', `−${fmt(c.allD - c.expD)}`, AMBERR],
+                        ['เงินได้สุทธิ (ฐานภาษี)', fmt(c.ni), TEAL],
+                        ['อัตราภาษีขั้นสูงสุด', `${c.mr.toFixed(0)}%`, AMBERR],
+                        ['อัตราภาษีเฉลี่ย', `${c.eff.toFixed(2)}%`, AMBERR],
+                      ] as const).map(([l, v, col]) => (
+                        <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid #f8fafc', fontSize: 11 }}>
+                          <span style={{ color: '#64748b' }}>{l}</span>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 800, color: col }}>{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ border: '1px solid #f1f5f9', borderRadius: 10, padding: '8px 12px' }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>รายการลดหย่อน</div>
+                      {c.deducts.map(d => (
+                        <div key={d.l} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0', fontSize: 10.5 }}>
+                          <span style={{ width: 7, height: 7, borderRadius: 999, background: d.c, flexShrink: 0 }} />
+                          <span style={{ flex: 1, color: '#475569' }}>{d.l}</span>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0f172a' }}>{fmt(d.v)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
+    if (kind === 'estatefull') {
+      // ── วางแผนมรดก: จำลองการแบ่งมรดก + ภาษีมรดก + สภาพคล่อง (สูตรเดียวกับหน้าวางแผนมรดก/deck) ──
+      const selfName2 = `คุณ${client?.firstName || 'ลูกค้า'}`
+      const spouseName2 = client?.spouseProfile?.firstName ? `คุณ${client.spouseProfile.firstName}` : 'คู่สมรส'
+      const build = (who: 'self' | 'spouse') => {
+        const inputs: any = estatePlanQ?.[who] ?? {}
+        const R4 = who === 'self' ? ratios : ratiosSp
+        const netWorth = toNum(R4?.summary?.netWorth)
+        const liquid = toNum(R4?.summary?.liquidAssets)
+        const debt = toNum(R4?.summary?.totalDebtBalance)
+        const married = /สมรส/.test(String(client?.maritalStatus ?? '')) || hasSpouse
+        const survivorName = who === 'self' ? spouseName2 : selfName2
+        const spouseIsHeir = !!inputs.spouseAlive && married
+        const spouseHalf = spouseIsHeir ? netWorth * (toNum(inputs.maritalAssetPct ?? 100) / 100) / 2 : 0
+        const estateVal = Math.max(0, netWorth - spouseHalf)
+        const kids: any[] = client?.children ?? []
+        const parentsAlive = (inputs.fatherAlive ? 1 : 0) + (inputs.motherAlive ? 1 : 0)
+        const wishes: any[] = inputs.wishes ?? []
+        const wishTotal = wishes.reduce((x, w) => x + (Number(w.pct) || 0), 0)
+        const useWill = !!inputs.hasWill && wishes.length > 0 && wishTotal > 0
+        const THRESH = 100_000_000
+        const heirTax = (share: number, rel: string) => rel === 'spouse' ? 0 : Math.max(0, share - THRESH) * (rel === 'lineal' ? 0.05 : 0.10)
+        let heirs: { name: string; share: number; rel: string; note: string }[]
+        if (useWill) {
+          heirs = wishes.filter(w => (Number(w.pct) || 0) > 0).map(w => ({ name: w.name || 'ผู้รับ', share: estateVal * (Number(w.pct) || 0) / 100, rel: w.rel || 'lineal', note: `ตามพินัยกรรม ${Number(w.pct) || 0}%` }))
+        } else {
+          const shares = kids.length + (spouseIsHeir ? 1 : 0) + parentsAlive
+          const each = shares > 0 ? estateVal / shares : estateVal
+          heirs = []
+          if (spouseIsHeir) heirs.push({ name: survivorName, share: each, rel: 'spouse', note: 'คู่สมรส (รับส่วนเท่าบุตร)' })
+          kids.forEach((c2, i2) => heirs.push({ name: c2.name || `บุตรคนที่ ${i2 + 1}`, share: each, rel: 'lineal', note: 'บุตร (ผู้สืบสันดาน)' }))
+          if (inputs.fatherAlive) heirs.push({ name: 'บิดา', share: each, rel: 'lineal', note: 'บิดา (ม.1630 ว.2)' })
+          if (inputs.motherAlive) heirs.push({ name: 'มารดา', share: each, rel: 'lineal', note: 'มารดา (ม.1630 ว.2)' })
+        }
+        const totalTax = heirs.reduce((x, h) => x + heirTax(h.share, h.rel), 0)
+        const needLiquid = totalTax + debt
+        return { netWorth, liquid, debt, spouseIsHeir, spouseHalf, estateVal, useWill, heirs, totalTax, needLiquid, hasWill: !!inputs.hasWill, willType: inputs.willType, survivorName, heirTax }
+      }
+      const cases = [
+        { title: `กรณี ${selfName2} เสียชีวิต`, e: build('self'), tint: TEAL },
+        ...(hasSpouse ? [{ title: `กรณี ${spouseName2} เสียชีวิต`, e: build('spouse'), tint: '#8b5cf6' }] : []),
+      ]
+      const relLabel = (rel: string) => rel === 'spouse' ? 'คู่สมรส (ยกเว้นภาษี)' : rel === 'lineal' ? 'บุพการี/ผู้สืบสันดาน (5%)' : 'อื่น ๆ (10%)'
+      const Card = ({ l, v, c, note }: { l: string; v: string; c: string; note?: string }) => (
+        <div style={{ border: '1px solid #f1f5f9', borderLeft: `4px solid ${c}`, borderRadius: 10, padding: '8px 12px' }}>
+          <div style={{ fontSize: 10, color: '#94a3b8' }}>{l}</div>
+          <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'monospace', color: c, marginTop: 2 }}>{v}</div>
+          {note && <div style={{ fontSize: 9.5, color: '#cbd5e1' }}>{note}</div>}
+        </div>
+      )
+      return (
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ fontSize: 11.5, color: '#94a3b8', lineHeight: 1.7, marginBottom: 14 }}>
+            ประมาณการการแบ่งมรดกตามประมวลกฎหมายแพ่งและพาณิชย์ บรรพ 6 · ภาษีมรดกตาม พ.ร.บ.ภาษีการรับมรดก 2558 (ผู้รับสุทธิเกิน 100 ล้าน: ผู้สืบสันดาน/บุพการี 5% · อื่น 10% · คู่สมรสยกเว้น) — เป็นเครื่องมือประกอบการวางแผนเท่านั้น การจัดทำพินัยกรรมจริงควรปรึกษาทนายความ
+          </p>
+          {cases.map(({ title, e, tint }) => (
+            <div key={title} style={{ marginBottom: 22, breakInside: 'avoid' }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: tint, borderLeft: `5px solid ${tint}`, paddingLeft: 10, marginBottom: 10 }}>{title}</div>
+              {/* กองมรดกสุทธิ */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 12 }}>
+                <Card l="ความมั่งคั่งสุทธิ (สินทรัพย์ − หนี้สิน)" v={fmt(e.netWorth)} c="#0f172a" note="ดึงจากงบดุล" />
+                <Card l="คู่สมรสรับก่อน (½ สินสมรส)" v={e.spouseIsHeir ? fmt(e.spouseHalf) : '—'} c="#0284c7" note={e.spouseIsHeir ? 'ไม่ถือเป็นมรดก' : 'ไม่มีคู่สมรสที่มีชีวิตอยู่'} />
+                <Card l="กองมรดกสุทธิ (นำมาแบ่ง)" v={fmt(e.estateVal)} c={tint} />
+              </div>
+              {/* การแบ่งมรดก */}
+              <div style={{ border: '1px solid #f1f5f9', borderRadius: 10, overflow: 'hidden', marginBottom: 10 }}>
+                <div style={{ padding: '7px 12px', background: '#f8fafc', fontSize: 12, fontWeight: 800, color: '#0f172a' }}>
+                  การแบ่งมรดก{e.useWill ? 'ตามพินัยกรรม' : 'ตามกฎหมาย (กรณีไม่มีพินัยกรรม · ทายาทโดยธรรม ม.1629, 1635)'}
+                  <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: e.hasWill ? GREENR : AMBERR, background: e.hasWill ? `${GREENR}14` : `${AMBERR}14`, borderRadius: 999, padding: '2px 9px' }}>
+                    {e.hasWill ? `มีพินัยกรรมแล้ว${e.willType ? ` · ${e.willType}` : ''}` : 'ยังไม่มีพินัยกรรม — ควรจัดทำ'}
+                  </span>
+                </div>
+                {e.heirs.length === 0
+                  ? <div style={{ padding: '8px 12px', fontSize: 12, color: '#94a3b8' }}>— ยังไม่มีข้อมูลทายาท (กรอกที่หน้า "วางแผนมรดก") —</div>
+                  : e.heirs.map((h, i2) => {
+                      const pctSh = e.estateVal > 0 ? h.share / e.estateVal * 100 : 0
+                      return (
+                        <div key={i2} style={{ padding: '7px 12px', borderBottom: '1px solid #f8fafc' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                            <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0f172a' }}>{h.name} <span style={{ fontSize: 10.5, fontWeight: 400, color: '#94a3b8' }}>· {h.note}</span></span>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 800, color: tint }}>{fmt(h.share)} <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 400 }}>({pctSh.toFixed(1)}%)</span></span>
+                          </div>
+                          <div style={{ height: 5, borderRadius: 999, background: '#f1f5f9', marginTop: 4, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${Math.max(2, pctSh)}%`, borderRadius: 999, background: tint }} />
+                          </div>
+                          {h.rel === 'spouse' && e.spouseHalf > 0 && (
+                            <div style={{ fontSize: 10, color: '#0284c7', marginTop: 3 }}>+ ½ สินสมรส {fmt(e.spouseHalf)} → รับรวม {fmt(h.share + e.spouseHalf)} บาท</div>
+                          )}
+                        </div>
+                      )
+                    })}
+              </div>
+              {/* ภาษีมรดก & สภาพคล่อง */}
+              <div style={{ border: '1px solid #f1f5f9', borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{ padding: '7px 12px', background: '#f8fafc', fontSize: 12, fontWeight: 800, color: '#0f172a' }}>ภาษีมรดก & สภาพคล่อง</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5 }}>
+                  <tbody>
+                    {e.heirs.map((h, i2) => {
+                      const tx = e.heirTax(h.share, h.rel)
+                      return (
+                        <tr key={i2} style={{ borderBottom: '1px solid #f8fafc' }}>
+                          <td style={{ padding: '5px 12px', color: '#334155' }}>{h.name}</td>
+                          <td style={{ padding: '5px 12px', color: '#94a3b8', fontSize: 10.5 }}>{relLabel(h.rel)}</td>
+                          <td style={{ padding: '5px 12px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700 }}>{fmt(h.share)}</td>
+                          <td style={{ padding: '5px 12px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: tx > 0 ? REDR : GREENR, width: 90 }}>{tx > 0 ? fmt(tx) : 'ยกเว้น'}</td>
+                        </tr>
+                      )
+                    })}
+                    <tr style={{ borderTop: '1.5px solid #cbd5e1' }}>
+                      <td colSpan={3} style={{ padding: '6px 12px', fontWeight: 800, color: '#0f172a' }}>ภาษีมรดกรวม{e.totalTax === 0 ? ' — ผู้รับแต่ละรายได้รับไม่เกิน 100 ล้านบาท จึงไม่มีภาษีมรดก' : ''}</td>
+                      <td style={{ padding: '6px 12px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: e.totalTax > 0 ? REDR : GREENR }}>{fmt(e.totalTax)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, padding: '10px 12px', background: '#fffbf5' }}>
+                  <Card l="ต้องใช้ (ภาษี + หนี้สินตกทอด)" v={fmt(e.needLiquid)} c={AMBERR} note={`ภาษี ${fmt(e.totalTax)} + หนี้ ${fmt(e.debt)}`} />
+                  <Card l="สินทรัพย์สภาพคล่อง" v={fmt(e.liquid)} c="#0284c7" />
+                  <Card l={e.liquid >= e.needLiquid ? 'สภาพคล่องเพียงพอ (คงเหลือ)' : 'ขาดสภาพคล่อง'} v={fmt(Math.abs(e.liquid - e.needLiquid))} c={e.liquid >= e.needLiquid ? GREENR : REDR} note={e.liquid >= e.needLiquid ? undefined : 'แนะนำทำประกันชีวิต (ระบุผู้รับผลประโยชน์) เพื่อเติมสภาพคล่อง'} />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )
     }
@@ -930,14 +1173,6 @@ export default function ReportPage() {
           )}
         </div>
       )
-    }
-    if (kind === 'debt') {
-      const L = toNum(sm.totalDebtBalance), A = toNum(sm.totalAssets), mp = toNum(sm.totalMonthlyPayment)
-      return <DataTable rows={[
-        ['ภาระหนี้สินคงค้างรวม', L, '#f87171'],
-        ['ภาระผ่อนชำระต่อเดือน', mp, '#f59e0b'],
-        ['อัตราส่วนหนี้สินต่อสินทรัพย์ (%)', A > 0 ? Math.round(L / A * 100) : 0, '#475569'],
-      ]} />
     }
     if (kind === 'insurance') {
       // ── การวิเคราะห์ความเสี่ยงภัยและความต้องการด้านการประกันภัย (ตามเอกสารตัวอย่าง) ──
