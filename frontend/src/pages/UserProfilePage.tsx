@@ -15,13 +15,14 @@ interface AdvisorProfile {
   // ที่อยู่แบบมีโครงสร้าง
   addrHouseNo: string; addrSubdistrict: string; addrDistrict: string; addrProvince: string; addrZipcode: string
   // ใบอนุญาตประกอบวิชาชีพ
+  company: string           // สังกัดบริษัท
   licenseInsurance: string  // ตัวแทน/นายหน้าประกันชีวิต
   licenseCFP: string        // นักวางแผนการเงิน CFP
   licenseAFPT: string       // ที่ปรึกษาการเงิน AFPT
   licenseFChFP: string      // ที่ปรึกษาการเงิน FChFP
   bio: string         // ≤ 500 words
 }
-const defaultProfile = (): AdvisorProfile => ({ photo: '', fullName: '', position: '', phone: '', email: '', address: '', addrHouseNo: '', addrSubdistrict: '', addrDistrict: '', addrProvince: '', addrZipcode: '', licenseInsurance: '', licenseCFP: '', licenseAFPT: '', licenseFChFP: '', bio: '' })
+const defaultProfile = (): AdvisorProfile => ({ photo: '', fullName: '', position: '', phone: '', email: '', address: '', addrHouseNo: '', addrSubdistrict: '', addrDistrict: '', addrProvince: '', addrZipcode: '', company: '', licenseInsurance: '', licenseCFP: '', licenseAFPT: '', licenseFChFP: '', bio: '' })
 
 const card: React.CSSProperties = { background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, padding: '20px 22px' }
 const inp: React.CSSProperties = { width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--card-border)', background: 'var(--navy-900)', color: 'var(--text-primary)', fontSize: 13.5, outline: 'none' }
@@ -178,7 +179,10 @@ export default function UserProfilePage() {
           <div>
             <label style={lbl}>ใบอนุญาตประกอบวิชาชีพ</label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
-              <div><label style={{ ...lbl, fontSize: 11 }}>เลขที่ใบอนุญาตตัวแทน/นายหน้าประกันชีวิต</label><input style={inp} value={p.licenseInsurance} onChange={e => set('licenseInsurance', e.target.value)} placeholder="เลขที่ใบอนุญาต" /></div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
+                <div><label style={{ ...lbl, fontSize: 11 }}>เลขที่ใบอนุญาตตัวแทน/นายหน้าประกันชีวิต</label><input style={inp} value={p.licenseInsurance} onChange={e => set('licenseInsurance', e.target.value)} placeholder="เลขที่ใบอนุญาต" /></div>
+                <div><label style={{ ...lbl, fontSize: 11 }}>สังกัดบริษัท</label><input style={inp} value={p.company} onChange={e => set('company', e.target.value)} placeholder="ชื่อบริษัท/สังกัด" /></div>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
                 <div><label style={{ ...lbl, fontSize: 11 }}>เลขที่ใบอนุญาตนักวางแผนการเงิน CFP</label><input style={inp} value={p.licenseCFP} onChange={e => set('licenseCFP', e.target.value)} placeholder="เลขที่ CFP" /></div>
                 <div><label style={{ ...lbl, fontSize: 11 }}>เลขที่ใบอนุญาตที่ปรึกษาการเงิน AFPT</label><input style={inp} value={p.licenseAFPT} onChange={e => set('licenseAFPT', e.target.value)} placeholder="เลขที่ AFPT" /></div>

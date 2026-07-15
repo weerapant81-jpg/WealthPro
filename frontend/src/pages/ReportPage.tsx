@@ -332,7 +332,7 @@ export default function ReportPage() {
               <div style={{ fontSize: 11, fontWeight: 800, color: TEAL, marginBottom: 6 }}>ผู้ให้บริการ (นักวางแผนการเงิน)</div>
               <div style={{ fontSize: 11.5, color: '#334155', display: 'grid', gap: 4 }}>
                 <div>ชื่อ: <Blank w={150} v={advisor?.fullName} /></div>
-                <div>ใบอนุญาต/ใบรับรอง: <Blank w={100} v={advisor?.license} /></div>
+                <div>ใบอนุญาต/ใบรับรอง: <Blank w={100} v={advisor?.licenseCFP || advisor?.licenseInsurance} /></div>
                 <div>บริษัท/สังกัด: <Blank w={120} v={advisor?.company} /></div>
                 <div>โทรศัพท์: <Blank w={70} v={advisor?.phone} /> อีเมล: <Blank w={80} v={advisor?.email} /></div>
               </div>
