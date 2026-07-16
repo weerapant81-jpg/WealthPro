@@ -210,6 +210,16 @@ export default function TaxPlanningPage() {
 
   const c = useMemo(() => calc(s), [s])
 
+  // ── "หลังวางแผน" — ค่าลดหย่อนที่วางแผนจะทำเพิ่ม (เก็บใน state/tax-plan คีย์ planned) ──
+  const planned: Record<string, number> = (s as any).planned ?? {}
+  const setPlanned = (key: string, v: number) => setS(p => {
+    const cur = { ...(((p as any).planned) ?? {}) }
+    if (v > 0) cur[key] = v; else delete cur[key]
+    return { ...p, planned: Object.keys(cur).length ? cur : undefined } as any
+  })
+  const hasPlanned = Object.keys(planned).length > 0
+  const cP = useMemo(() => calc({ ...s, ...planned } as TaxState), [s])
+
   // ── ตารางเงินได้ 3 คอลัมน์: เงินได้ · ค่าใช้จ่าย (ตามมาตรา) · เงินหลังค่าใช้จ่าย ──
   // ค่าใช้จ่ายคิดตามเกณฑ์สรรพากร (ตรงกับ lib/tax.ts calc)
   type IncRow = { label: string; sec: string; key: keyof TaxState; inc: number; exp: number; note: string; prof?: boolean; expKey?: ExpenseKey; over?: boolean }
@@ -254,13 +264,14 @@ export default function TaxPlanningPage() {
     eduDonation: pos(net1 * 0.10 - s.eduDonation),
     politicalDonate: pos(10000 - s.politicalDonate),
   }
-  // แถวลดหย่อน 3 คอลัมน์: รายการ · จำนวน · เพิ่มได้อีก(ตามสิทธิ์)
-  const dCols = '1fr 132px 116px'
+  // แถวลดหย่อน 4 คอลัมน์: รายการ · จำนวน · เพิ่มได้อีก(ตามสิทธิ์) · หลังวางแผน
+  const dCols = '1fr 118px 88px 118px'
   const DeductHead = (
     <div style={{ display: 'grid', gridTemplateColumns: dCols, gap: 10, padding: '0 0 6px', marginBottom: 4, borderBottom: '1px solid var(--card-border)' }}>
       <span style={{ fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 700 }}>รายการ</span>
       <span style={{ fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 700, textAlign: 'right' }}>จำนวน (บาท)</span>
       <span style={{ fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 700, textAlign: 'right' }}>เพิ่มได้อีก</span>
+      <span style={{ fontSize: 10.5, color: '#22c55e', fontWeight: 700, textAlign: 'right' }}>หลังวางแผน</span>
     </div>
   )
   const MR = (label: string, key: keyof TaxState, hint?: string, remaining?: number) => (
@@ -269,13 +280,16 @@ export default function TaxPlanningPage() {
         <div style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>{label}</div>
         {hint && <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{hint}</div>}
       </div>
-      <MoneyInput value={s[key] as number} onChange={v => set(key, v as any)} />
+      <MoneyInput value={s[key] as number} onChange={v => set(key, v as any)} style={{ width: '100%', padding: '6px 9px', textAlign: 'right', background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 6, color: 'var(--cyan)', fontSize: 13, fontWeight: 500, fontFamily: 'monospace', outline: 'none' }} />
       <div style={{ textAlign: 'right', fontSize: 11, fontFamily: 'monospace' }}>
         {remaining === undefined ? null
           : remaining > 0
             ? <span style={{ color: '#10b981' }}>+{fmt(remaining)}</span>
             : <span style={{ color: 'var(--text-muted)' }}>เต็มสิทธิ์</span>}
       </div>
+      <MoneyInput value={planned[key as string] ?? 0} onChange={v => setPlanned(key as string, v)}
+        placeholder={(s[key] as number) > 0 ? fmt(s[key] as number) : '—'}
+        style={{ width: '100%', padding: '6px 9px', textAlign: 'right', background: 'var(--navy-900)', border: `1px solid ${planned[key as string] != null ? '#22c55e' : 'var(--card-border)'}`, borderRadius: 6, color: '#22c55e', fontSize: 13, fontWeight: 600, fontFamily: 'monospace', outline: 'none' }} />
     </div>
   )
 
@@ -429,6 +443,18 @@ export default function TaxPlanningPage() {
             <p style={{ fontSize: 30, fontWeight: 800, color: 'var(--cyan)', fontFamily: 'monospace', margin: '4px 0' }}>{fmt(c.netTax)} <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-muted)' }}>บาท</span></p>
             <p style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>≈ {fmt(c.mth)} บาท/เดือน · ภาษีก่อนหัก {fmt(c.tax)}</p>
           </div>
+
+          {hasPlanned && (
+            <div style={{ ...card, border: '1.5px solid #22c55e', background: 'linear-gradient(160deg, rgba(34,197,94,0.10), var(--card-bg) 60%)' }}>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>ภาษีหลังวางแผน (สุทธิ)</p>
+              <p style={{ fontSize: 26, fontWeight: 800, color: '#22c55e', fontFamily: 'monospace', margin: '4px 0' }}>{fmt(cP.netTax)} <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)' }}>บาท</span></p>
+              <p style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                {c.netTax - cP.netTax > 0
+                  ? <>ประหยัดภาษีได้ <b style={{ color: '#22c55e', fontFamily: 'monospace' }}>{fmt(c.netTax - cP.netTax)}</b> บาท/ปี · ลดหย่อนเพิ่ม {fmt(cP.allD - c.allD)} บาท</>
+                  : 'ยังไม่ลดลง — ลองเพิ่มค่าลดหย่อนในคอลัมน์ "หลังวางแผน"'}
+              </p>
+            </div>
+          )}
 
           <Sec title="สรุป">
             <Row label="เงินได้พึงประเมินรวม"><b style={{ fontFamily: 'monospace', color: 'var(--text-primary)' }}>{fmt(c.ti)}</b></Row>
