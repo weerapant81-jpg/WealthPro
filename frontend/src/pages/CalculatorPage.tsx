@@ -313,6 +313,45 @@ function TVMCalc() {
           <ResultCard label="จำนวนงวดรวม" value={`${n}`} unit="งวด" color="var(--text-primary)" />
         </div>
       </div>
+
+      {/* กราฟการเติบโตของเงินรายปี (เต็มความกว้างใต้ทั้งสองคอลัมน์) */}
+      <div style={{ ...card, gridColumn: '1 / -1' }}>
+        {(() => {
+          // ค่าที่ใช้จริงตามโหมด: ตัวที่หาได้ = result
+          const pv0 = mode === 'pv' ? Math.max(0, result) : pv
+          const pmt0 = mode === 'pmt' ? Math.max(0, result) : pmt
+          const rows = Array.from({ length: years + 1 }, (_, y) => {
+            const k = y * freq
+            const fk = Math.pow(1 + r, k)
+            const fromPV = pv0 * fk
+            const fromPMT = r === 0 ? pmt0 * k : pmt0 * ((fk - 1) / r)
+            return { year: y, เงินต้น: Math.round(fromPV), เงินงวดสะสม: Math.round(fromPMT), มูลค่ารวม: Math.round(fromPV + fromPMT) }
+          })
+          return (
+            <>
+              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>การเติบโตของเงินรายปี</p>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>
+                เริ่มจากมูลค่าปัจจุบัน {fmt0(pv0)} บาท{pmt0 > 0 ? ` + เงินงวด ${fmt0(pmt0)} บาท/งวด (${freq} งวด/ปี)` : ''} · ผลตอบแทน {rate}%/ปี เป็นเวลา {years} ปี
+              </p>
+              <div style={{ height: 260 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={rows} margin={{ top: 8, right: 16, left: 4, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
+                    <XAxis dataKey="year" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} tickFormatter={(v: any) => `ปีที่ ${v}`} />
+                    <YAxis tickFormatter={(v: any) => axisMoney(v)} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} width={52} />
+                    <Tooltip formatter={(v: any) => `${fmt0(v)} บาท`} labelFormatter={(l: any) => `สิ้นปีที่ ${l}`}
+                      contentStyle={{ background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 10, fontSize: 12 }} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    {pmt0 > 0 && <Line dataKey="เงินต้น" stroke="#f59e0b" strokeWidth={1.8} strokeDasharray="5 4" dot={false} />}
+                    {pmt0 > 0 && <Line dataKey="เงินงวดสะสม" stroke="#a78bfa" strokeWidth={1.8} strokeDasharray="5 4" dot={false} />}
+                    <Line dataKey="มูลค่ารวม" stroke="var(--cyan)" strokeWidth={2.5} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </>
+          )
+        })()}
+      </div>
     </div>
   )
 }
