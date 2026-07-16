@@ -703,28 +703,7 @@ export default function ReportPage() {
     }
     if (kind === 'execsum') {
       // ── บทสรุปผู้บริหาร: 3 กล่อง bullet พิมพ์ได้+เพิ่มแถวได้ (ค่าเริ่มต้นเติมตัวเลขจริง) + สรุปแผนดำเนินการจากข้อมูล ──
-      const fmtOr = (v: any, dots = '......') => { const n = toNum(v); return n > 0 ? fmt(n) : dots }
-      const emMonths = sm.totalMonthlyExp > 0 ? (toNum(sm.liquidAssets) / toNum(sm.totalMonthlyExp)) : 0
-      const excessLiquid = Math.max(0, toNum(sm.liquidAssets) - toNum(sm.totalMonthlyExp) * 6)
-      const growthPct = retPlan?.self?.savingsGrowthRate ?? 4
-      const DEF_STATUS = [
-        `ท่านมีสินทรัพย์รวม ${fmtOr(sm.totalAssets)} บาท หนี้สินรวม ${fmtOr(sm.totalDebtBalance)} บาท ความมั่งคั่งสุทธิ ${fmtOr(sm.netWorth)} บาท`,
-        `ท่านมีกระแสเงินสดรับรวม ${fmtOr(sm.totalAnnualIncome)} บาทต่อปี กระแสเงินสดจ่ายรวม ${fmtOr(toNum(sm.totalAnnualIncome) - toNum(sm.netAnnualCashFlow))} บาทต่อปี กระแสเงินสดสุทธิ ${fmtOr(sm.netAnnualCashFlow)} บาทต่อปี`,
-        `ท่านมีอัตราส่วนทางการเงินดังนี้ อัตราส่วนสภาพคล่องพื้นฐาน ${emMonths > 0 ? emMonths.toFixed(1) : '....'} เดือน${ratios?.healthScore != null ? ` คะแนนสุขภาพทางการเงินรวม ${ratios.healthScore}/100` : ''}`,
-        'ท่านค่อนข้างมีความมั่นคงทางการเงินที่ดี ...............',
-      ]
-      const DEF_GOALS = [
-        'ออมเงินเพื่อเป้าหมายเฉพาะ ..... บาท',
-        `ต้องการเกษียณที่อายุ ${profile?.retirementAgeSelf ?? 60} ปี และมีรายได้หลังเกษียณ ..... บาทต่อเดือน`,
-        'ต้องการเตรียมเงินเพื่อเป็นทุนการศึกษาบุตร จนจบปริญญาตรี',
-        'ต้องการเตรียมค่าใช้จ่ายสำหรับซ่อมบำรุงบ้าน รถยนต์ หลังเกษียณด้วย',
-      ]
-      const DEF_ANALYSIS = [
-        `ท่านมีสภาพคล่องส่วนเกินจำนวน ${excessLiquid > 0 ? fmt(excessLiquid) : '....'} บาท ที่สามารถนำไปลงทุนเพื่อเพิ่มอัตราผลตอบแทนของพอร์ตลงทุนของท่านได้`,
-        `ท่านควรทำทุนประกันชีวิตเพิ่ม ${insR && insR.gap > 0 ? fmt(insR.gap) : '.....'} บาท และทุพพลภาพ ${insR && insR.disGap > 0 ? fmt(insR.disGap) : '.....'} บาท รวมถึงประกันสุขภาพเนื่องจากสวัสดิการที่ไม่เพียงพอ`,
-        `ท่านต้องออมเงินเพื่อเป็นทุนการศึกษาบุตรเพิ่ม ${eduR && eduR.childCount > 0 ? fmt(eduR.annualSaving) : '.....'} บาทต่อปี (${eduR && eduR.childCount > 0 ? fmt(eduR.monthlySaving) : '.....'} บาทต่อเดือน)`,
-        `ท่านต้องออมเงินเพื่อเป็นเงินเกษียณเพิ่ม ${retR && retR.gap > 0 ? fmt(retR.annualSavings) : '.....'} บาทต่อปี หรือเริ่มที่ ${retR && retR.gap > 0 ? fmt(retR.gradFirst) : '.....'} บาทต่อปี และออมเพิ่ม ${growthPct}% ทุกปี`,
-      ]
+      const EMPTY4 = ['', '', '', '']
       const RowsBox = ({ k, title, defaults }: { k: string; title: string; defaults: string[] }) => {
         const rows = (secs[k]?.text ?? '') !== '' ? (secs[k]!.text).split('\n') : defaults
         const save = (r: string[]) => setText(k, r.length ? r.join('\n') : ' ')
@@ -736,7 +715,8 @@ export default function ReportPage() {
                 <div key={i2} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: i2 < rows.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
                   <span style={{ color: '#64748b', flexShrink: 0 }}>–</span>
                   <input value={r} onChange={e => save(rows.map((x, j) => j === i2 ? e.target.value : x))}
-                    style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontFamily: 'inherit', fontSize: 12.5, color: '#1e293b', padding: '2px 0' }} />
+                    placeholder="พิมพ์ข้อความ"
+                    style={{ flex: 1, border: 'none', borderBottom: '1px dashed #cbd5e1', outline: 'none', background: 'transparent', fontFamily: 'inherit', fontSize: 12.5, color: '#1e293b', padding: '2px 0' }} />
                   <button className="no-print" onClick={() => save(rows.filter((_, j) => j !== i2))} title="ลบแถว"
                     style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: 13, padding: 0, flexShrink: 0 }}>✕</button>
                 </div>
@@ -774,9 +754,9 @@ export default function ReportPage() {
           <p style={{ fontSize: 12.5, color: '#334155', lineHeight: 1.85, marginBottom: 16, textAlign: 'justify', textIndent: 28 }}>
             รายงานนี้ใช้แบบจำลองทางการเงินเพื่อแสดงภาพสถานะทางการเงินในปัจจุบันของท่าน รวมถึงแนวทางที่เป็นไปได้สำหรับอนาคต อย่างไรก็ตาม ภาวะเศรษฐกิจและตลาดในอนาคตไม่สามารถคาดการณ์ได้อย่างแน่นอนและอาจเปลี่ยนแปลงได้ สมมติฐานที่ใช้เป็นเพียงตัวแทนของสภาวะเศรษฐกิจและตลาดที่อาจเกิดขึ้น โดยมีวัตถุประสงค์เพื่อสนับสนุนการพิจารณาแนวทางที่เหมาะสมทั้งในปัจจุบันและอนาคต เพื่อให้ท่านสามารถบริหารและรักษาสถานะทางการเงินได้ภายใต้สภาวการณ์ที่เปลี่ยนแปลง
           </p>
-          <RowsBox k="exsum_status" title="สถานะทางการเงินในปัจจุบัน" defaults={DEF_STATUS} />
-          <RowsBox k="exsum_goals" title="เป้าหมายของท่าน" defaults={DEF_GOALS} />
-          <RowsBox k="exsum_analysis" title="สรุปผลการวิเคราะห์" defaults={DEF_ANALYSIS} />
+          <RowsBox k="exsum_status" title="สถานะทางการเงินในปัจจุบัน" defaults={EMPTY4} />
+          <RowsBox k="exsum_goals" title="เป้าหมายของท่าน" defaults={EMPTY4} />
+          <RowsBox k="exsum_analysis" title="สรุปผลการวิเคราะห์" defaults={EMPTY4} />
           <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>สรุปแผนดำเนินการ</div>
           {lines.length === 0
             ? <div style={{ fontSize: 12, color: '#94a3b8' }}>ยังไม่มีรายการในแผนปฏิบัติการ</div>
