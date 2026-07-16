@@ -457,13 +457,40 @@ export default function TaxPlanningPage() {
           )}
 
           <Sec title="สรุป">
-            <Row label="เงินได้พึงประเมินรวม"><b style={{ fontFamily: 'monospace', color: 'var(--text-primary)' }}>{fmt(c.ti)}</b></Row>
-            <Row label="หักค่าใช้จ่าย"><b style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>−{fmt(c.expD)}</b></Row>
-            <Row label="หักค่าลดหย่อนรวม"><b style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>−{fmt(c.perD + c.insD + c.savD + c.spendD)}</b></Row>
-            <div style={{ borderTop: '1px solid var(--card-border)', margin: '4px 0' }} />
-            <Row label="เงินได้สุทธิ (ฐานภาษี)"><b style={{ fontFamily: 'monospace', color: 'var(--cyan-light)' }}>{fmt(c.ni)}</b></Row>
-            <Row label="อัตราภาษีขั้นสูงสุด"><b style={{ color: '#f59e0b' }}>{c.mr}%</b></Row>
-            <Row label="อัตราภาษีเฉลี่ย"><b style={{ color: '#f59e0b' }}>{c.eff.toFixed(2)}%</b></Row>
+            {hasPlanned && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 96px 96px', gap: 8, padding: '0 0 5px', borderBottom: '1px solid var(--card-border)', marginBottom: 4 }}>
+                <span />
+                <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textAlign: 'right' }}>ปัจจุบัน</span>
+                <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 700, textAlign: 'right' }}>หลังวางแผน</span>
+              </div>
+            )}
+            {([
+              ['เงินได้พึงประเมินรวม', fmt(c.ti), fmt(cP.ti), 'var(--text-primary)'],
+              ['หักค่าใช้จ่าย', `−${fmt(c.expD)}`, `−${fmt(cP.expD)}`, 'var(--text-secondary)'],
+              ['หักค่าลดหย่อนรวม', `−${fmt(c.perD + c.insD + c.savD + c.spendD)}`, `−${fmt(cP.perD + cP.insD + cP.savD + cP.spendD)}`, 'var(--text-secondary)'],
+              ['เงินได้สุทธิ (ฐานภาษี)', fmt(c.ni), fmt(cP.ni), 'var(--cyan-light)'],
+              ['ภาษีที่ต้องชำระ', fmt(c.netTax), fmt(cP.netTax), '#f59e0b'],
+              ['อัตราภาษีขั้นสูงสุด', `${c.mr}%`, `${cP.mr}%`, '#f59e0b'],
+              ['อัตราภาษีเฉลี่ย', `${c.eff.toFixed(2)}%`, `${cP.eff.toFixed(2)}%`, '#f59e0b'],
+            ] as const).map(([l, cur, plan, col], i) => (
+              hasPlanned ? (
+                <div key={l} style={{ display: 'grid', gridTemplateColumns: '1fr 96px 96px', gap: 8, alignItems: 'baseline', padding: '3px 0', borderTop: i === 3 ? '1px solid var(--card-border)' : 'none' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{l}</span>
+                  <b style={{ fontFamily: 'monospace', color: col, textAlign: 'right', fontSize: 12 }}>{cur}</b>
+                  <b style={{ fontFamily: 'monospace', color: plan !== cur ? '#22c55e' : 'var(--text-muted)', textAlign: 'right', fontSize: 12 }}>{plan}</b>
+                </div>
+              ) : (
+                <div key={l} style={{ borderTop: i === 3 ? '1px solid var(--card-border)' : 'none', paddingTop: i === 3 ? 4 : 0 }}>
+                  <Row label={l}><b style={{ fontFamily: 'monospace', color: col }}>{cur}</b></Row>
+                </div>
+              )
+            ))}
+            {hasPlanned && c.netTax - cP.netTax > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0 0', marginTop: 4, borderTop: '1px solid var(--card-border)', fontSize: 12.5 }}>
+                <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>ประหยัดภาษีได้</span>
+                <b style={{ fontFamily: 'monospace', color: '#22c55e' }}>{fmt(c.netTax - cP.netTax)} บาท/ปี</b>
+              </div>
+            )}
           </Sec>
 
           <Sec title="ภาษีแต่ละขั้น">
