@@ -66,6 +66,7 @@ const SECTIONS: Sec[] = [
   { k: 'finance_sp', t: 'สรุปผลการวิเคราะห์ข้อมูลทางการเงินส่วนบุคคล (คู่สมรส)', lvl: 1, auto: 'finance_sp' },
   { k: 'fin_cf2_sp', t: 'งบกระแสเงินสด — คู่สมรส', lvl: 2, auto: 'fin_cf2_sp' },
   { k: 'fin_ratio2_sp', t: 'อัตราส่วนทางการเงิน — คู่สมรส', lvl: 2, auto: 'fin_ratio2_sp' },
+  { k: 'fin_invest_sp', t: 'การวิเคราะห์สินทรัพย์ลงทุนที่มี — คู่สมรส', lvl: 2, auto: 'fin_invest_sp' },
   { k: 'g_insurance', t: 'การวิเคราะห์ความเสี่ยงภัยและความต้องการด้านการประกันภัย', lvl: 2, auto: 'insurance' },
   { k: 'g_education', t: 'เป้าหมายทางการเงินเพื่อการศึกษาบุตร', lvl: 2, auto: 'education' },
   { k: 'g_retire', t: 'ความต้องการทางการเงินเพื่อการเกษียณ', lvl: 2, auto: 'retirement' },
@@ -609,10 +610,14 @@ export default function ReportPage() {
         </div>
       )
     }
-    if (kind === 'fin_invest') {
-      // ── การวิเคราะห์สินทรัพย์ลงทุนที่มี: พอร์ตเดิม + Monte Carlo + พอร์ตแนะนำ/เปรียบเทียบ (ตรรกะเดียวกับแท็บปรับสัดส่วน) ──
-      const invAssetsList: any[] = invProfile?.investmentAssets ?? []
-      if (totalInv <= 0) return <div style={{ fontSize: 12.5, color: '#94a3b8', marginBottom: 12 }}>ยังไม่มีข้อมูลสินทรัพย์ลงทุน</div>
+    if (kind === 'fin_invest' || kind === 'fin_invest_sp') {
+      // ── การวิเคราะห์สินทรัพย์ลงทุนที่มี: พอร์ตเดิม + Monte Carlo + พอร์ตแนะนำ/เปรียบเทียบ (ตรรกะเดียวกับแท็บปรับสัดส่วน · มีเวอร์ชันคู่สมรส) ──
+      const isSp = kind === 'fin_invest_sp'
+      if (isSp && !hasSpouse) return null
+      const invAssetsList: any[] = (isSp ? invProfile?.spouseData?.investmentAssets : invProfile?.investmentAssets) ?? []
+      const totalInv2 = isSp ? totalInvSp : totalInv
+      const portRet2 = isSp ? portRetSp : portRet
+      if (totalInv2 <= 0) return <div style={{ fontSize: 12.5, color: '#94a3b8', marginBottom: 12 }}>ยังไม่มีข้อมูลสินทรัพย์ลงทุน{isSp ? 'ของคู่สมรส' : ''}</div>
       const annRet = (a: any): number | null => {
         const cost = toNum(a.investAmount), val = toNum(a.currentValue)
         if (cost > 0 && val > 0 && a.investDate) {
@@ -625,19 +630,21 @@ export default function ReportPage() {
         const m = parseFloat(a.annualReturn)
         return isNaN(m) ? null : m
       }
-      const curAge = retPlan?.self?.currentAge ?? age ?? 45
-      const lifeExp = profile?.lifeExpectancySelf ?? retPlan?.self?.lifeExpectancy ?? 85
-      const retAge = profile?.retirementAgeSelf ?? retPlan?.self?.retirementAge ?? 60
+      const rpKey = isSp ? 'spouse' : 'self'
+      const curAge = (isSp ? retPlan?.spouse?.currentAge ?? client?.spouseAge : retPlan?.self?.currentAge ?? age) ?? 45
+      const lifeExp = (isSp ? profile?.lifeExpectancySpouse : profile?.lifeExpectancySelf) ?? retPlan?.[rpKey]?.lifeExpectancy ?? 85
+      const retAge = (isSp ? profile?.retirementAgeSpouse : profile?.retirementAgeSelf) ?? retPlan?.[rpKey]?.retirementAge ?? 60
       const years = Math.max(1, lifeExp - curAge)
-      const riskLabel = String(profile?.riskLabel ?? profile?.riskLevel ?? '')
-      const curSd = /สูง/.test(riskLabel) ? 16 : /กลาง|ปานกลาง/.test(riskLabel) ? 11 : /ต่ำ/.test(riskLabel) ? 6 : (portRet >= 8 ? 16 : portRet >= 4 ? 11 : 6)
+      const riskSrc2 = isSp ? profile?.spouseRisk : profile
+      const riskLabel = String(riskSrc2?.riskLabel ?? riskSrc2?.riskLevel ?? '')
+      const curSd = /สูง/.test(riskLabel) ? 16 : /กลาง|ปานกลาง/.test(riskLabel) ? 11 : /ต่ำ/.test(riskLabel) ? 6 : (portRet2 >= 8 ? 16 : portRet2 >= 4 ? 11 : 6)
       const pctile = (arr: number[], q: number) => { const idx = (arr.length - 1) * q, lo = Math.floor(idx), hi = Math.ceil(idx); return lo === hi ? arr[lo] : arr[lo] + (arr[hi] - arr[lo]) * (idx - lo) }
       const simulate = (mu0: number, sd0: number, seed: number) => {
         const mu = mu0 / 100, sd = sd0 / 100
         const rng = mulberry32(seed >>> 0 || 1)
         const byYear: number[][] = Array.from({ length: years + 1 }, () => [])
         for (let k2 = 0; k2 < 600; k2++) {
-          let v = totalInv
+          let v = totalInv2
           byYear[0].push(v)
           for (let y = 1; y <= years; y++) {
             let u1 = rng(); if (u1 < 1e-12) u1 = 1e-12
@@ -648,8 +655,8 @@ export default function ReportPage() {
         }
         return byYear.map(arr => { const so = arr.slice().sort((x, y2) => x - y2); return { p10: pctile(so, 0.1), p50: pctile(so, 0.5), p90: pctile(so, 0.9) } })
       }
-      const seedB = (Math.round(totalInv) ^ (years << 4)) >>> 0
-      const curSim = simulate(portRet, curSd, seedB ^ 0x1111)
+      const seedB = (Math.round(totalInv2) ^ (years << 4)) >>> 0
+      const curSim = simulate(portRet2, curSd, seedB ^ 0x1111)
       const curRows = curSim.map((c2, i2) => ({ age: curAge + i2, ค่ากลาง: Math.round(c2.p50), band: [Math.round(c2.p10), Math.round(c2.p90)] as [number, number] }))
       const rIdx = Math.min(Math.max(0, retAge - curAge), years)
       // พอร์ตแนะนำ + พอร์ตที่เลือกไว้ (จากแท็บการปรับสัดส่วนลงทุน)
@@ -660,7 +667,7 @@ export default function ReportPage() {
         const bi = results.reduce((b, r, i2) => r.sharpe > results[b].sharpe ? i2 : b, 0)
         return { id: set.id, label: set.label, sub: set.sub, color: set.color, weights: set.options[bi].weights, ...results[bi] }
       })
-      const selTier = rebalQ?.self?.tier ?? null
+      const selTier = rebalQ?.[rpKey]?.tier ?? null
       const selP = ports.find(p2 => p2.id === selTier) ?? null
       const newSim = selP ? simulate(selP.ret, selP.sigma, seedB ^ 0x2222) : null
       const cmpRows = newSim ? curSim.map((c2, i2) => ({ age: curAge + i2, พอร์ตเดิม: Math.round(c2.p50), พอร์ตใหม่: Math.round(newSim[i2].p50), band: [Math.round(newSim[i2].p10), Math.round(newSim[i2].p90)] as [number, number] })) : null
@@ -701,14 +708,14 @@ export default function ReportPage() {
                 })}
                 <tr style={{ borderTop: '1.5px solid #cbd5e1' }}>
                   <td colSpan={3} style={{ ...tdI, fontWeight: 800, color: '#0f172a' }}>รวม</td>
-                  <td style={{ ...tdI, textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: TEAL }}>{fmt(totalInv)}</td>
+                  <td style={{ ...tdI, textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: TEAL }}>{fmt(totalInv2)}</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 10 }}>
-            <StatC l="มูลค่าสินทรัพย์ลงทุน" v={`฿${fmt(totalInv)}`} c={TEAL} />
-            <StatC l="ผลตอบแทนพอร์ต (ต่อปี)" v={`${portRet.toFixed(2)}%`} c={AMBERR} />
+            <StatC l="มูลค่าสินทรัพย์ลงทุน" v={`฿${fmt(totalInv2)}`} c={TEAL} />
+            <StatC l="ผลตอบแทนพอร์ต (ต่อปี)" v={`${portRet2.toFixed(2)}%`} c={AMBERR} />
             <StatC l="อายุปัจจุบัน" v={`${curAge} ปี`} c="#0f172a" />
             <StatC l="อายุขัยที่คาดไว้" v={`${lifeExp} ปี`} c="#0f172a" />
           </div>
@@ -767,7 +774,7 @@ export default function ReportPage() {
           {selP && cmpRows && newSim ? (
             <>
               <div style={{ border: '1px solid #f1f5f9', borderRadius: 10, padding: '10px 12px', marginBottom: 10, breakInside: 'avoid' }}>
-                <div style={{ fontSize: 11.5, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>จัดสัดส่วนเงินลงทุนปัจจุบัน ฿{fmt(totalInv)} ตาม{selP.label}</div>
+                <div style={{ fontSize: 11.5, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>จัดสัดส่วนเงินลงทุนปัจจุบัน ฿{fmt(totalInv2)} ตาม{selP.label}</div>
                 <div style={{ display: 'flex', height: 12, borderRadius: 999, overflow: 'hidden', marginBottom: 8 }}>
                   {selP.weights.map((w, i2) => w > 0 && <div key={i2} style={{ width: `${w}%`, background: W_CLR2[i2] }} />)}
                 </div>
@@ -777,7 +784,7 @@ export default function ReportPage() {
                       <tr key={i2} style={{ borderBottom: '1px solid #f8fafc' }}>
                         <td style={{ padding: '4px 8px', color: '#334155' }}><span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 999, background: W_CLR2[i2], marginRight: 7 }} />{W_LBL2[i2]}</td>
                         <td style={{ padding: '4px 8px', textAlign: 'right', fontFamily: 'monospace', color: '#64748b' }}>{w}%</td>
-                        <td style={{ padding: '4px 8px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: '#0f172a' }}>{fmt(totalInv * w / 100)}</td>
+                        <td style={{ padding: '4px 8px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: '#0f172a' }}>{fmt(totalInv2 * w / 100)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -806,7 +813,7 @@ export default function ReportPage() {
                 </div>
               </div>
               <p style={{ fontSize: 10.5, color: '#94a3b8', lineHeight: 1.7, marginTop: 8 }}>
-                * พอร์ตเดิมใช้ผลตอบแทนถัวเฉลี่ยจากสินทรัพย์จริง {portRet.toFixed(2)}%/ปี ความผันผวน {curSd}% · พอร์ตใหม่ใช้ E(Rp) {selP.ret.toFixed(2)}%/ปี σ {selP.sigma.toFixed(2)}% · การจำลองเพื่อเปรียบเทียบ ไม่ใช่การรับประกันผลตอบแทน
+                * พอร์ตเดิมใช้ผลตอบแทนถัวเฉลี่ยจากสินทรัพย์จริง {portRet2.toFixed(2)}%/ปี ความผันผวน {curSd}% · พอร์ตใหม่ใช้ E(Rp) {selP.ret.toFixed(2)}%/ปี σ {selP.sigma.toFixed(2)}% · การจำลองเพื่อเปรียบเทียบ ไม่ใช่การรับประกันผลตอบแทน
               </p>
             </>
           ) : (
@@ -1660,7 +1667,7 @@ export default function ReportPage() {
   }
 
   // ซ่อนหน้า (คู่สมรส) เมื่อลูกค้าไม่มีข้อมูลคู่สมรส
-  const visibleSections = SECTIONS.filter(s => !(['domains_spouse', 'exec_spouse', 'finance_sp', 'fin_cf2_sp', 'fin_ratio2_sp'].includes(s.k) && !hasSpouse))
+  const visibleSections = SECTIONS.filter(s => !(['domains_spouse', 'exec_spouse', 'finance_sp', 'fin_cf2_sp', 'fin_ratio2_sp', 'fin_invest_sp'].includes(s.k) && !hasSpouse))
   const included = visibleSections.filter(s => secs[s.k]?.include)
 
   // ── Export PDF เอง (jsPDF + html2canvas) — ชัวร์ทุกอุปกรณ์ โดยเฉพาะ iPad ที่ print เบราว์เซอร์เพี้ยน ──
