@@ -11,7 +11,7 @@ import { lineAt, sumAt, buildTaxState, type CashflowData, type Line as CfLine } 
 import {
   ShieldCheck, TrendingUp, PiggyBank, GraduationCap, Landmark, ClipboardCheck,
   Activity, Pencil, X, Check, User, Users, GripVertical, EyeOff, Plus,
-  Wallet, Scale, Receipt, ListChecks, Baby, Target, HeartPulse, Banknote, CalendarClock, Briefcase,
+  Wallet, Scale, Receipt, Baby, Target, HeartPulse, Banknote, CalendarClock, Briefcase,
   Type as TypeIcon, ImagePlus, Trash2, ArrowUp, ArrowDown, Bold, AlignLeft, AlignCenter, AlignRight, FilePlus2,
   RotateCcw, RotateCw, BringToFront, SendToBack, Grid3x3,
 } from 'lucide-react'
@@ -61,7 +61,6 @@ export type CustomSlide = { id: string; bg?: string }
 // รายการสไลด์ทั้งหมด (เรียงตามลำดับจริง) — ใช้ทำเมนูเลือกหน้าในหน้ารายงาน
 export const DECK_SLIDES: { id: string; label: string }[] = [
   { id: 'cover', label: 'หน้าปก' },
-  { id: 'agenda', label: 'สารบัญ' },
   { id: 'process', label: 'กระบวนการวางแผน CFP' },
   { id: 'family', label: 'ข้อมูลครอบครัว' },
   { id: 'work', label: 'ข้อมูลการทำงานและสวัสดิการ' },
@@ -1030,28 +1029,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
           </div>
         </Slide>
 
-        {/* ── 2. สารบัญ ── */}
-        <Slide slideId="agenda">
-          <SlideHead icon={ListChecks} kicker="Agenda" title="หัวข้อการนำเสนอ" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, flex: 1, alignContent: 'center' }}>
-            {[
-              { n: '01', t: 'ภาพรวมการวางแผนการเงิน', s: 'ข้อมูลครอบครัว เป้าหมาย และกระบวนการ', c: CY },
-              { n: '02', t: 'ผลการวิเคราะห์ข้อมูล', s: 'งบการเงิน อัตราส่วน ความเสี่ยง การลงทุน เกษียณ ภาษี มรดก', c: GR },
-              { n: '03', t: 'แผนปฏิบัติการเพื่อบรรลุเป้าหมาย', s: 'สิ่งที่ต้องทำในแต่ละด้าน พร้อมกำหนดการ', c: AM },
-              { n: '04', t: 'สรุปแผนการเงินแบบองค์รวม', s: 'ภาพรวม 6 ด้านของความมั่งคั่ง', c: VI },
-            ].map(x => (
-              <div key={x.n} style={{ display: 'flex', gap: 18, alignItems: 'center', background: PAPER, border: `1px solid ${LINE}`, borderRadius: 16, padding: '22px 24px', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', right: 2, top: -18, fontSize: 100, fontWeight: 900, color: `${x.c}12`, lineHeight: 1, letterSpacing: '-0.05em', pointerEvents: 'none' }}>{x.n}</div>
-                <div style={{ width: 3, alignSelf: 'stretch', minHeight: 44, background: x.c, borderRadius: 2, flexShrink: 0 }} />
-                <div style={{ position: 'relative' }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', color: x.c }}>{x.n}</div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: INK, marginTop: 2, letterSpacing: '-0.01em' }}>{x.t}</div>
-                  <div style={{ fontSize: 13, color: SUB, marginTop: 3 }}>{x.s}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Slide>
+
 
         {/* ── 3. กระบวนการวางแผน 6 ขั้น ── */}
         <Slide slideId="process">
