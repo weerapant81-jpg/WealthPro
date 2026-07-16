@@ -191,7 +191,7 @@ export default function ProjectionSeveranceTab({ person = 'self' }: { person?: '
           <Field label="อายุงานปัจจุบัน"><NumIn value={workYearsNow} onChange={setWorkYearsNow} suffix="ปี" width={70} /></Field>
           <Field label="อายุงาน ณ เกษียณ">
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 70, padding: '6px 10px', textAlign: 'right', background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 6, color: 'var(--cyan)', fontSize: 13, fontWeight: 600 }}>{fmt(Math.round(calc.serviceYears))}</div>
+              <div style={{ width: 70, padding: '6px 10px', textAlign: 'right', background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 6, color: 'var(--cyan)', fontSize: 13, fontWeight: 600 }}>{fmt(Math.round(calc.serviceYears), 0)}</div>
               <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', minWidth: 56 }}>ปี</span>
             </div>
           </Field>

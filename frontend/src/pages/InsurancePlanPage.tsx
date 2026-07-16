@@ -130,8 +130,9 @@ export function computeInsurance(plan: PersonPlan, a: InsuranceAutos) {
   const recommendedNeed = method === 'hlv' ? hlvCoverage : coverageNeed   // "ทุนที่ควรมี" ตามวิธีที่เลือก
   const recommendedNet = method === 'hlv' ? hlvNet : netNeed
 
-  // ── กรณีทุพพลภาพ ── หักเฉพาะค่าใช้จ่ายจากการทำงาน (ยังมีชีวิต ยังต้องใช้จ่ายส่วนตัว)
-  const disNetIncome = Math.max(0, income - hlvAuto)
+  // ── กรณีทุพพลภาพ ── หักเฉพาะค่าใช้จ่ายจากการทำงาน (ยังมีชีวิต ยังต้องใช้จ่ายส่วนตัว — ไม่หัก personal)
+  const disWorkDeduct = a.autoDeduct.ss + a.autoDeduct.pvd + a.autoDeduct.savings + a.autoDeduct.insurance + a.autoDeduct.tax
+  const disNetIncome = Math.max(0, income - disWorkDeduct)
   const disIncomeLossPV = pvAnnuity(realRate, a.workingYears, disNetIncome)
   const disCarePV = pvAnnuity(realRate, toNum(plan.disCareYears), toNum(plan.disCareAnnual))
   const ssoDisMonthly = 0.5 * Math.min(income / 12, 15000)   // เงินทดแทนทุพพลภาพ ปกส. 50% ค่าจ้าง (เพดาน 15,000)
