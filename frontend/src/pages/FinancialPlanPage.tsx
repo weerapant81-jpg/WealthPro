@@ -21,9 +21,27 @@ import ProjectionSeveranceTab from './projection/ProjectionSeveranceTab'
 
 type Person = 'self' | 'spouse'
 
+// มูลค่าสินทรัพย์ลงทุน + เมนูย่อย "การปรับสัดส่วนลงทุน" ในหน้าเดียวกัน
+function InvestmentWithRebalance({ person = 'self' }: { person?: Person }) {
+  const [sub, setSub] = useState<'value' | 'rebalance'>('value')
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'inline-flex', gap: 3, background: 'var(--navy-900)', padding: 3, borderRadius: 10, border: '1px solid var(--card-border)', alignSelf: 'flex-start' }}>
+        {([['value', 'มูลค่าสินทรัพย์ลงทุน', TrendingUp], ['rebalance', 'การปรับสัดส่วนลงทุน', SlidersHorizontal]] as const).map(([k, lbl, Ic]) => (
+          <button key={k} onClick={() => setSub(k)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: 'none',
+              background: sub === k ? 'var(--cyan)' : 'transparent', color: sub === k ? '#00201d' : 'var(--text-secondary)' }}>
+            <Ic size={14} /> {lbl}
+          </button>
+        ))}
+      </div>
+      {sub === 'value' ? <ProjectionInvestmentTab key={person} person={person} /> : <RebalanceTab key={person} person={person} />}
+    </div>
+  )
+}
+
 const TABS = [
-  { key: 'investment', label: 'มูลค่าสินทรัพย์ลงทุน', icon: TrendingUp, Comp: ProjectionInvestmentTab, proj: true, hasPerson: true },
-  { key: 'rebalance', label: 'การปรับสัดส่วนลงทุน', icon: SlidersHorizontal, Comp: RebalanceTab, proj: true, hasPerson: true },
+  { key: 'investment', label: 'มูลค่าสินทรัพย์ลงทุน', icon: TrendingUp, Comp: InvestmentWithRebalance, proj: true, hasPerson: true },
   { key: 'social', label: 'กองทุนประกันสังคม', icon: Shield, Comp: ProjectionSocialSecurityTab, proj: true, hasPerson: true },
   { key: 'pvd', label: 'กองทุนสำรองเลี้ยงชีพ', icon: Briefcase, Comp: ProjectionPVDTab, proj: true, hasPerson: true },
   { key: 'severance', label: 'เงินชดเชยเกษียณอายุ', icon: Scale, Comp: ProjectionSeveranceTab, proj: true, hasPerson: true },

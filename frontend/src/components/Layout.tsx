@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import { useClient } from '../context/ClientContext'
 import { logout } from '../lib/auth'
 import CopilotWidget from './CopilotWidget'
-import { LayoutDashboard, Target, Settings, LogOut, ClipboardList, ClipboardCheck, ShieldCheck, Calculator, Users, RefreshCw, Sun, Moon, UserCog, Menu, ChevronLeft, ChevronRight, ChevronDown, User, Shield, TrendingUp, Wallet, Activity, Briefcase, Scale, HeartPulse, GraduationCap, CalendarRange, ScrollText, Receipt, Search, ArrowRight, FileText, BookOpen, SlidersHorizontal
+import { LayoutDashboard, Target, Settings, LogOut, ClipboardList, ClipboardCheck, ShieldCheck, Calculator, Users, RefreshCw, Sun, Moon, UserCog, Menu, ChevronLeft, ChevronRight, ChevronDown, User, Shield, TrendingUp, Wallet, Activity, Briefcase, Scale, HeartPulse, GraduationCap, CalendarRange, ScrollText, Receipt, Search, ArrowRight, FileText, BookOpen
 } from 'lucide-react'
 
 // เมนูย่อยของ "ข้อมูลลูกค้า" (ขับแท็บด้วย ?tab=)
@@ -23,7 +23,6 @@ const CLIENT_TABS = [
 // เมนูย่อยของ "วางแผนการเงิน"
 const FINANCIAL_TABS = [
   { tab: 'investment', icon: TrendingUp, label: 'มูลค่าสินทรัพย์ลงทุน' },
-  { tab: 'rebalance', icon: SlidersHorizontal, label: 'การปรับสัดส่วนลงทุน' },
   { tab: 'social', icon: Shield, label: 'กองทุนประกันสังคม' },
   { tab: 'pvd', icon: Briefcase, label: 'กองทุนสำรองเลี้ยงชีพ' },
   { tab: 'severance', icon: Scale, label: 'เงินชดเชยเกษียณอายุ' },
