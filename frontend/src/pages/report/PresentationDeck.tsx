@@ -621,7 +621,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   // รวมแผนดำเนินการจากทุกด้าน (sub-plan rows) → บรรทัด: แผน · จำนวนเงิน · กำหนดการ · ผู้รับผิดชอบ
   const ACTION_CAT_COLOR: Record<string, string> = { liquidity: '#06b6d4', savings: '#10b981', debt: '#ef4444', investment: '#10b981', education: '#ffb800', insurance: '#3b82f6', retirement: '#00cfc1', tax: '#0ea5e9', estate: '#8b5cf6', other: '#8b9198' }
   const actionLines = useMemo(() => {
-    const its = Array.isArray(actionItems) ? actionItems : []
+    const its: any[] = Array.isArray(actionItems) ? actionItems : ((actionItems as any)?.items ?? [])
     const ownerTh = (o: string) => o === 'client' ? 'ลูกค้า' : o === 'advisor' ? 'ที่ปรึกษา' : o === 'spouse' ? 'คู่สมรส' : (o || '—')
     const out: { plan: string; amount: number; schedule: string; owner: string; color: string; done: boolean }[] = []
     for (const it of its) {
@@ -648,7 +648,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
 
   // ── ไทม์ไลน์แผนดำเนินการ: รวมทุก sub-plan ที่มี "กำหนดการ" เรียงตามวันที่ ──
   const timelineItems = useMemo(() => {
-    const its = Array.isArray(actionItems) ? actionItems : []
+    const its: any[] = Array.isArray(actionItems) ? actionItems : ((actionItems as any)?.items ?? [])
     const out: { date: Date; title: string; desc: string; amount: number; category: string; accent: string }[] = []
     its.forEach((a: any) => {
       if (!SUBPLAN_COLS[a.category]) return
