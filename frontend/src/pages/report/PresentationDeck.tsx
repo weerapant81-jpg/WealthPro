@@ -69,14 +69,14 @@ export const DECK_SLIDES: { id: string; label: string }[] = [
   { id: 'balance', label: 'งบดุล' },
   { id: 'cashflow', label: 'งบกระแสเงินสด' },
   { id: 'ratios', label: 'อัตราส่วน/สุขภาพการเงิน' },
+  { id: 'education', label: 'ทุนการศึกษาบุตร' },
   { id: 'insurance', label: 'ความเสี่ยง & ประกัน' },
   { id: 'investment', label: 'การลงทุน' },
   { id: 'retirement', label: 'แผนเกษียณ' },
   { id: 'retire2', label: 'กราฟเกษียณ' },
-  { id: 'education', label: 'ทุนการศึกษาบุตร' },
-  { id: 'edu2', label: 'กราฟทุนการศึกษา' },
   { id: 'tax', label: 'ภาษีเงินได้' },
   { id: 'estate', label: 'การจัดการมรดก' },
+  { id: 'edu2', label: 'กราฟทุนการศึกษา' },
   { id: 'action', label: 'แผนปฏิบัติการ' },
   { id: 'holistic', label: 'ไทม์ไลน์แผนดำเนินการ' },
   { id: 'forward', label: 'งบการเงินล่วงหน้า (ถึงเกษียณ)' },
@@ -1299,6 +1299,28 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
           </TwoCol>
         </Slide>
 
+        {/* ── 14. ทุนการศึกษาบุตร ── */}
+        <Slide slideId="education" footer={commentFooter('education')}>
+          <SlideHead icon={GraduationCap} kicker="Education" title="เป้าหมายและแผนการศึกษาบุตร" accent={AM} />
+          {edu ? (
+            <div style={{ display: 'flex', gap: 22, marginTop: 24, marginBottom: 24 }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <Stat label="จำนวนบุตร" value={`${edu.childCount}`} sub="คน" />
+                  <Stat label="ค่าเล่าเรียนรวม (อนาคต)" value={fmt(edu.totalNominal)} sub="บาท" color={AM} />
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <Stat label="เงินก้อนวันนี้ (PV)" value={fmt(edu.totalPV)} sub="บาท" color={CY} />
+                  <Stat label="ต้องออม/เดือน" value={fmt(edu.monthlySaving)} sub="บาท" color={GR} />
+                </div>
+              </div>
+              <div style={{ width: 360, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <GoalBar rows={[{ name: 'ทุนการศึกษา', needed: edu.totalNominal, have: edu.totalPV }]} />
+                <div style={{ fontSize: 11.5, color: MUTED, textAlign: 'center', marginTop: 4 }}>เทียบค่าเล่าเรียนรวมในอนาคต กับเงินก้อนที่ต้องเตรียมวันนี้</div>
+              </div>
+            </div>
+          ) : <Empty text="ยังไม่มีข้อมูลบุตร/ค่าเล่าเรียน" />}
+        </Slide>
         {/* ── 11. ความเสี่ยง & ประกัน ── */}
         <Slide slideId="insurance" footer={commentFooter('insurance')}>
           <SlideHead icon={ShieldCheck} kicker="Risk & Protection" title="ความเสี่ยงและความคุ้มครอง" accent={VI} />
@@ -1454,29 +1476,65 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
           ) : <Empty text="ยังไม่มีข้อมูลแผนเกษียณเพียงพอ — กรอกที่หน้าแผนเกษียณ" />}
         </Slide>
 
-        {/* ── 14. ทุนการศึกษาบุตร ── */}
-        <Slide slideId="education" footer={commentFooter('education')}>
-          <SlideHead icon={GraduationCap} kicker="Education" title="เป้าหมายและแผนการศึกษาบุตร" accent={AM} />
-          {edu ? (
-            <div style={{ display: 'flex', gap: 22, marginTop: 24, marginBottom: 24 }}>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10 }}>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <Stat label="จำนวนบุตร" value={`${edu.childCount}`} sub="คน" />
-                  <Stat label="ค่าเล่าเรียนรวม (อนาคต)" value={fmt(edu.totalNominal)} sub="บาท" color={AM} />
-                </div>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <Stat label="เงินก้อนวันนี้ (PV)" value={fmt(edu.totalPV)} sub="บาท" color={CY} />
-                  <Stat label="ต้องออม/เดือน" value={fmt(edu.monthlySaving)} sub="บาท" color={GR} />
-                </div>
-              </div>
-              <div style={{ width: 360, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <GoalBar rows={[{ name: 'ทุนการศึกษา', needed: edu.totalNominal, have: edu.totalPV }]} />
-                <div style={{ fontSize: 11.5, color: MUTED, textAlign: 'center', marginTop: 4 }}>เทียบค่าเล่าเรียนรวมในอนาคต กับเงินก้อนที่ต้องเตรียมวันนี้</div>
-              </div>
-            </div>
-          ) : <Empty text="ยังไม่มีข้อมูลบุตร/ค่าเล่าเรียน" />}
-        </Slide>
 
+        {/* ── 15. ภาษีเงินได้ ── */}
+        <Slide slideId="tax" footer={commentFooter('tax')}>
+          <SlideHead icon={Receipt} kicker="Income Tax" title="ภาษีเงินได้" accent={CY} />
+          <TwoCol>
+            {people.map(p => {
+              const st = taxPlan?.[p.key]
+              const r = st ? (() => { try { return calc({ ...defaultState(), ...(st as TaxState) }) } catch { return null } })() : null
+              return (
+                <div key={p.key}>
+                  <PersonHead name={p.name} tint={p.tint} />
+                  {r ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <Stat label="ภาษีที่ต้องชำระ" value={fmt(r.netTax)} sub="บาท/ปี" color={AM} />
+                        <Stat label="อัตราภาษีเฉลี่ย" value={`${r.eff.toFixed(1)}%`} color={INK} />
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <Stat label="เงินได้สุทธิ" value={fmt(r.ni)} color={INK} />
+                        <Stat label="ค่าลดหย่อนรวม" value={fmt(r.allD)} color={GR} />
+                      </div>
+                    </div>
+                  ) : <Empty text="ยังไม่มีข้อมูลแผนภาษี" />}
+                </div>
+              )
+            })}
+          </TwoCol>
+        </Slide>
+        {/* ── 16. การจัดการมรดก ── */}
+        <Slide slideId="estate" footer={commentFooter('estate')}>
+          <SlideHead icon={Landmark} kicker="Estate" title="เป้าหมายและการจัดการมรดก" accent={VI} />
+          <div style={{ display: 'grid', gridTemplateColumns: estate.spouse ? '1fr 1fr' : '1fr', gap: 16, flex: 1, alignContent: 'start' }}>
+            {([['self', `กรณี${selfName}เสียชีวิต`, CY, estate.self], ...(estate.spouse ? [['spouse', `กรณี${spouseName}เสียชีวิต`, VI, estate.spouse]] : [])] as any[]).map(([key, caption, tint, es]) => (
+              <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, borderBottom: `2px solid ${tint}33`, paddingBottom: 6 }}>
+                  <span style={{ fontSize: 14.5, fontWeight: 800, color: INK }}>{caption}</span>
+                  <span style={{ fontSize: 12, color: SUB }}>กองมรดกสุทธิ <b style={{ color: tint, fontFamily: 'monospace', fontSize: 14 }}>{fmt(es.estateVal)}</b> บาท</span>
+                </div>
+                <div style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '12px 14px' }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: INK, marginBottom: 6 }}>การกระจายมรดก · {es.useWill ? 'ตามพินัยกรรม' : 'ตามกฎหมาย'}</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                    <thead><tr style={{ borderBottom: `1px solid #cbd5e1` }}><th style={{ textAlign: 'left', padding: '5px 4px', color: SUB }}>ผู้รับมรดก</th><th style={{ textAlign: 'right', padding: '5px 4px', color: SUB }}>ส่วนแบ่ง</th><th style={{ textAlign: 'right', padding: '5px 4px', color: SUB }}>ภาษี</th></tr></thead>
+                    <tbody>
+                      {es.taxHeirs.length === 0 ? <tr><td colSpan={3} style={{ padding: 12, textAlign: 'center', color: MUTED }}>ยังไม่มีข้อมูลทายาท</td></tr>
+                        : es.taxHeirs.map((h: any, i: number) => {
+                          const tax = h.rel === 'spouse' ? 0 : Math.max(0, h.share - 100_000_000) * (h.rel === 'lineal' ? 0.05 : 0.10)
+                          return <tr key={i} style={{ borderBottom: `1px solid ${LINE}` }}>
+                            <td style={{ padding: '6px 4px', color: INK }}>{h.name}{h.rel === 'spouse' && <span style={{ fontSize: 10.5, color: MUTED }}> (ยกเว้น)</span>}</td>
+                            <td style={{ padding: '6px 4px', textAlign: 'right', fontFamily: 'monospace', color: INK }}>{fmt(h.share)}</td>
+                            <td style={{ padding: '6px 4px', textAlign: 'right', fontFamily: 'monospace', color: tax > 0 ? AM : GR }}>{fmt(tax)}</td>
+                          </tr>
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Slide>
         {/* ── 14b. กราฟเงินออมสะสมทุนการศึกษา (3 สถาบัน) ── */}
         <Slide slideId="edu2" footer={commentFooter('edu2')}>
           <SlideHead icon={GraduationCap} kicker="Education Projection" title="เงินออมสะสมเพื่อทุนการศึกษา" accent={AM} />
@@ -1544,65 +1602,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
           ) : <Empty text="ยังไม่มีข้อมูลบุตร/ค่าเล่าเรียน — กรอกที่หน้าทุนการศึกษา" />}
         </Slide>
 
-        {/* ── 15. ภาษีเงินได้ ── */}
-        <Slide slideId="tax" footer={commentFooter('tax')}>
-          <SlideHead icon={Receipt} kicker="Income Tax" title="ภาษีเงินได้" accent={CY} />
-          <TwoCol>
-            {people.map(p => {
-              const st = taxPlan?.[p.key]
-              const r = st ? (() => { try { return calc({ ...defaultState(), ...(st as TaxState) }) } catch { return null } })() : null
-              return (
-                <div key={p.key}>
-                  <PersonHead name={p.name} tint={p.tint} />
-                  {r ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <Stat label="ภาษีที่ต้องชำระ" value={fmt(r.netTax)} sub="บาท/ปี" color={AM} />
-                        <Stat label="อัตราภาษีเฉลี่ย" value={`${r.eff.toFixed(1)}%`} color={INK} />
-                      </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <Stat label="เงินได้สุทธิ" value={fmt(r.ni)} color={INK} />
-                        <Stat label="ค่าลดหย่อนรวม" value={fmt(r.allD)} color={GR} />
-                      </div>
-                    </div>
-                  ) : <Empty text="ยังไม่มีข้อมูลแผนภาษี" />}
-                </div>
-              )
-            })}
-          </TwoCol>
-        </Slide>
 
-        {/* ── 16. การจัดการมรดก ── */}
-        <Slide slideId="estate" footer={commentFooter('estate')}>
-          <SlideHead icon={Landmark} kicker="Estate" title="เป้าหมายและการจัดการมรดก" accent={VI} />
-          <div style={{ display: 'grid', gridTemplateColumns: estate.spouse ? '1fr 1fr' : '1fr', gap: 16, flex: 1, alignContent: 'start' }}>
-            {([['self', `กรณี${selfName}เสียชีวิต`, CY, estate.self], ...(estate.spouse ? [['spouse', `กรณี${spouseName}เสียชีวิต`, VI, estate.spouse]] : [])] as any[]).map(([key, caption, tint, es]) => (
-              <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, borderBottom: `2px solid ${tint}33`, paddingBottom: 6 }}>
-                  <span style={{ fontSize: 14.5, fontWeight: 800, color: INK }}>{caption}</span>
-                  <span style={{ fontSize: 12, color: SUB }}>กองมรดกสุทธิ <b style={{ color: tint, fontFamily: 'monospace', fontSize: 14 }}>{fmt(es.estateVal)}</b> บาท</span>
-                </div>
-                <div style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '12px 14px' }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: INK, marginBottom: 6 }}>การกระจายมรดก · {es.useWill ? 'ตามพินัยกรรม' : 'ตามกฎหมาย'}</div>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
-                    <thead><tr style={{ borderBottom: `1px solid #cbd5e1` }}><th style={{ textAlign: 'left', padding: '5px 4px', color: SUB }}>ผู้รับมรดก</th><th style={{ textAlign: 'right', padding: '5px 4px', color: SUB }}>ส่วนแบ่ง</th><th style={{ textAlign: 'right', padding: '5px 4px', color: SUB }}>ภาษี</th></tr></thead>
-                    <tbody>
-                      {es.taxHeirs.length === 0 ? <tr><td colSpan={3} style={{ padding: 12, textAlign: 'center', color: MUTED }}>ยังไม่มีข้อมูลทายาท</td></tr>
-                        : es.taxHeirs.map((h: any, i: number) => {
-                          const tax = h.rel === 'spouse' ? 0 : Math.max(0, h.share - 100_000_000) * (h.rel === 'lineal' ? 0.05 : 0.10)
-                          return <tr key={i} style={{ borderBottom: `1px solid ${LINE}` }}>
-                            <td style={{ padding: '6px 4px', color: INK }}>{h.name}{h.rel === 'spouse' && <span style={{ fontSize: 10.5, color: MUTED }}> (ยกเว้น)</span>}</td>
-                            <td style={{ padding: '6px 4px', textAlign: 'right', fontFamily: 'monospace', color: INK }}>{fmt(h.share)}</td>
-                            <td style={{ padding: '6px 4px', textAlign: 'right', fontFamily: 'monospace', color: tax > 0 ? AM : GR }}>{fmt(tax)}</td>
-                          </tr>
-                        })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Slide>
 
         {/* ── 17. แผนปฏิบัติการ (แบ่งหลายหน้าอัตโนมัติ) ── */}
         {actionPages.map((pageItems, k) => (
