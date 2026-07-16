@@ -539,7 +539,7 @@ function PersonPanel({ plan, onChange, autoIncome, workingYears, autoDebt, autoA
             <AutoRow label="ภาษีเงินได้" value={autoDeduct.tax} color="#f59e0b" />
             <div style={{ fontSize: 10.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>* ทุพพลภาพยังมีชีวิต จึงไม่หักค่าใช้จ่ายส่วนตัว</div>
             <div style={{ borderTop: '1px solid var(--card-border)', margin: '4px 0' }} />
-            <ResultRow label="รายได้สุทธิที่สูญเสีย/ปี" value={disNetIncome} color="var(--cyan-light)" />
+            <ResultRow label="รายได้ที่เป็นของครอบครัว/ปี" value={disNetIncome} color="var(--cyan-light)" />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>ระยะเวลาสูญเสียรายได้ (ถึงเกษียณ)</span>
               <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: '#fb7185' }}>{workingYears} <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>ปี</span></span>
