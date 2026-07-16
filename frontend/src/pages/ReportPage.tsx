@@ -54,6 +54,7 @@ function mulberry32(seed: number) {
 interface Sec { k: string; t: string; lvl: 1 | 2; auto?: string }
 const SECTIONS: Sec[] = [
   { k: 'service', t: 'ข้อตกลงในการให้บริการ', lvl: 1, auto: 'service' },
+  { k: 'execsum', t: 'บทสรุปผู้บริหาร', lvl: 1, auto: 'execsum' },
   { k: 'exec', t: 'สถานะทางการเงินปัจจุบัน', lvl: 1, auto: 'exec' },
   { k: 'exec_spouse', t: 'สถานะทางการเงินปัจจุบัน (คู่สมรส)', lvl: 1, auto: 'exec_spouse' },
   { k: 'domains', t: 'บทวิเคราะห์และการดำเนินการ', lvl: 1, auto: 'domains' },
@@ -697,6 +698,110 @@ export default function ReportPage() {
             ))}</tbody>
           </table>
           <p style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 10, lineHeight: 1.7 }}>* สมมติฐานปรับแก้ได้ที่หน้า "สมมติฐาน" ของโปรแกรม และควรทบทวนร่วมกันอย่างน้อยปีละ 1 ครั้ง</p>
+        </div>
+      )
+    }
+    if (kind === 'execsum') {
+      // ── บทสรุปผู้บริหาร: 3 กล่อง bullet พิมพ์ได้+เพิ่มแถวได้ (ค่าเริ่มต้นเติมตัวเลขจริง) + สรุปแผนดำเนินการจากข้อมูล ──
+      const fmtOr = (v: any, dots = '......') => { const n = toNum(v); return n > 0 ? fmt(n) : dots }
+      const emMonths = sm.totalMonthlyExp > 0 ? (toNum(sm.liquidAssets) / toNum(sm.totalMonthlyExp)) : 0
+      const excessLiquid = Math.max(0, toNum(sm.liquidAssets) - toNum(sm.totalMonthlyExp) * 6)
+      const growthPct = retPlan?.self?.savingsGrowthRate ?? 4
+      const DEF_STATUS = [
+        `ท่านมีสินทรัพย์รวม ${fmtOr(sm.totalAssets)} บาท หนี้สินรวม ${fmtOr(sm.totalDebtBalance)} บาท ความมั่งคั่งสุทธิ ${fmtOr(sm.netWorth)} บาท`,
+        `ท่านมีกระแสเงินสดรับรวม ${fmtOr(sm.totalAnnualIncome)} บาทต่อปี กระแสเงินสดจ่ายรวม ${fmtOr(toNum(sm.totalAnnualIncome) - toNum(sm.netAnnualCashFlow))} บาทต่อปี กระแสเงินสดสุทธิ ${fmtOr(sm.netAnnualCashFlow)} บาทต่อปี`,
+        `ท่านมีอัตราส่วนทางการเงินดังนี้ อัตราส่วนสภาพคล่องพื้นฐาน ${emMonths > 0 ? emMonths.toFixed(1) : '....'} เดือน${ratios?.healthScore != null ? ` คะแนนสุขภาพทางการเงินรวม ${ratios.healthScore}/100` : ''}`,
+        'ท่านค่อนข้างมีความมั่นคงทางการเงินที่ดี ...............',
+      ]
+      const DEF_GOALS = [
+        'ออมเงินเพื่อเป้าหมายเฉพาะ ..... บาท',
+        `ต้องการเกษียณที่อายุ ${profile?.retirementAgeSelf ?? 60} ปี และมีรายได้หลังเกษียณ ..... บาทต่อเดือน`,
+        'ต้องการเตรียมเงินเพื่อเป็นทุนการศึกษาบุตร จนจบปริญญาตรี',
+        'ต้องการเตรียมค่าใช้จ่ายสำหรับซ่อมบำรุงบ้าน รถยนต์ หลังเกษียณด้วย',
+      ]
+      const DEF_ANALYSIS = [
+        `ท่านมีสภาพคล่องส่วนเกินจำนวน ${excessLiquid > 0 ? fmt(excessLiquid) : '....'} บาท ที่สามารถนำไปลงทุนเพื่อเพิ่มอัตราผลตอบแทนของพอร์ตลงทุนของท่านได้`,
+        `ท่านควรทำทุนประกันชีวิตเพิ่ม ${insR && insR.gap > 0 ? fmt(insR.gap) : '.....'} บาท และทุพพลภาพ ${insR && insR.disGap > 0 ? fmt(insR.disGap) : '.....'} บาท รวมถึงประกันสุขภาพเนื่องจากสวัสดิการที่ไม่เพียงพอ`,
+        `ท่านต้องออมเงินเพื่อเป็นทุนการศึกษาบุตรเพิ่ม ${eduR && eduR.childCount > 0 ? fmt(eduR.annualSaving) : '.....'} บาทต่อปี (${eduR && eduR.childCount > 0 ? fmt(eduR.monthlySaving) : '.....'} บาทต่อเดือน)`,
+        `ท่านต้องออมเงินเพื่อเป็นเงินเกษียณเพิ่ม ${retR && retR.gap > 0 ? fmt(retR.annualSavings) : '.....'} บาทต่อปี หรือเริ่มที่ ${retR && retR.gap > 0 ? fmt(retR.gradFirst) : '.....'} บาทต่อปี และออมเพิ่ม ${growthPct}% ทุกปี`,
+      ]
+      const RowsBox = ({ k, title, defaults }: { k: string; title: string; defaults: string[] }) => {
+        const rows = (secs[k]?.text ?? '') !== '' ? (secs[k]!.text).split('\n') : defaults
+        const save = (r: string[]) => setText(k, r.length ? r.join('\n') : ' ')
+        return (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>{title}</div>
+            <div style={{ border: '1px solid #cbd5e1', borderRadius: 8, overflow: 'hidden' }}>
+              {rows.map((r, i2) => (
+                <div key={i2} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: i2 < rows.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                  <span style={{ color: '#64748b', flexShrink: 0 }}>–</span>
+                  <input value={r} onChange={e => save(rows.map((x, j) => j === i2 ? e.target.value : x))}
+                    style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontFamily: 'inherit', fontSize: 12.5, color: '#1e293b', padding: '2px 0' }} />
+                  <button className="no-print" onClick={() => save(rows.filter((_, j) => j !== i2))} title="ลบแถว"
+                    style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: 13, padding: 0, flexShrink: 0 }}>✕</button>
+                </div>
+              ))}
+            </div>
+            <button className="no-print" onClick={() => save([...rows, ''])}
+              style={{ marginTop: 5, padding: '3px 12px', borderRadius: 7, border: '1px dashed #cbd5e1', background: 'transparent', color: '#64748b', fontSize: 11.5, cursor: 'pointer' }}>+ เพิ่มแถว</button>
+          </div>
+        )
+      }
+      // สรุปแผนดำเนินการ — ดึงจากแผนปฏิบัติการ (แหล่งเดียวกับหน้า action)
+      const ownerTh = (o: string) => o === 'client' ? 'ลูกค้า' : o === 'advisor' ? 'ที่ปรึกษา' : o === 'spouse' ? 'คู่สมรส' : (o || '')
+      const PR_LBL: Record<string, string> = { high: 'สูง', medium: 'กลาง', low: 'ต่ำ' }
+      type Ln2 = { plan: string; amount: number; schedule: string; owner: string; priority: string; done: boolean }
+      const lines: Ln2[] = []
+      for (const it of actionItems) {
+        const rows: any[] = Array.isArray(it.subPlan) ? it.subPlan : []
+        const done = it.status === 'done' || !!it.completedAt
+        if (!rows.length) { lines.push({ plan: it.title, amount: toNum(it.target), schedule: it.dueDate || '', owner: ownerTh(it.owner), priority: PR_LBL[it.priority] ?? '', done }); continue }
+        for (const r of rows) {
+          const plan = String(r?.desc || r?.method || r?.who || '').trim()
+          const amount = toNum(r?.amount ?? r?.premium)
+          if (!plan && amount <= 0 && !r?.schedule) continue
+          lines.push({ plan: plan || it.title, amount, schedule: r?.schedule || '', owner: String(r?.owner || '').trim() || ownerTh(it.owner), priority: String(r?.priority || '') || (PR_LBL[it.priority] ?? ''), done: !!r?.done || done })
+        }
+      }
+      const PR_ORD: Record<string, number> = { 'สูง': 0, 'กลาง': 1, 'ต่ำ': 2 }
+      const PR_CLR: Record<string, string> = { 'สูง': REDR, 'กลาง': AMBERR, 'ต่ำ': '#64748b' }
+      lines.sort((a, b) => (PR_ORD[a.priority] ?? 3) - (PR_ORD[b.priority] ?? 3))
+      const fmtDate = (x: string) => { const d = new Date(x); return isNaN(d.getTime()) ? x : d.toLocaleDateString('th-TH', { year: '2-digit', month: 'short', day: 'numeric' }) }
+      const thS: React.CSSProperties = { padding: '5px 8px', fontSize: 10.5, fontWeight: 700, color: '#64748b', textAlign: 'left' }
+      const tdS: React.CSSProperties = { padding: '6px 8px', fontSize: 12, color: '#1e293b' }
+      return (
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ fontSize: 12.5, color: '#334155', lineHeight: 1.85, marginBottom: 16, textAlign: 'justify', textIndent: 28 }}>
+            รายงานนี้ใช้แบบจำลองทางการเงินเพื่อแสดงภาพสถานะทางการเงินในปัจจุบันของท่าน รวมถึงแนวทางที่เป็นไปได้สำหรับอนาคต อย่างไรก็ตาม ภาวะเศรษฐกิจและตลาดในอนาคตไม่สามารถคาดการณ์ได้อย่างแน่นอนและอาจเปลี่ยนแปลงได้ สมมติฐานที่ใช้เป็นเพียงตัวแทนของสภาวะเศรษฐกิจและตลาดที่อาจเกิดขึ้น โดยมีวัตถุประสงค์เพื่อสนับสนุนการพิจารณาแนวทางที่เหมาะสมทั้งในปัจจุบันและอนาคต เพื่อให้ท่านสามารถบริหารและรักษาสถานะทางการเงินได้ภายใต้สภาวการณ์ที่เปลี่ยนแปลง
+          </p>
+          <RowsBox k="exsum_status" title="สถานะทางการเงินในปัจจุบัน" defaults={DEF_STATUS} />
+          <RowsBox k="exsum_goals" title="เป้าหมายของท่าน" defaults={DEF_GOALS} />
+          <RowsBox k="exsum_analysis" title="สรุปผลการวิเคราะห์" defaults={DEF_ANALYSIS} />
+          <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>สรุปแผนดำเนินการ</div>
+          {lines.length === 0
+            ? <div style={{ fontSize: 12, color: '#94a3b8' }}>ยังไม่มีรายการในแผนปฏิบัติการ</div>
+            : <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1.5px solid #cbd5e1' }}>
+                    <th style={{ ...thS, width: 24 }} />
+                    <th style={thS}>แผนดำเนินการ</th>
+                    <th style={{ ...thS, textAlign: 'right' }}>จำนวนเงิน</th>
+                    <th style={thS}>กำหนดการ</th>
+                    <th style={thS}>ผู้รับผิดชอบ</th>
+                    <th style={thS}>ความสำคัญ</th>
+                  </tr>
+                </thead>
+                <tbody>{lines.map((l, i2) => (
+                  <tr key={i2} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ ...tdS, fontSize: 13, color: l.done ? GREENR : '#94a3b8' }}>{l.done ? '☑' : '☐'}</td>
+                    <td style={{ ...tdS, color: l.done ? '#94a3b8' : '#1e293b', textDecoration: l.done ? 'line-through' : 'none' }}>{l.plan}</td>
+                    <td style={{ ...tdS, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: l.amount > 0 ? '#0f172a' : '#94a3b8' }}>{l.amount > 0 ? fmt(l.amount) : '—'}</td>
+                    <td style={{ ...tdS, color: '#475569' }}>{l.schedule ? fmtDate(l.schedule) : '—'}</td>
+                    <td style={{ ...tdS, color: '#475569' }}>{l.owner || '—'}</td>
+                    <td style={{ ...tdS, fontWeight: 700, color: PR_CLR[l.priority] || '#94a3b8' }}>{l.priority || '—'}</td>
+                  </tr>
+                ))}</tbody>
+              </table>}
         </div>
       )
     }
