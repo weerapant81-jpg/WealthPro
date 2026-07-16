@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { Target, GraduationCap, HeartPulse, TrendingUp, Shield, Briefcase, Scale, ScrollText, Receipt, User, Users } from 'lucide-react'
+import { Target, GraduationCap, HeartPulse, TrendingUp, Shield, Briefcase, Scale, ScrollText, Receipt, User, Users, SlidersHorizontal } from 'lucide-react'
 import RetirementPlanPage from './RetirementPlanPage'
 import EstatePlanPage from './EstatePlanPage'
 import TaxPlanningPage from './TaxPlanningPage'
@@ -14,6 +14,7 @@ import { hasSpouseInfo } from '../lib/spouse'
 import EducationPlanPage from './EducationPlanPage'
 import InsurancePlanPage from './InsurancePlanPage'
 import ProjectionInvestmentTab from './projection/ProjectionInvestmentTab'
+import RebalanceTab from './projection/RebalanceTab'
 import ProjectionSocialSecurityTab from './projection/ProjectionSocialSecurityTab'
 import ProjectionPVDTab from './projection/ProjectionPVDTab'
 import ProjectionSeveranceTab from './projection/ProjectionSeveranceTab'
@@ -22,6 +23,7 @@ type Person = 'self' | 'spouse'
 
 const TABS = [
   { key: 'investment', label: 'มูลค่าสินทรัพย์ลงทุน', icon: TrendingUp, Comp: ProjectionInvestmentTab, proj: true, hasPerson: true },
+  { key: 'rebalance', label: 'การปรับสัดส่วนลงทุน', icon: SlidersHorizontal, Comp: RebalanceTab, proj: true, hasPerson: true },
   { key: 'social', label: 'กองทุนประกันสังคม', icon: Shield, Comp: ProjectionSocialSecurityTab, proj: true, hasPerson: true },
   { key: 'pvd', label: 'กองทุนสำรองเลี้ยงชีพ', icon: Briefcase, Comp: ProjectionPVDTab, proj: true, hasPerson: true },
   { key: 'severance', label: 'เงินชดเชยเกษียณอายุ', icon: Scale, Comp: ProjectionSeveranceTab, proj: true, hasPerson: true },

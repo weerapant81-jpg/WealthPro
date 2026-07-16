@@ -29,7 +29,7 @@ import {
   getLifeInsurances, createLifeInsurance, updateLifeInsurance, deleteLifeInsurance,
   getAllRiders, getRiders, createRider, updateRider, deleteRider,
   getBeneficiaries, createBeneficiary, updateBeneficiary, deleteBeneficiary,
-  getPropertyInsurances, createPropertyInsurance, updatePropertyInsurance, deletePropertyInsurance
+  getPropertyInsurances, createPropertyInsurance, updatePropertyInsurance, deletePropertyInsurance, getRebalancePlan, saveRebalancePlan
 } from '../controllers/finance.controller'
 import { getProjection } from '../controllers/projection.controller'
 import { getMarketData, refreshMarketData } from '../controllers/marketdata.controller'
@@ -149,6 +149,8 @@ r.put('/severance-plan', authenticate, saveSeverancePlan)
 
 r.get('/cashflow-plan', authenticate, getCashflowPlan)
 r.put('/cashflow-plan', authenticate, saveCashflowPlan)
+r.get('/rebalance-plan', authenticate, getRebalancePlan)
+r.put('/rebalance-plan', authenticate, saveRebalancePlan)
 r.get('/estate-plan', authenticate, getEstatePlan)
 r.put('/estate-plan', authenticate, saveEstatePlan)
 r.get('/action-items', authenticate, listActionItems)

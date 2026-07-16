@@ -187,6 +187,7 @@ model Profile {
   severancePlan        Json?
   cashflowPlan         Json?
   estatePlan           Json?
+  rebalancePlan        Json?
   planReviewDate       DateTime?  // นัดทบทวนแผนครั้งถัดไป
   actionPlanAdvice     Json?      // คำแนะนำนักวางแผน รายด้าน/รายคน { self: {liquidity,insurance,...}, spouse: {...} }
 

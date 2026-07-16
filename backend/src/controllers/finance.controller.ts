@@ -523,6 +523,27 @@ export async function saveCashflowPlan(req: AuthRequest, res: Response, next: Ne
   } catch (err) { next(err) }
 }
 
+// ---- Rebalance Plan (การปรับสัดส่วนลงทุน) ----
+export async function getRebalancePlan(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const p = await prisma.profile.findUnique({
+      where: { userId: req.effectiveUserId! },
+      select: { rebalancePlan: true },
+    })
+    res.json(p?.rebalancePlan ?? null)
+  } catch (err) { next(err) }
+}
+export async function saveRebalancePlan(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const data = await prisma.profile.upsert({
+      where: { userId: req.effectiveUserId! },
+      update: { rebalancePlan: req.body },
+      create: { userId: req.effectiveUserId!, rebalancePlan: req.body },
+    })
+    res.json(data.rebalancePlan)
+  } catch (err) { next(err) }
+}
+
 // ---- Estate Plan ----
 export async function getEstatePlan(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
