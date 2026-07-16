@@ -77,6 +77,7 @@ export const DECK_SLIDES: { id: string; label: string }[] = [
   { id: 'tax', label: 'ภาษีเงินได้' },
   { id: 'estate', label: 'การจัดการมรดก' },
   { id: 'advheader', label: 'หน้าคั่น: คำแนะนำนักวางแผน' },
+  { id: 'liquidity', label: 'การบริหารสภาพคล่อง/หนี้สิน' },
   { id: 'edu2', label: 'กราฟทุนการศึกษา' },
   { id: 'action', label: 'แผนปฏิบัติการ' },
   { id: 'holistic', label: 'ไทม์ไลน์แผนดำเนินการ' },
@@ -926,7 +927,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   const hidOf = (k: string) => !!pres[k]?.hidden
   const SLIDE_LABEL: Record<string, string> = {
     family: 'ข้อมูลครอบครัว', work: 'ข้อมูลการทำงานและสวัสดิการ', goals: 'เป้าหมายการเงิน', insgoals: 'เป้าหมายด้านการประกัน', balance: 'งบดุล', cashflow: 'งบกระแสเงินสด',
-    ratios: 'อัตราส่วน/สุขภาพการเงิน',
+    ratios: 'อัตราส่วน/สุขภาพการเงิน', liquidity: 'การบริหารสภาพคล่อง/หนี้สิน',
     insurance: 'ความเสี่ยง & ประกัน', investment: 'การลงทุน', retirement: 'แผนเกษียณ',
     education: 'ทุนการศึกษาบุตร', edu2: 'กราฟทุนการศึกษา', tax: 'ภาษีเงินได้', estate: 'การจัดการมรดก', action: 'แผนปฏิบัติการ', retire2: 'กราฟเกษียณ', holistic: 'ไทม์ไลน์แผนดำเนินการ', forward: 'งบการเงินล่วงหน้า (ถึงเกษียณ)',
   }
@@ -1544,6 +1545,38 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
               <div style={{ fontSize: 56, fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>คำแนะนำนักวางแผน</div>
             </div>
           </div>
+        </Slide>
+
+        {/* ── คำแนะนำ: การบริหารสภาพคล่อง/หนี้สิน — อัตราส่วนที่ไม่ผ่านเกณฑ์ ── */}
+        <Slide slideId="liquidity" footer={commentFooter('liquidity')}>
+          <SlideHead icon={Wallet} kicker="Liquidity & Debt" title="การบริหารสภาพคล่อง/หนี้สิน" accent={CY} />
+          <TwoCol>
+            {people.map(p => {
+              const fails = (p.ratios?.ratios ?? []).filter((e: any) => e.state !== 'good' && e.state !== 'nodata' && e.value != null && RATIO_META[e.key])
+              return (
+                <div key={p.key}>
+                  <PersonHead name={p.name} tint={p.tint} />
+                  {fails.length === 0
+                    ? <div style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '18px 20px', fontSize: 14, color: GR, fontWeight: 700 }}>✓ ทุกอัตราส่วนผ่านเกณฑ์มาตรฐาน</div>
+                    : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {fails.map((e: any) => {
+                          const m = RATIO_META[e.key]
+                          const col = stateCol[e.state] ?? MUTED
+                          return (
+                            <div key={e.key} style={{ background: PAPER, border: `1px solid ${LINE}`, borderLeft: `4px solid ${col}`, borderRadius: 12, padding: '11px 16px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
+                                <span style={{ fontSize: 14, fontWeight: 800, color: INK }}>{m.name}</span>
+                                <span style={{ fontSize: 16, fontWeight: 800, fontFamily: 'monospace', color: col, whiteSpace: 'nowrap' }}>{fmtRatio(e.value, m.unit)}</span>
+                              </div>
+                              <div style={{ fontSize: 11.5, color: SUB, marginTop: 2 }}>เกณฑ์มาตรฐาน {m.std} · <span style={{ color: col, fontWeight: 700 }}>{e.state === 'danger' ? 'ต่ำกว่าเกณฑ์มาก ควรเร่งปรับปรุง' : 'ยังไม่ผ่านเกณฑ์ ควรปรับปรุง'}</span></div>
+                            </div>
+                          )
+                        })}
+                      </div>}
+                </div>
+              )
+            })}
+          </TwoCol>
         </Slide>
 
         {/* ── 14b. กราฟเงินออมสะสมทุนการศึกษา (3 สถาบัน) ── */}
