@@ -8,6 +8,7 @@ import { useInsuranceCoverage } from '../../components/InsuranceCoverageSummary'
 import { buildEduChart, type ChildSetting } from '../EducationPlanPage'
 import { calc, calcTax, defaultState, type TaxState } from '../../lib/tax'
 import { lineAt, sumAt, buildTaxState, type CashflowData, type Line as CfLine } from '../ForwardCashflowTab'
+import { PORTFOLIO_SETS, DEFAULT_ASSETS, DEFAULT_CORR, computePortfolio, applyMarketData, applyCorrelation } from '../../lib/portfolioReturns'
 import {
   ShieldCheck, TrendingUp, PiggyBank, GraduationCap, Landmark, ClipboardCheck,
   Activity, Pencil, X, Check, User, Users, GripVertical, EyeOff, Plus,
@@ -78,7 +79,9 @@ export const DECK_SLIDES: { id: string; label: string }[] = [
   { id: 'estate', label: 'การจัดการมรดก' },
   { id: 'advheader', label: 'หน้าคั่น: คำแนะนำนักวางแผน' },
   { id: 'liquidity', label: 'การบริหารสภาพคล่อง/หนี้สิน' },
-  { id: 'edu2', label: 'กราฟทุนการศึกษา' },
+  { id: 'rebalance', label: 'การปรับสัดส่วนการลงทุน' },
+  { id: 'edu2', label: 'การออมเพื่อทุนการศึกษา' },
+  { id: 'insneed', label: 'การบริหารความเสี่ยง/การประกัน' },
   { id: 'action', label: 'แผนปฏิบัติการ' },
   { id: 'holistic', label: 'ไทม์ไลน์แผนดำเนินการ' },
   { id: 'forward', label: 'งบการเงินล่วงหน้า (ถึงเกษียณ)' },
@@ -591,6 +594,8 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   const { data: rSelf } = useQuery({ queryKey: ['financial-ratios', 'client'], queryFn: () => api.get('/financial-ratios', { params: { person: 'client' } }).then(r => r.data), retry: false })
   const { data: rSpouse } = useQuery({ queryKey: ['financial-ratios', 'spouse'], queryFn: () => api.get('/financial-ratios', { params: { person: 'spouse' } }).then(r => r.data), retry: false })
   const { data: invProfile } = useQuery({ queryKey: ['investment-profile'], queryFn: () => api.get('/investment-profile').then(r => r.data), retry: false })
+  const { data: marketData } = useQuery({ queryKey: ['market-data'], queryFn: () => api.get('/market-data').then(r => r.data), staleTime: 5 * 60 * 1000, retry: 1 })
+  const { data: rebalQ } = useQuery({ queryKey: ['rebalance-plan'], queryFn: () => api.get('/rebalance-plan').then(r => r.data), retry: false })
   const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: () => api.get('/profile').then(r => r.data), retry: false })
   const { data: estatePlan } = useQuery({ queryKey: ['estate-plan'], queryFn: () => api.get('/estate-plan').then(r => r.data), retry: false })
   const { data: cfPlan } = useQuery({ queryKey: ['cashflow-plan'], queryFn: () => api.get('/cashflow-plan').then(r => r.data), retry: false })
@@ -812,6 +817,68 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
     }
   }, [cfPlan, selfAge, profile, client, taxPlan])
 
+  // การปรับสัดส่วนการลงทุน — พอร์ตที่เลือก + จำลองเปรียบเทียบ (ตรรกะเดียวกับแท็บปรับสัดส่วน)
+  const rebalance = useMemo(() => {
+    const assetsMk = applyMarketData(DEFAULT_ASSETS, marketData)
+    const { matrix } = applyCorrelation(DEFAULT_CORR, marketData)
+    const ports = PORTFOLIO_SETS.map(set => {
+      const results = set.options.map(o => computePortfolio(o.weights, assetsMk, matrix))
+      const bi = results.reduce((b, r, i) => r.sharpe > results[b].sharpe ? i : b, 0)
+      return { id: set.id, label: set.label, color: set.color, weights: set.options[bi].weights, ...results[bi] }
+    })
+    const pct = (arr: number[], q: number) => { const idx = (arr.length - 1) * q, lo = Math.floor(idx), hi = Math.ceil(idx); return lo === hi ? arr[lo] : arr[lo] + (arr[hi] - arr[lo]) * (idx - lo) }
+    const build = (who: 'self' | 'spouse') => {
+      const invSrc: any = who === 'self' ? (invProfile ?? {}) : (invProfile?.spouseData ?? {})
+      const assets: any[] = invSrc?.investmentAssets ?? []
+      const totalValue = assets.reduce((x: number, a: any) => x + toNum(a.currentValue), 0)
+      const sel = ports.find(p2 => p2.id === rebalQ?.[who]?.tier) ?? null
+      if (!sel || totalValue <= 0) return null
+      let wr = 0, cv = 0
+      assets.forEach((a: any) => {
+        const val = toNum(a.currentValue)
+        let r: number | null = null
+        const cost = toNum(a.investAmount)
+        if (cost > 0 && val > 0 && a.investDate) {
+          const st = new Date(a.investDate)
+          if (!isNaN(st.getTime())) { const yrs = (Date.now() - st.getTime()) / (365.25 * 24 * 3600 * 1000); if (yrs >= 1 / 365.25) r = (Math.pow(val / cost, 1 / yrs) - 1) * 100 }
+        }
+        if (r === null) { const m = parseFloat(a.annualReturn); if (!isNaN(m)) r = m }
+        if (r !== null && val > 0) { cv += val; wr += r * val }
+      })
+      const curReturn = cv > 0 ? wr / cv : 0
+      const riskSrc = who === 'self' ? profile : profile?.spouseRisk
+      const rl = String(riskSrc?.riskLabel ?? riskSrc?.riskLevel ?? '')
+      const curSd = /สูง/.test(rl) ? 16 : /กลาง|ปานกลาง/.test(rl) ? 11 : /ต่ำ/.test(rl) ? 6 : (curReturn >= 8 ? 16 : curReturn >= 4 ? 11 : 6)
+      const curAge = (who === 'self' ? selfAge : client?.spouseAge) ?? 45
+      const lifeExp = (who === 'self' ? profile?.lifeExpectancySelf : profile?.lifeExpectancySpouse) ?? 85
+      const retAge = (who === 'self' ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? 60
+      const years = Math.max(1, lifeExp - curAge)
+      const sim = (mu0: number, sd0: number, seed: number) => {
+        const mu = mu0 / 100, sd = sd0 / 100
+        const rng = mulberry32(seed >>> 0 || 1)
+        const byYear: number[][] = Array.from({ length: years + 1 }, () => [])
+        for (let k = 0; k < 600; k++) {
+          let v = totalValue
+          byYear[0].push(v)
+          for (let y = 1; y <= years; y++) {
+            let u1 = rng(); if (u1 < 1e-12) u1 = 1e-12
+            const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * rng())
+            v *= Math.exp((mu - sd * sd / 2) + sd * z)
+            byYear[y].push(v)
+          }
+        }
+        return byYear.map(arr => { const so = arr.slice().sort((a, b) => a - b); return { p10: pct(so, 0.1), p50: pct(so, 0.5), p90: pct(so, 0.9) } })
+      }
+      const seedB = (Math.round(totalValue) ^ (years << 4)) >>> 0
+      const cur = sim(curReturn, curSd, seedB ^ 0x1111)
+      const nw = sim(sel.ret, sel.sigma, seedB ^ 0x2222)
+      const rows = cur.map((c, i) => ({ age: curAge + i, พอร์ตเดิม: Math.round(c.p50), พอร์ตใหม่: Math.round(nw[i].p50), band: [Math.round(nw[i].p10), Math.round(nw[i].p90)] as [number, number] }))
+      const rIdx = Math.min(Math.max(0, retAge - curAge), years)
+      return { sel, totalValue, curReturn, curSd, retAge, rows, curAt: cur[rIdx].p50, newAt: nw[rIdx].p50 }
+    }
+    return { self: build('self'), spouse: hasSpouse ? build('spouse') : null }
+  }, [invProfile, marketData, rebalQ, profile, client, selfAge, hasSpouse])
+
   // มรดก 2 กรณี: ลูกค้าเสียชีวิต / คู่สมรสเสียชีวิต (สูตรเดียวกัน สลับกองมรดก+ผู้รอดชีวิต)
   const estate = useMemo(() => {
     const build = (who: 'self' | 'spouse') => {
@@ -927,9 +994,9 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   const hidOf = (k: string) => !!pres[k]?.hidden
   const SLIDE_LABEL: Record<string, string> = {
     family: 'ข้อมูลครอบครัว', work: 'ข้อมูลการทำงานและสวัสดิการ', goals: 'เป้าหมายการเงิน', insgoals: 'เป้าหมายด้านการประกัน', balance: 'งบดุล', cashflow: 'งบกระแสเงินสด',
-    ratios: 'อัตราส่วน/สุขภาพการเงิน', liquidity: 'การบริหารสภาพคล่อง/หนี้สิน',
+    ratios: 'อัตราส่วน/สุขภาพการเงิน', liquidity: 'การบริหารสภาพคล่อง/หนี้สิน', rebalance: 'การปรับสัดส่วนการลงทุน', insneed: 'การบริหารความเสี่ยง/การประกัน',
     insurance: 'ความเสี่ยง & ประกัน', investment: 'การลงทุน', retirement: 'แผนเกษียณ',
-    education: 'ทุนการศึกษาบุตร', edu2: 'กราฟทุนการศึกษา', tax: 'ภาษีเงินได้', estate: 'การจัดการมรดก', action: 'แผนปฏิบัติการ', retire2: 'กราฟเกษียณ', holistic: 'ไทม์ไลน์แผนดำเนินการ', forward: 'งบการเงินล่วงหน้า (ถึงเกษียณ)',
+    education: 'ทุนการศึกษาบุตร', edu2: 'การออมเพื่อทุนการศึกษา', tax: 'ภาษีเงินได้', estate: 'การจัดการมรดก', action: 'แผนปฏิบัติการ', retire2: 'กราฟเกษียณ', holistic: 'ไทม์ไลน์แผนดำเนินการ', forward: 'งบการเงินล่วงหน้า (ถึงเกษียณ)',
   }
   const labelOf = (key: string) => {
     const m = /^action-(\d+)$/.exec(key)
@@ -1579,9 +1646,71 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
           </TwoCol>
         </Slide>
 
+        {/* ── คำแนะนำ: การปรับสัดส่วนการลงทุน ── */}
+        <Slide slideId="rebalance" footer={commentFooter('rebalance')}>
+          <SlideHead icon={TrendingUp} kicker="Rebalancing" title="การปรับสัดส่วนการลงทุน" accent={GR} />
+          <TwoCol>
+            {people.map(p => {
+              const rb = (rebalance as any)[p.key === 'self' ? 'self' : 'spouse']
+              if (!rb) return (
+                <div key={p.key}>
+                  <PersonHead name={p.name} tint={p.tint} />
+                  <Empty text="ยังไม่ได้เลือกพอร์ตเป้าหมาย — เลือกที่เมนู มูลค่าสินทรัพย์ลงทุน → การปรับสัดส่วนลงทุน" />
+                </div>
+              )
+              const diff = rb.newAt - rb.curAt
+              return (
+                <div key={p.key} style={{ display: 'flex', flexDirection: 'column' }}>
+                  <PersonHead name={p.name} tint={p.tint} />
+                  {/* พอร์ตที่เลือก + สัดส่วน */}
+                  <div style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '9px 12px', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 800, color: rb.sel.color }}>พอร์ตที่เลือก: {rb.sel.label}</span>
+                      <span style={{ fontSize: 10.5, color: SUB, fontFamily: 'monospace' }}>E(Rp) +{rb.sel.ret.toFixed(2)}% · σ {rb.sel.sigma.toFixed(2)}%</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 4 }}>
+                      {rb.sel.weights.map((w: number, i2: number) => (
+                        <div key={i2} style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: 8, color: MUTED, whiteSpace: 'nowrap' }}>{['ตราสารหนี้', 'หุ้นไทย', 'หุ้นโลก', 'หุ้นสหรัฐฯ'][i2]}</div>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: INK }}>{w}%</div>
+                          <div style={{ fontSize: 9.5, fontFamily: 'monospace', color: SUB }}>{fmt(rb.totalValue * w / 100)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* เทียบ ณ เกษียณ */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 8 }}>
+                    {([['พอร์ตเดิม ณ เกษียณ', fmt(rb.curAt), AM], ['พอร์ตใหม่ ณ เกษียณ', fmt(rb.newAt), rb.sel.color], ['ส่วนต่างค่ากลาง', `${diff >= 0 ? '+' : '−'}${fmt(Math.abs(diff))}`, diff >= 0 ? GR : RD]] as const).map(([l, v, c]) => (
+                      <div key={l} style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 10, padding: '6px 8px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 8.5, color: MUTED }}>{l}</div>
+                        <div style={{ fontSize: 12.5, fontWeight: 800, fontFamily: 'monospace', color: c }}>{v}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* กราฟเทียบ */}
+                  <div style={{ flex: 1, minHeight: 150, background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '6px 8px 0' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={rb.rows} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
+                        <XAxis dataKey="age" tick={{ fontSize: 8.5, fill: MUTED }} interval={4} />
+                        <YAxis tickFormatter={(v: any) => `${(v / 1e6).toFixed(0)}M`} tick={{ fontSize: 8.5, fill: MUTED }} width={30} />
+                        <Tooltip formatter={(v: any) => Array.isArray(v) ? `${fmt(v[0])} – ${fmt(v[1])}` : `${fmt(v)} บาท`} labelFormatter={(l: any) => `อายุ ${l} ปี`} />
+                        <Legend wrapperStyle={{ fontSize: 9.5 }} />
+                        <ReferenceLine x={rb.retAge} stroke={AM} strokeDasharray="4 3" />
+                        <Area dataKey="band" name="ช่วง 80% (พอร์ตใหม่)" stroke="none" fill={rb.sel.color} fillOpacity={0.13} />
+                        <Line dataKey="พอร์ตเดิม" stroke={AM} strokeWidth={1.8} strokeDasharray="6 4" dot={false} />
+                        <Line dataKey="พอร์ตใหม่" stroke={rb.sel.color} strokeWidth={2.2} dot={false} />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )
+            })}
+          </TwoCol>
+        </Slide>
+
         {/* ── 14b. กราฟเงินออมสะสมทุนการศึกษา (3 สถาบัน) ── */}
         <Slide slideId="edu2" footer={commentFooter('edu2')}>
-          <SlideHead icon={GraduationCap} kicker="Education Projection" title="เงินออมสะสมเพื่อทุนการศึกษา" accent={AM} />
+          <SlideHead icon={GraduationCap} kicker="Education Projection" title="การออมเพื่อทุนการศึกษา" accent={AM} />
           {eduChart && eduChart.hasData ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               <div style={{ fontSize: 12, color: SUB, marginBottom: 8 }}>{eduChart.childName} · ออม {eduChart.savingYears} ปี · มูลค่ากองทุนสะสมรายปี แยกตามประเภทสถาบัน{eduChart.childCount > 1 ? ` (แสดงบุตรคนที่ 1 จาก ${eduChart.childCount})` : ''}</div>
@@ -1644,6 +1773,62 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
               )}
             </div>
           ) : <Empty text="ยังไม่มีข้อมูลบุตร/ค่าเล่าเรียน — กรอกที่หน้าทุนการศึกษา" />}
+        </Slide>
+
+        {/* ── คำแนะนำ: การบริหารความเสี่ยง/การประกัน ── */}
+        <Slide slideId="insneed" footer={commentFooter('insneed')}>
+          <SlideHead icon={ShieldCheck} kicker="Risk Management" title="การบริหารความเสี่ยง/การประกัน" accent={VI} />
+          <TwoCol>
+            {people.map(p => {
+              if (!p.ins) return (
+                <div key={p.key}>
+                  <PersonHead name={p.name} tint={p.tint} />
+                  <Empty text="ยังไม่มีข้อมูลแผนประกัน — กรอกที่หน้าวางแผนประกัน" />
+                </div>
+              )
+              const rows = [
+                { l: 'ทุนประกันที่ควรมี · Human Life Value', need: p.ins.hlvNeed, have: p.ins.have, gap: p.ins.hlvGap, sel: p.ins.method === 'hlv', short: 'HLV' },
+                { l: 'ทุนประกันที่ควรมี · Need Base Analysis', need: p.ins.needsNeed, have: p.ins.have, gap: p.ins.needsGap, sel: p.ins.method !== 'hlv', short: 'Needs-Based' },
+                { l: 'ทุนประกัน · กรณีทุพพลภาพ', need: p.ins.disNeed, have: p.ins.disHave, gap: p.ins.disGap, sel: false, short: 'ทุพพลภาพ' },
+              ]
+              const chart = rows.map(r => ({ name: r.short, มีแล้ว: Math.max(0, Math.round(r.have)), ส่วนที่ขาด: Math.max(0, Math.round(r.gap)) }))
+              return (
+                <div key={p.key} style={{ display: 'flex', flexDirection: 'column' }}>
+                  <PersonHead name={p.name} tint={p.tint} />
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5, marginBottom: 8 }}>
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${LINE}` }}>
+                        {['วิธีคำนวณทุนประกัน', 'ทุนที่ควรมี', 'มีแล้ว', 'ทำเพิ่ม'].map((h, i2) => (
+                          <th key={h} style={{ padding: '4px 6px', fontSize: 9.5, fontWeight: 800, color: MUTED, textAlign: i2 === 0 ? 'left' : 'right' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>{rows.map(r => (
+                      <tr key={r.l} style={{ borderBottom: `1px solid ${HAIR}`, background: r.sel ? `${p.tint}0d` : 'transparent' }}>
+                        <td style={{ padding: '6px 6px', color: r.sel ? INK : SUB, fontWeight: r.sel ? 800 : 500 }}>{r.sel ? '☑ ' : ''}{r.l}{r.sel ? ' (วิธีที่เลือก)' : ''}</td>
+                        <td style={{ padding: '6px 6px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: INK }}>{fmt(r.need)}</td>
+                        <td style={{ padding: '6px 6px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: GR }}>{fmt(r.have)}</td>
+                        <td style={{ padding: '6px 6px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: r.gap > 0 ? AM : GR }}>{r.gap > 0 ? fmt(r.gap) : 'เพียงพอ'}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                  <div style={{ flex: 1, minHeight: 140, background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '8px 8px 0' }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.08em', color: MUTED, textTransform: 'uppercase', marginBottom: 2 }}>เปรียบเทียบทุนประกัน — ความสูงแท่ง = ทุนที่ต้องการ</div>
+                    <ResponsiveContainer width="100%" height="88%">
+                      <BarChart data={chart} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
+                        <XAxis dataKey="name" tick={{ fontSize: 9.5, fill: SUB }} />
+                        <YAxis tickFormatter={(v: any) => `${(v / 1e6).toFixed(0)}M`} tick={{ fontSize: 9, fill: MUTED }} width={30} />
+                        <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} />
+                        <Legend wrapperStyle={{ fontSize: 10 }} />
+                        <Bar dataKey="มีแล้ว" stackId="a" fill={GR} maxBarSize={44} />
+                        <Bar dataKey="ส่วนที่ขาด" stackId="a" fill={AM} maxBarSize={44} radius={[5, 5, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )
+            })}
+          </TwoCol>
         </Slide>
 
 
