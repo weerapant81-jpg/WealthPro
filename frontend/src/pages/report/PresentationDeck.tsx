@@ -76,6 +76,7 @@ export const DECK_SLIDES: { id: string; label: string }[] = [
   { id: 'retire2', label: 'กราฟเกษียณ' },
   { id: 'tax', label: 'ภาษีเงินได้' },
   { id: 'estate', label: 'การจัดการมรดก' },
+  { id: 'advheader', label: 'หน้าคั่น: คำแนะนำนักวางแผน' },
   { id: 'edu2', label: 'กราฟทุนการศึกษา' },
   { id: 'action', label: 'แผนปฏิบัติการ' },
   { id: 'holistic', label: 'ไทม์ไลน์แผนดำเนินการ' },
@@ -1535,6 +1536,16 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
             ))}
           </div>
         </Slide>
+        {/* ── หน้าคั่น: คำแนะนำนักวางแผน ── */}
+        <Slide slideId="advheader" noFooter pad={0}>
+          <div style={{ position: 'absolute', inset: 0, background: '#ffffff', display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+            <div style={{ width: '100%', padding: '54px 0', background: 'linear-gradient(90deg, #0d9488 0%, #14b8a6 55%, #22c55e 130%)', textAlign: 'center' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.35em', color: 'rgba(255,255,255,0.7)', marginBottom: 10 }}>PLANNER'S RECOMMENDATIONS</div>
+              <div style={{ fontSize: 56, fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>คำแนะนำนักวางแผน</div>
+            </div>
+          </div>
+        </Slide>
+
         {/* ── 14b. กราฟเงินออมสะสมทุนการศึกษา (3 สถาบัน) ── */}
         <Slide slideId="edu2" footer={commentFooter('edu2')}>
           <SlideHead icon={GraduationCap} kicker="Education Projection" title="เงินออมสะสมเพื่อทุนการศึกษา" accent={AM} />
