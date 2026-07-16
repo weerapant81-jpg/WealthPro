@@ -1514,9 +1514,11 @@ export default function ReportPage() {
         <div style={{ marginBottom: 16 }}>
           {persons.map(p => {
             const R3 = p.r!
+            const noSaveByAge = new Map<number, number>((R3.projectionRowsNoSave ?? []).map((row: any) => [row.age, Math.round(row.phase === 'accumulation' ? (row.totalAccum ?? 0) : (row.closeBalance ?? 0))]))
             const chart = (R3.projectionRows ?? []).map((row: any) => ({
               age: row.age,
               มูลค่ารวม: Math.round(row.phase === 'accumulation' ? (row.totalAccum ?? 0) : (row.closeBalance ?? 0)),
+              ไม่ออมเพิ่ม: Math.max(0, noSaveByAge.get(row.age) ?? 0),
               ค่าใช้จ่าย: row.phase === 'retirement' ? Math.round((row.withdrawalLiving ?? 0) + (row.withdrawalGoals ?? 0)) : 0,
             }))
             return (
@@ -1541,7 +1543,8 @@ export default function ReportPage() {
                           <Legend wrapperStyle={{ fontSize: 10.5 }} />
                           <ReferenceLine x={R3.retireAge} stroke={p.tint} strokeDasharray="4 3" />
                           <Bar dataKey="ค่าใช้จ่าย" barSize={4} fill="#f59e0bb0" />
-                          <Line dataKey="มูลค่ารวม" stroke={p.tint} strokeWidth={2} dot={false} />
+                          <Line dataKey="ไม่ออมเพิ่ม" name="มูลค่ารวม (กรณีไม่ออมเพิ่ม)" stroke={REDR} strokeWidth={1.8} strokeDasharray="6 4" dot={false} />
+                          <Line dataKey="มูลค่ารวม" name="มูลค่ารวม (ออมตามแผน)" stroke={p.tint} strokeWidth={2} dot={false} />
                         </ComposedChart>
                       </ResponsiveContainer>
                     </div>
