@@ -82,6 +82,8 @@ export const DECK_SLIDES: { id: string; label: string }[] = [
   { id: 'rebalance', label: 'การปรับสัดส่วนการลงทุน' },
   { id: 'edu2', label: 'การออมเพื่อทุนการศึกษา' },
   { id: 'insneed', label: 'การบริหารความเสี่ยง/การประกัน' },
+  { id: 'retiresave', label: 'การออมเพื่อการเกษียณ' },
+  { id: 'taxplan2', label: 'การวางแผนภาษี (ก่อน/หลัง)' },
   { id: 'action', label: 'แผนปฏิบัติการ' },
   { id: 'holistic', label: 'ไทม์ไลน์แผนดำเนินการ' },
   { id: 'forward', label: 'งบการเงินล่วงหน้า (ถึงเกษียณ)' },
@@ -994,7 +996,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   const hidOf = (k: string) => !!pres[k]?.hidden
   const SLIDE_LABEL: Record<string, string> = {
     family: 'ข้อมูลครอบครัว', work: 'ข้อมูลการทำงานและสวัสดิการ', goals: 'เป้าหมายการเงิน', insgoals: 'เป้าหมายด้านการประกัน', balance: 'งบดุล', cashflow: 'งบกระแสเงินสด',
-    ratios: 'อัตราส่วน/สุขภาพการเงิน', liquidity: 'การบริหารสภาพคล่อง/หนี้สิน', rebalance: 'การปรับสัดส่วนการลงทุน', insneed: 'การบริหารความเสี่ยง/การประกัน',
+    ratios: 'อัตราส่วน/สุขภาพการเงิน', liquidity: 'การบริหารสภาพคล่อง/หนี้สิน', rebalance: 'การปรับสัดส่วนการลงทุน', insneed: 'การบริหารความเสี่ยง/การประกัน', retiresave: 'การออมเพื่อการเกษียณ', taxplan2: 'การวางแผนภาษี',
     insurance: 'ความเสี่ยง & ประกัน', investment: 'การลงทุน', retirement: 'แผนเกษียณ',
     education: 'ทุนการศึกษาบุตร', edu2: 'การออมเพื่อทุนการศึกษา', tax: 'ภาษีเงินได้', estate: 'การจัดการมรดก', action: 'แผนปฏิบัติการ', retire2: 'กราฟเกษียณ', holistic: 'ไทม์ไลน์แผนดำเนินการ', forward: 'งบการเงินล่วงหน้า (ถึงเกษียณ)',
   }
@@ -1521,7 +1523,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
           <SlideHead icon={PiggyBank} kicker="Retirement Projection" title="คาดการณ์มูลค่ากองทุนเกษียณ" accent={CY} />
           {retChart.data.length > 0 ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-              <div style={{ fontSize: 12, color: SUB, marginBottom: 8 }}>สะสมช่วงทำงาน → ใช้จ่ายหลังเกษียณ · แท่ง = ไม่ออมเพิ่ม (ตัดที่จุดเงินหมด)</div>
+              <div style={{ fontSize: 12, color: SUB, marginBottom: 8 }}>กรณีไม่ออมเพิ่ม — สะสมช่วงทำงาน → ใช้จ่ายหลังเกษียณ (ตัดที่จุดเงินหมด)</div>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={retChart.data} margin={{ top: 26, right: 16, left: 6, bottom: 6 }}>
                   <defs><linearGradient id="pdRetSelf" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={CY} stopOpacity={0.22} /><stop offset="100%" stopColor={CY} stopOpacity={0.04} /></linearGradient></defs>
@@ -1534,11 +1536,9 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                   {/* เส้นบอก "อายุที่เงินหมด" (กรณีไม่ออมเพิ่ม) ต่อคน */}
                   {retChart.depSelf != null && <ReferenceLine x={retChart.depSelf} stroke={CY} strokeDasharray="2 3" label={{ value: `เงินหมด ${retChart.depSelf}`, position: 'insideTopLeft', fill: CY, fontSize: 10, fontWeight: 700 }} />}
                   {hasSpouse && retChart.depSpouse != null && <ReferenceLine x={retChart.depSpouse} stroke={VI} strokeDasharray="2 3" label={{ value: `เงินหมด ${retChart.depSpouse}`, position: 'insideTopRight', fill: VI, fontSize: 10, fontWeight: 700 }} />}
-                  <Area type="monotone" dataKey="self" name={selfName} stroke={CY} strokeWidth={2.4} fill="url(#pdRetSelf)" dot={false} />
-                  {hasSpouse && <Line type="monotone" dataKey="spouse" name={spouseName} stroke={VI} strokeWidth={2.2} dot={false} />}
-                  {/* สถานการณ์ "ไม่ออมเพิ่ม" — กราฟแท่ง (โปร่ง) ตัดที่จุดเงินหมด */}
-                  <Bar dataKey="selfNo" name={`${selfName} (ไม่ออมเพิ่ม)`} fill={`${CY}55`} stroke={CY} strokeWidth={0.5} maxBarSize={14} />
-                  {hasSpouse && <Bar dataKey="spouseNo" name={`${spouseName} (ไม่ออมเพิ่ม)`} fill={`${VI}55`} stroke={VI} strokeWidth={0.5} maxBarSize={14} />}
+                  {/* เฉพาะกรณี "ไม่ออมเพิ่ม" — ตัดเส้นที่จุดเงินหมด */}
+                  <Area type="monotone" dataKey="selfNo" name={`${selfName} (ไม่ออมเพิ่ม)`} stroke={CY} strokeWidth={2.4} fill="url(#pdRetSelf)" dot={false} />
+                  {hasSpouse && <Line type="monotone" dataKey="spouseNo" name={`${spouseName} (ไม่ออมเพิ่ม)`} stroke={VI} strokeWidth={2.2} dot={false} />}
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -1688,8 +1688,9 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                     ))}
                   </div>
                   {/* กราฟเทียบ */}
-                  <div style={{ flex: 1, minHeight: 150, background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '6px 8px 0' }}>
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '6px 8px 0' }}>
+                    <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.08em', color: MUTED, textTransform: 'uppercase' }}>Monte Carlo เปรียบเทียบมูลค่าอนาคต</div>
+                    <ResponsiveContainer width="100%" height={185}>
                       <ComposedChart data={rb.rows} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
                         <XAxis dataKey="age" tick={{ fontSize: 8.5, fill: MUTED }} interval={4} />
                         <YAxis tickFormatter={(v: any) => `${(v / 1e6).toFixed(0)}M`} tick={{ fontSize: 8.5, fill: MUTED }} width={30} />
@@ -1812,9 +1813,9 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                       </tr>
                     ))}</tbody>
                   </table>
-                  <div style={{ flex: 1, minHeight: 140, background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '8px 8px 0' }}>
+                  <div style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '8px 8px 0' }}>
                     <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.08em', color: MUTED, textTransform: 'uppercase', marginBottom: 2 }}>เปรียบเทียบทุนประกัน — ความสูงแท่ง = ทุนที่ต้องการ</div>
-                    <ResponsiveContainer width="100%" height="88%">
+                    <ResponsiveContainer width="100%" height={230}>
                       <BarChart data={chart} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
                         <XAxis dataKey="name" tick={{ fontSize: 9.5, fill: SUB }} />
                         <YAxis tickFormatter={(v: any) => `${(v / 1e6).toFixed(0)}M`} tick={{ fontSize: 9, fill: MUTED }} width={30} />
@@ -1825,6 +1826,123 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
+                </div>
+              )
+            })}
+          </TwoCol>
+        </Slide>
+
+        {/* ── คำแนะนำ: การออมเพื่อการเกษียณ ── */}
+        <Slide slideId="retiresave" footer={commentFooter('retiresave')}>
+          <SlideHead icon={PiggyBank} kicker="Retirement Saving" title="การออมเพื่อการเกษียณ" accent={CY} />
+          <TwoCol>
+            {people.map(p => {
+              const R = p.ret as any
+              if (!R) return (
+                <div key={p.key}>
+                  <PersonHead name={p.name} tint={p.tint} />
+                  <Empty text="ยังไม่มีข้อมูลแผนเกษียณ — กรอกที่หน้าวางแผนเกษียณ" />
+                </div>
+              )
+              const chart = (R.projectionRows ?? []).map((row: any) => ({
+                age: row.age,
+                มูลค่ารวม: Math.round(row.phase === 'accumulation' ? (row.totalAccum ?? 0) : (row.closeBalance ?? 0)),
+                ค่าใช้จ่าย: row.phase === 'retirement' ? Math.round((row.withdrawalLiving ?? 0) + (row.withdrawalGoals ?? 0)) : 0,
+              }))
+              const growth = R.savingsGrowthRate ?? 0
+              const Card = ({ l, v, sub, c }: { l: string; v: string; sub?: string; c: string }) => (
+                <div style={{ background: PAPER, border: `1px solid ${LINE}`, borderLeft: `3px solid ${c}`, borderRadius: 10, padding: '6px 9px' }}>
+                  <div style={{ fontSize: 8.5, color: MUTED, whiteSpace: 'nowrap' }}>{l}</div>
+                  <div style={{ fontSize: 12.5, fontWeight: 800, fontFamily: 'monospace', color: c, whiteSpace: 'nowrap' }}>{v}</div>
+                  {sub && <div style={{ fontSize: 8.5, color: SUB, fontFamily: 'monospace' }}>{sub}</div>}
+                </div>
+              )
+              return (
+                <div key={p.key}>
+                  <PersonHead name={p.name} tint={p.tint} />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 6 }}>
+                    <Card l="เงินเกษียณที่ต้องการ" v={fmt(R.needed)} c={INK} />
+                    <Card l="มูลค่าสินทรัพย์ที่มี" v={fmt(R.have)} c={GR} />
+                    <Card l="ส่วนที่ยังขาด" v={fmt(R.gap)} c={R.gap > 0 ? RD : GR} />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 8 }}>
+                    <Card l="ต้องออมเพิ่ม (เท่ากันทุกปี)" v={`${fmt(R.annualSavings)} /ปี`} sub={`≈ ${fmt(R.annualSavings / 12)} /เดือน`} c="#0284c7" />
+                    <Card l={`ออมเพิ่มขึ้นทุกปี${growth > 0 ? ` (+${growth}%/ปี)` : ''} — ปีแรก`} v={`${fmt(R.gradFirst)} /ปี`} sub={`≈ ${fmt(R.gradFirst / 12)} /เดือน`} c={VI} />
+                  </div>
+                  <div style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '6px 8px 0' }}>
+                    <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.08em', color: MUTED, textTransform: 'uppercase' }}>การคาดการณ์มูลค่าเงินในอนาคต (สะสม → ใช้เงินหลังเกษียณ)</div>
+                    <ResponsiveContainer width="100%" height={185}>
+                      <ComposedChart data={chart} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
+                        <XAxis dataKey="age" tick={{ fontSize: 8.5, fill: MUTED }} interval={4} />
+                        <YAxis tickFormatter={(v: any) => fmtM(v)} tick={{ fontSize: 8.5, fill: MUTED }} width={34} />
+                        <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} labelFormatter={(l: any) => `อายุ ${l} ปี`} />
+                        <Legend wrapperStyle={{ fontSize: 9.5 }} />
+                        {R.retireAge != null && <ReferenceLine x={R.retireAge} stroke={AM} strokeDasharray="4 3" />}
+                        <Bar dataKey="ค่าใช้จ่าย" barSize={3} fill={`${AM}b0`} />
+                        <Line dataKey="มูลค่ารวม" stroke={p.tint} strokeWidth={2.2} dot={false} />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )
+            })}
+          </TwoCol>
+        </Slide>
+
+        {/* ── คำแนะนำ: การวางแผนภาษี (ก่อน/หลังวางแผน) ── */}
+        <Slide slideId="taxplan2" footer={commentFooter('taxplan2')}>
+          <SlideHead icon={Receipt} kicker="Tax Planning" title="การวางแผนภาษี" accent={'#0ea5e9'} />
+          <TwoCol>
+            {people.map(p => {
+              const st0 = taxPlan?.[p.key]
+              if (!st0) return (
+                <div key={p.key}>
+                  <PersonHead name={p.name} tint={p.tint} />
+                  <Empty text="ยังไม่มีข้อมูลแผนภาษี — กรอกที่หน้าวางแผนภาษี" />
+                </div>
+              )
+              const st = { ...defaultState(), ...(st0 as TaxState) }
+              const planned: Record<string, number> = (st0 as any).planned ?? {}
+              const hasPlan = Object.keys(planned).length > 0
+              const c0 = calc(st)
+              const c1 = calc({ ...st, ...planned } as TaxState)
+              const rows: [string, string, string, boolean?][] = [
+                ['เงินได้พึงประเมินรวม', fmt(c0.ti), fmt(c1.ti)],
+                ['หักค่าใช้จ่าย', `−${fmt(c0.expD)}`, `−${fmt(c1.expD)}`],
+                ['หักค่าลดหย่อนรวม', `−${fmt(c0.allD - c0.expD)}`, `−${fmt(c1.allD - c1.expD)}`],
+                ['เงินได้สุทธิ (ฐานภาษี)', fmt(c0.ni), fmt(c1.ni), true],
+                ['ภาษีที่ต้องชำระ', fmt(c0.netTax), fmt(c1.netTax), true],
+                ['อัตราภาษีขั้นสูงสุด', `${c0.mr}%`, `${c1.mr}%`],
+                ['อัตราภาษีเฉลี่ย', `${c0.eff.toFixed(2)}%`, `${c1.eff.toFixed(2)}%`],
+              ]
+              const saved = c0.netTax - c1.netTax
+              return (
+                <div key={p.key}>
+                  <PersonHead name={p.name} tint={p.tint} />
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${LINE}` }}>
+                        <th style={{ padding: '5px 6px', fontSize: 10, fontWeight: 800, color: MUTED, textAlign: 'left' }}>รายการ</th>
+                        <th style={{ padding: '5px 6px', fontSize: 10, fontWeight: 800, color: MUTED, textAlign: 'right' }}>ปัจจุบัน</th>
+                        <th style={{ padding: '5px 6px', fontSize: 10, fontWeight: 800, color: hasPlan ? GR : MUTED, textAlign: 'right' }}>หลังวางแผน</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map(([l, cur, plan, strong]) => (
+                        <tr key={l} style={{ borderBottom: `1px solid ${HAIR}`, fontWeight: strong ? 800 : 400 }}>
+                          <td style={{ padding: '7px 6px', color: strong ? INK : SUB }}>{l}</td>
+                          <td style={{ padding: '7px 6px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: INK }}>{cur}</td>
+                          <td style={{ padding: '7px 6px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: hasPlan && plan !== cur ? GR : MUTED }}>{hasPlan ? plan : '—'}</td>
+                        </tr>
+                      ))}
+                      <tr style={{ borderTop: `1.5px solid ${LINE}` }}>
+                        <td style={{ padding: '8px 6px', fontWeight: 800, color: INK }}>ประหยัดภาษีได้</td>
+                        <td colSpan={2} style={{ padding: '8px 6px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: hasPlan && saved > 0 ? GR : MUTED, fontSize: 14 }}>
+                          {hasPlan && saved > 0 ? `${fmt(saved)} บาท/ปี` : hasPlan ? '—' : 'ยังไม่ได้วางแผนเพิ่ม'}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               )
             })}
