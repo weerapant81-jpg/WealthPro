@@ -14,7 +14,7 @@ import {
   Activity, Pencil, X, Check, User, Users, GripVertical, EyeOff, Plus,
   Wallet, Scale, Receipt, Baby, Target, HeartPulse, Banknote, CalendarClock, Briefcase,
   Type as TypeIcon, ImagePlus, Trash2, ArrowUp, ArrowDown, Bold, AlignLeft, AlignCenter, AlignRight, FilePlus2,
-  RotateCcw, RotateCw, BringToFront, SendToBack, Grid3x3,
+  RotateCcw, RotateCw, BringToFront, SendToBack, Grid3x3, ScrollText
 } from 'lucide-react'
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
@@ -84,6 +84,7 @@ export const DECK_SLIDES: { id: string; label: string }[] = [
   { id: 'insneed', label: 'การบริหารความเสี่ยง/การประกัน' },
   { id: 'retiresave', label: 'การออมเพื่อการเกษียณ' },
   { id: 'taxplan2', label: 'การวางแผนภาษี (ก่อน/หลัง)' },
+  { id: 'estateplan2', label: 'การวางแผนมรดก' },
   { id: 'action', label: 'แผนปฏิบัติการ' },
   { id: 'holistic', label: 'ไทม์ไลน์แผนดำเนินการ' },
   { id: 'forward', label: 'งบการเงินล่วงหน้า (ถึงเกษียณ)' },
@@ -996,7 +997,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   const hidOf = (k: string) => !!pres[k]?.hidden
   const SLIDE_LABEL: Record<string, string> = {
     family: 'ข้อมูลครอบครัว', work: 'ข้อมูลการทำงานและสวัสดิการ', goals: 'เป้าหมายการเงิน', insgoals: 'เป้าหมายด้านการประกัน', balance: 'งบดุล', cashflow: 'งบกระแสเงินสด',
-    ratios: 'อัตราส่วน/สุขภาพการเงิน', liquidity: 'การบริหารสภาพคล่อง/หนี้สิน', rebalance: 'การปรับสัดส่วนการลงทุน', insneed: 'การบริหารความเสี่ยง/การประกัน', retiresave: 'การออมเพื่อการเกษียณ', taxplan2: 'การวางแผนภาษี',
+    ratios: 'อัตราส่วน/สุขภาพการเงิน', liquidity: 'การบริหารสภาพคล่อง/หนี้สิน', rebalance: 'การปรับสัดส่วนการลงทุน', insneed: 'การบริหารความเสี่ยง/การประกัน', retiresave: 'การออมเพื่อการเกษียณ', taxplan2: 'การวางแผนภาษี', estateplan2: 'การวางแผนมรดก',
     insurance: 'ความเสี่ยง & ประกัน', investment: 'การลงทุน', retirement: 'แผนเกษียณ',
     education: 'ทุนการศึกษาบุตร', edu2: 'การออมเพื่อทุนการศึกษา', tax: 'ภาษีเงินได้', estate: 'การจัดการมรดก', action: 'แผนปฏิบัติการ', retire2: 'กราฟเกษียณ', holistic: 'ไทม์ไลน์แผนดำเนินการ', forward: 'งบการเงินล่วงหน้า (ถึงเกษียณ)',
   }
@@ -1943,6 +1944,73 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                       </tr>
                     </tbody>
                   </table>
+                </div>
+              )
+            })}
+          </TwoCol>
+        </Slide>
+
+        {/* ── คำแนะนำ: การวางแผนมรดก ── */}
+        <Slide slideId="estateplan2" footer={commentFooter('estateplan2')}>
+          <SlideHead icon={ScrollText} kicker="Estate Planning" title="การวางแผนมรดก" accent={VI} />
+          <TwoCol>
+            {people.map(p => {
+              const e = (estate as any)[p.key === 'self' ? 'self' : 'spouse']
+              const b = balanceRows(p.ratios)
+              if (!e) return (
+                <div key={p.key}>
+                  <PersonHead name={p.name} tint={p.tint} />
+                  <Empty text="ยังไม่มีข้อมูลแผนมรดก — กรอกที่หน้าวางแผนมรดก" />
+                </div>
+              )
+              return (
+                <div key={p.key}>
+                  <PersonHead name={p.name} tint={p.tint} />
+                  {/* สถานะพินัยกรรม */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: e.hasWill ? GR : AM, background: e.hasWill ? `${GR}14` : `${AM}14`, border: `1px solid ${e.hasWill ? GR : AM}44`, borderRadius: 999, padding: '3px 12px' }}>
+                      {e.hasWill ? `✓ ทำพินัยกรรมไว้แล้ว${e.willType ? ` · ${e.willType}` : ''}` : '⚠ ยังไม่ได้ทำพินัยกรรม — แนะนำให้จัดทำ'}
+                    </span>
+                  </div>
+                  {/* สรุปสินทรัพย์ */}
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5, marginBottom: 8 }}>
+                    <tbody>
+                      {([['สินทรัพย์สภาพคล่อง', b.liquid, CY], ['สินทรัพย์ลงทุน', b.invest, GR], ['สินทรัพย์ส่วนตัว', b.personal, AM], ['รวมสินทรัพย์', b.total, INK], ['หนี้สินรวม', -b.debt, RD], ['ความมั่งคั่งสุทธิ (กองมรดกโดยประมาณ)', b.net, b.net >= 0 ? VI : RD]] as any[]).map(([l, v, c], i2) => (
+                        <tr key={i2} style={{ borderBottom: `1px solid ${HAIR}`, fontWeight: (l as string).startsWith('รวม') || (l as string).startsWith('ความมั่งคั่ง') ? 800 : 400 }}>
+                          <td style={{ padding: '5px 6px', color: SUB }}>{l}</td>
+                          <td style={{ padding: '5px 6px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: c }}>{fmt(v)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {/* การส่งต่อมรดกตามกฎหมาย */}
+                  <div style={{ background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '8px 12px' }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.06em', color: MUTED, textTransform: 'uppercase', marginBottom: 4 }}>
+                      การส่งต่อมรดก{e.useWill ? 'ตามพินัยกรรม' : 'ตามกฎหมาย (ทายาทโดยธรรม ม.1629, 1635)'} · กองมรดกสุทธิ {fmt(e.estateVal)} บาท
+                    </div>
+                    {e.taxHeirs.length === 0
+                      ? <div style={{ fontSize: 11.5, color: MUTED, padding: '4px 0' }}>— ยังไม่มีข้อมูลทายาท —</div>
+                      : e.taxHeirs.map((h: any, i2: number) => {
+                          const pctSh = e.estateVal > 0 ? h.share / e.estateVal * 100 : 0
+                          return (
+                            <div key={i2} style={{ padding: '4px 0', borderBottom: `1px solid ${HAIR}` }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: INK }}>{h.name} <span style={{ fontSize: 10, fontWeight: 400, color: MUTED }}>· {h.rel === 'spouse' ? 'คู่สมรส' : h.rel === 'lineal' ? 'บุพการี/ผู้สืบสันดาน' : 'อื่น ๆ'}</span></span>
+                                <span style={{ fontFamily: 'monospace', fontWeight: 800, color: p.tint, whiteSpace: 'nowrap', fontSize: 12 }}>{fmt(h.share)} <span style={{ fontSize: 9.5, color: MUTED, fontWeight: 400 }}>({pctSh.toFixed(1)}%)</span></span>
+                              </div>
+                              <div style={{ height: 4, borderRadius: 999, background: '#eef2f6', marginTop: 3, overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${Math.max(2, pctSh)}%`, borderRadius: 999, background: p.tint }} />
+                              </div>
+                            </div>
+                          )
+                        })}
+                    {e.totalTax > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6, fontSize: 11.5, fontWeight: 800 }}>
+                        <span style={{ color: INK }}>ภาษีมรดกรวม</span>
+                        <span style={{ fontFamily: 'monospace', color: RD }}>{fmt(e.totalTax)} บาท</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )
             })}
