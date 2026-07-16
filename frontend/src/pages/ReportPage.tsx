@@ -59,7 +59,6 @@ const SECTIONS: Sec[] = [
   { k: 'exec_spouse', t: 'สถานะทางการเงินปัจจุบัน (คู่สมรส)', lvl: 1, auto: 'exec_spouse' },
   { k: 'domains', t: 'บทวิเคราะห์และการดำเนินการ', lvl: 1, auto: 'domains' },
   { k: 'domains_spouse', t: 'บทวิเคราะห์และการดำเนินการ (คู่สมรส)', lvl: 1, auto: 'domains_spouse' },
-  { k: 'action', t: 'แผนปฏิบัติการ', lvl: 1, auto: 'action' },
   { k: 'finance', t: 'สรุปผลการวิเคราะห์ข้อมูลทางการเงินส่วนบุคคล', lvl: 1, auto: 'finance' },
   { k: 'fin_cf2', t: 'งบกระแสเงินสด (Cash Flow Statement)', lvl: 2, auto: 'fin_cf2' },
   { k: 'fin_ratio2', t: 'อัตราส่วนทางการเงิน (Financial Ratio)', lvl: 2, auto: 'fin_ratio2' },
@@ -340,67 +339,6 @@ export default function ReportPage() {
             </span>
             <span>วันที่ {today}</span>
           </div>
-        </div>
-      )
-    }
-    if (kind === 'action') {
-      // checklist แยกฝั่งผู้รับผิดชอบ (สไตล์ Immediate Action Items)
-      const ownerTh = (o: string) => o === 'client' ? 'ลูกค้า' : o === 'advisor' ? 'ที่ปรึกษา' : o === 'spouse' ? 'คู่สมรส' : (o || '')
-      const PR_LBL: Record<string, string> = { high: 'สูง', medium: 'กลาง', low: 'ต่ำ' }
-      type Ln = { plan: string; amount: number; schedule: string; owner: string; priority: string; done: boolean }
-      const lines: Ln[] = []
-      for (const it of actionItems) {
-        const rows: any[] = Array.isArray(it.subPlan) ? it.subPlan : []
-        const done = it.status === 'done' || !!it.completedAt
-        if (!rows.length) { lines.push({ plan: it.title, amount: toNum(it.target), schedule: it.dueDate || '', owner: ownerTh(it.owner), priority: PR_LBL[it.priority] ?? '', done }); continue }
-        for (const r of rows) {
-          const plan = String(r?.desc || r?.method || r?.who || '').trim()
-          const amount = toNum(r?.amount ?? r?.premium)
-          if (!plan && amount <= 0 && !r?.schedule) continue
-          lines.push({ plan: plan || it.title, amount, schedule: r?.schedule || '', owner: String(r?.owner || '').trim() || ownerTh(it.owner), priority: String(r?.priority || '') || (PR_LBL[it.priority] ?? ''), done: !!r?.done || done })
-        }
-      }
-      if (!lines.length) return <div style={{ fontSize: 12.5, color: '#94a3b8', marginBottom: 12 }}>ยังไม่มีรายการในแผนปฏิบัติการ — เพิ่มได้ที่หน้า "แผนปฏิบัติการ"</div>
-      const PR_ORD: Record<string, number> = { 'สูง': 0, 'กลาง': 1, 'ต่ำ': 2 }
-      const PR_CLR: Record<string, string> = { 'สูง': REDR, 'กลาง': AMBERR, 'ต่ำ': '#64748b' }
-      lines.sort((a, b) => (PR_ORD[a.priority] ?? 3) - (PR_ORD[b.priority] ?? 3))
-      const advisorLines = lines.filter(l => l.owner === 'ที่ปรึกษา')
-      const clientLines = lines.filter(l => l.owner !== 'ที่ปรึกษา')
-      const fmtDate = (s: string) => { const d = new Date(s); return isNaN(d.getTime()) ? s : d.toLocaleDateString('th-TH', { year: '2-digit', month: 'short', day: 'numeric' }) }
-      const thA: React.CSSProperties = { padding: '6px 8px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'left' }
-      const tdA: React.CSSProperties = { padding: '7px 8px', fontSize: 12.5, color: '#1e293b' }
-      const Group = ({ title, items }: { title: string; items: Ln[] }) => items.length === 0 ? null : (
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', borderBottom: `2px solid ${TEAL}`, paddingBottom: 6, marginBottom: 4 }}>{title}</div>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                <th style={{ ...thA, width: 26 }} />
-                <th style={thA}>แผนดำเนินการ</th>
-                <th style={{ ...thA, textAlign: 'right' }}>จำนวนเงิน</th>
-                <th style={thA}>กำหนดการ</th>
-                <th style={thA}>ผู้รับผิดชอบ</th>
-                <th style={thA}>ความสำคัญ</th>
-              </tr>
-            </thead>
-            <tbody>{items.map((l, i) => (
-              <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ ...tdA, fontSize: 14, color: l.done ? GREENR : '#94a3b8' }}>{l.done ? '☑' : '☐'}</td>
-                <td style={{ ...tdA, color: l.done ? '#94a3b8' : '#1e293b', textDecoration: l.done ? 'line-through' : 'none' }}>{l.plan}</td>
-                <td style={{ ...tdA, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: l.amount > 0 ? '#0f172a' : '#94a3b8' }}>{l.amount > 0 ? fmt(l.amount) : '—'}</td>
-                <td style={{ ...tdA, color: '#475569' }}>{l.schedule ? fmtDate(l.schedule) : '—'}</td>
-                <td style={{ ...tdA, color: '#475569' }}>{l.owner || '—'}</td>
-                <td style={{ ...tdA, fontWeight: 700, color: PR_CLR[l.priority] || '#94a3b8' }}>{l.priority || '—'}</td>
-              </tr>
-            ))}</tbody>
-          </table>
-        </div>
-      )
-      return (
-        <div style={{ marginBottom: 16 }}>
-          <p style={{ fontSize: 13, color: '#64748b', lineHeight: 1.7, marginBottom: 14 }}>เราแนะนำให้ดำเนินการตามรายการต่อไปนี้เพื่อยกระดับสถานะการเงินของคุณให้สอดคล้องกับสมมติฐานในแผน โดยแบ่งตามผู้รับผิดชอบ</p>
-          <Group title="รายการที่คุณต้องดำเนินการ" items={clientLines} />
-          <Group title="รายการที่นักวางแผนการเงินจะดำเนินการให้" items={advisorLines} />
         </div>
       )
     }
@@ -754,9 +692,9 @@ export default function ReportPage() {
           <p style={{ fontSize: 12.5, color: '#334155', lineHeight: 1.85, marginBottom: 16, textAlign: 'justify', textIndent: 28 }}>
             รายงานนี้ใช้แบบจำลองทางการเงินเพื่อแสดงภาพสถานะทางการเงินในปัจจุบันของท่าน รวมถึงแนวทางที่เป็นไปได้สำหรับอนาคต อย่างไรก็ตาม ภาวะเศรษฐกิจและตลาดในอนาคตไม่สามารถคาดการณ์ได้อย่างแน่นอนและอาจเปลี่ยนแปลงได้ สมมติฐานที่ใช้เป็นเพียงตัวแทนของสภาวะเศรษฐกิจและตลาดที่อาจเกิดขึ้น โดยมีวัตถุประสงค์เพื่อสนับสนุนการพิจารณาแนวทางที่เหมาะสมทั้งในปัจจุบันและอนาคต เพื่อให้ท่านสามารถบริหารและรักษาสถานะทางการเงินได้ภายใต้สภาวการณ์ที่เปลี่ยนแปลง
           </p>
-          <RowsBox k="exsum_status" title="สถานะทางการเงินในปัจจุบัน" defaults={EMPTY4} />
-          <RowsBox k="exsum_goals" title="เป้าหมายของท่าน" defaults={EMPTY4} />
-          <RowsBox k="exsum_analysis" title="สรุปผลการวิเคราะห์" defaults={EMPTY4} />
+          <RowsBox k="exs2_status" title="สถานะทางการเงินในปัจจุบัน" defaults={EMPTY4} />
+          <RowsBox k="exs2_goals" title="เป้าหมายของท่าน" defaults={EMPTY4} />
+          <RowsBox k="exs2_analysis" title="สรุปผลการวิเคราะห์" defaults={EMPTY4} />
           <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>สรุปแผนดำเนินการ</div>
           {lines.length === 0
             ? <div style={{ fontSize: 12, color: '#94a3b8' }}>ยังไม่มีรายการในแผนปฏิบัติการ</div>
