@@ -1035,6 +1035,12 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
       {/* ซ่อนสไลด์ที่ผู้ใช้ไม่เลือก (pres[key].off) — ครอบคลุมหน้าแยกอัตโนมัติ เช่น action-2 */}
       <style>{Object.keys(pres).filter(k => (pres as any)[k]?.off)
         .map(k => `.pd-slide[data-slide="${k}"], .pd-slide[data-slide^="${k}-"]{display:none !important;}`).join('\n')}</style>
+      {/* เลขหน้าอัตโนมัติทุกสไลด์ (CSS counter — ข้ามสไลด์ที่ถูกซ่อน) */}
+      <style>{`
+        #report-paper { counter-reset: pdslide; }
+        .pd-slide { counter-increment: pdslide; }
+        .pd-slide::after { content: "หน้า " counter(pdslide); position: absolute; bottom: 11px; left: 50%; transform: translateX(-50%); font-size: 9.5px; color: #94a3b8; letter-spacing: 0.06em; }
+      `}</style>
       {/* แถบเครื่องมือแก้ไข */}
       {editMode && (
         <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6, padding: '8px 14px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 10 }}>
@@ -1061,7 +1067,6 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: 2, color: MUTED, textTransform: 'uppercase' }}>Confidential Financial Document</div>
-                <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Ref: WP-{new Date().getFullYear()}-{(client?.firstName || 'CL').slice(0, 2).toUpperCase()}</div>
               </div>
             </div>
             {/* title */}
