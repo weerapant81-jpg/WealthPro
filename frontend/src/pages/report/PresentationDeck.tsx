@@ -565,7 +565,7 @@ function MiniPie({ data, height = 190, radius = [44, 74] }: { data: { name: stri
 /* ══════════════════════════ Deck ══════════════════════════ */
 
 export default function PresentationDeck({ title, pres, onComment, onToggleHide,
-  editMode, overlays, onOverlayChange, customSlides, thankYouPhoto, onThankYouPhoto, onAddSlide, onDelSlide, onMoveSlide }: {
+  editMode, overlays, onOverlayChange, customSlides, thankYouPhoto, onThankYouPhoto, advisorBio, onAddSlide, onDelSlide, onMoveSlide }: {
   title: string
   pres: Record<string, { comment?: string; hidden?: boolean; off?: boolean }>
   onComment: (key: string, text: string) => void
@@ -576,6 +576,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   customSlides: CustomSlide[]
   thankYouPhoto?: string
   onThankYouPhoto?: (src: string) => void
+  advisorBio?: string
   onAddSlide: () => void
   onDelSlide: (id: string) => void
   onMoveSlide: (id: string, dir: -1 | 1) => void
@@ -1780,43 +1781,87 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
 
         {/* ── หน้าขอบคุณ (ท้ายสุดเสมอ — หลัง custom slides) ── */}
         <Slide slideId="thankyou" noFooter pad={0}>
-          <div style={{ position: 'absolute', inset: 0, background: '#ffffff', color: INK, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
-            {/* รูปที่ปรึกษา */}
-            <div style={{ width: '40%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 44, flexShrink: 0 }}>
-              <div style={{ position: 'relative', width: '100%', maxWidth: 330 }}>
-                {(thankYouPhoto || advisor?.photo)
-                  ? <img src={thankYouPhoto || advisor?.photo} alt="" style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', borderRadius: 10, boxShadow: '0 14px 44px rgba(15,42,67,0.22)' }} />
-                  : <div style={{ width: '100%', aspectRatio: '3 / 4', borderRadius: 10, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={64} color={MUTED} /></div>}
-                {editMode && (
-                  <>
-                    <button className="no-print" onClick={() => thankPhotoRef.current?.click()}
-                      style={{ position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: 'rgba(15,42,67,0.86)', color: '#fff', border: 'none', borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                      <ImagePlus size={13} /> เปลี่ยนรูป
-                    </button>
-                    <input ref={thankPhotoRef} type="file" accept="image/*" style={{ display: 'none' }}
-                      onChange={async e => { const f = e.target.files?.[0]; if (f) { try { const { src } = await downscaleImage(f); onThankYouPhoto?.(src) } catch { /* */ } } e.target.value = '' }} />
-                  </>
-                )}
+          {(() => {
+            const bio = advisorBio ?? advisor?.bio ?? ''
+            const addr = advisor?.address || [advisor?.addrHouseNo, advisor?.addrSubdistrict && `ต.${advisor.addrSubdistrict}`, advisor?.addrDistrict && `อ.${advisor.addrDistrict}`, advisor?.addrProvince && `จ.${advisor.addrProvince}`, advisor?.addrZipcode].filter(Boolean).join(' ')
+            const creds = [
+              advisor?.licenseCFP && `คุณวุฒินักวางแผนการเงิน CFP เลขที่ ${advisor.licenseCFP}`,
+              advisor?.licenseFChFP && `คุณวุฒิที่ปรึกษาการเงินมืออาชีพ (FChFP) เลขที่ ${advisor.licenseFChFP}`,
+              advisor?.licenseAFPT && `คุณวุฒิที่ปรึกษาการเงิน AFPT เลขที่ ${advisor.licenseAFPT}`,
+              advisor?.licenseInsurance && `ใบอนุญาตตัวแทน/นายหน้าประกันชีวิต เลขที่ ${advisor.licenseInsurance}`,
+            ].filter(Boolean) as string[]
+            const Contact = ({ icon, text }: { icon: string; text: string }) => (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <div style={{ width: 26, height: 26, borderRadius: 999, background: CY, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0 }}>{icon}</div>
+                <div style={{ fontSize: 12.5, color: SUB, lineHeight: 1.5 }}>{text}</div>
               </div>
-            </div>
-            {/* ข้อความ */}
-            <div style={{ flex: 1, paddingRight: 56, textAlign: 'right', minWidth: 0 }}>
-              <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                <div style={{ fontSize: 74, fontWeight: 900, letterSpacing: '0.01em', lineHeight: 1, color: INK }}>THANK YOU</div>
-                <div style={{ width: 90, height: 5, background: CY, borderRadius: 3, marginTop: 12 }} />
+            )
+            return (
+              <div style={{ position: 'absolute', inset: 0, background: '#ffffff', color: INK, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '22px 30px' }}>
+                {/* แถบ hero บน */}
+                <div style={{ position: 'relative', height: 92, borderRadius: 12, overflow: 'hidden', background: 'linear-gradient(135deg, #0f172a 0%, #134e4a 55%, #00cfc1 130%)', flexShrink: 0 }}>
+                  <div style={{ position: 'absolute', right: -50, top: -50, width: 170, height: 170, borderRadius: '50%', background: 'rgba(0,207,193,0.16)' }} />
+                  <div style={{ position: 'absolute', left: 24, bottom: 16 }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: 3, color: 'rgba(255,255,255,0.55)' }}>YOUR FINANCIAL PLANNER</div>
+                    <div style={{ fontSize: 17, fontWeight: 800, color: '#fff', marginTop: 2 }}>นักวางแผนการเงินของคุณ</div>
+                  </div>
+                  <div style={{ position: 'absolute', right: 22, bottom: 16, fontSize: 14, fontWeight: 800 }}>
+                    <span style={{ color: '#fff' }}>Wealth</span><span style={{ color: '#00cfc1' }}>Pro</span>
+                  </div>
+                </div>
+
+                {/* เนื้อหา 2 คอลัมน์ */}
+                <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1.25fr 1fr', gap: 28, padding: '16px 4px 8px' }}>
+                  <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                    {bio && <div style={{ fontSize: 12.5, color: '#1e293b', lineHeight: 1.85, fontStyle: 'italic', whiteSpace: 'pre-wrap', overflow: 'hidden' }}>{bio}</div>}
+                    {creds.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        {creds.map(c2 => (
+                          <div key={c2} style={{ display: 'flex', gap: 7, fontSize: 11.5, color: SUB, lineHeight: 1.8 }}>
+                            <span style={{ color: CY, fontWeight: 800 }}>✓</span>{c2}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ marginTop: 'auto', paddingTop: 12 }}>
+                      <div style={{ width: 150, height: 3.5, background: INK, marginBottom: 10 }} />
+                      <div style={{ fontSize: 21, fontWeight: 800, color: INK }}>{advisor?.fullName || 'นักวางแผนการเงิน'}{advisor?.licenseCFP ? ', CFP' : ''}</div>
+                      {advisor?.position && <div style={{ fontSize: 13, color: SUB, marginTop: 2 }}>{advisor.position}</div>}
+                      {advisor?.company && <div style={{ fontSize: 12, color: MUTED }}>{advisor.company}</div>}
+                      <div style={{ marginTop: 12 }}>
+                        {advisor?.phone && <Contact icon="✆" text={advisor.phone} />}
+                        {advisor?.email && <Contact icon="✉" text={advisor.email} />}
+                        {addr && <Contact icon="⌂" text={addr} />}
+                      </div>
+                    </div>
+                  </div>
+                  {/* รูป */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ position: 'relative', width: '100%', maxWidth: 300, height: '100%', display: 'flex', alignItems: 'center' }}>
+                      {(thankYouPhoto || advisor?.photo)
+                        ? <img src={thankYouPhoto || advisor?.photo} alt="" style={{ width: '100%', maxHeight: '100%', objectFit: 'cover', borderRadius: 12, border: `1.5px solid ${CY}55`, boxShadow: '0 12px 36px rgba(15,42,67,0.18)' }} />
+                        : <div style={{ width: '100%', aspectRatio: '3 / 4', maxHeight: '100%', borderRadius: 12, background: PAPER, border: `1.5px dashed ${LINE}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={56} color={MUTED} /></div>}
+                      {editMode && (
+                        <>
+                          <button className="no-print" onClick={() => thankPhotoRef.current?.click()}
+                            style={{ position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: 'rgba(15,42,67,0.86)', color: '#fff', border: 'none', borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            <ImagePlus size={13} /> เปลี่ยนรูป
+                          </button>
+                          <input ref={thankPhotoRef} type="file" accept="image/*" style={{ display: 'none' }}
+                            onChange={async e => { const f = e.target.files?.[0]; if (f) { try { const { src } = await downscaleImage(f); onThankYouPhoto?.(src) } catch { /* */ } } e.target.value = '' }} />
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* แถบปิดท้าย */}
+                <div style={{ height: 34, borderRadius: 10, background: 'linear-gradient(90deg, #0f172a 0%, #134e4a 60%, #00cfc1 140%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 2.5, color: 'rgba(255,255,255,0.85)' }}>WEALTHPRO · FINANCIAL PLANNING</span>
+                </div>
               </div>
-              <div style={{ marginTop: 18, fontSize: 15.5, lineHeight: 2, color: SUB }}>
-                {advisor?.address && <div>{advisor.address}</div>}
-                {advisor?.phone && <div>{advisor.phone}</div>}
-                {advisor?.email && <div>{advisor.email}</div>}
-              </div>
-              <div style={{ marginTop: 22, display: 'inline-block', background: PAPER, border: `1px solid ${LINE}`, borderLeft: `3px solid ${CY}`, borderRadius: 8, padding: '13px 22px', textAlign: 'left' }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: INK }}>{advisor?.fullName || 'ที่ปรึกษาการเงิน'}{advisor?.licenseCFP ? ', CFP' : ''}</div>
-                {advisor?.position && <div style={{ fontSize: 14, color: SUB, marginTop: 1 }}>{advisor.position}</div>}
-                {advisor?.company && <div style={{ fontSize: 14, color: SUB }}>{advisor.company}</div>}
-              </div>
-            </div>
-          </div>
+            )
+          })()}
         </Slide>
 
         {/* ปุ่มเพิ่มหน้า (edit mode) */}
