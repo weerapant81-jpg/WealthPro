@@ -979,29 +979,52 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
 
       <div id="report-paper" style={{ display: 'flex', flexDirection: 'column', gap: 22, alignItems: 'center' }}>
 
-        {/* ── 1. ปก ── */}
+        {/* ── 1. ปก (ธีมเดียวกับหน้าปกรายงานฉบับเต็ม) ── */}
         <Slide slideId="cover" noFooter>
-          {/* accent เรขาคณิตบางๆ มุมขวาบน (พิมพ์ได้) */}
-          <div style={{ position: 'absolute', top: -160, right: -140, width: 460, height: 460, borderRadius: '50%', background: `radial-gradient(circle at center, ${CY}12 0%, ${CY}00 66%)`, pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', bottom: -110, left: -90, width: 300, height: 300, borderRadius: '50%', background: `radial-gradient(circle at center, ${INK}0a 0%, ${INK}00 68%)`, pointerEvents: 'none' }} />
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800, letterSpacing: '0.24em', color: INK }}>
-              <span style={{ width: 6, height: 6, borderRadius: 999, background: CY }} />WEALTHPRO · FINANCIAL PRESENTATION
-            </div>
-            <div style={{ margin: 'auto 0', paddingLeft: 2 }}>
-              <div style={{ width: 64, height: 4, background: CY, borderRadius: 3, marginBottom: 26 }} />
-              <h1 style={{ fontSize: 50, fontWeight: 800, color: INK, margin: 0, lineHeight: 1.06, letterSpacing: '-0.025em', maxWidth: 720 }}>{title}</h1>
-              <div style={{ fontSize: 21, color: SUB, marginTop: 20, fontWeight: 500 }}>
-                นำเสนอ คุณ{clientFull}{hasSpouse && spouseFull ? ` · คุณ${spouseFull}` : ''}
+            {/* brand row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ fontSize: 22, fontWeight: 800 }}>
+                <span style={{ color: '#0f172a' }}>Wealth</span><span style={{ color: '#00cfc1' }}>Pro</span>
+                <div style={{ fontSize: 8.5, fontWeight: 600, letterSpacing: 3, color: MUTED, marginTop: 2 }}>FINANCIAL PLANNING</div>
               </div>
-              <div style={{ fontSize: 13, color: MUTED, marginTop: 7, letterSpacing: '0.03em' }}>{today}</div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: 2, color: MUTED, textTransform: 'uppercase' }}>Confidential Financial Document</div>
+                <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Ref: WP-{new Date().getFullYear()}-{(client?.firstName || 'CL').slice(0, 2).toUpperCase()}</div>
+              </div>
             </div>
-            <div style={{ borderTop: `1px solid ${HAIR}`, paddingTop: 18, display: 'flex', alignItems: 'center', gap: 16 }}>
-              {advisor?.photo ? <img src={advisor.photo} alt="" style={{ width: 58, height: 58, borderRadius: '50%', objectFit: 'cover', boxShadow: `0 0 0 1px ${LINE}, 0 6px 16px rgba(12,32,53,0.14)` }} /> : <div style={{ width: 58, height: 58, borderRadius: '50%', background: LINE }} />}
+            {/* title */}
+            <div style={{ margin: '20px 0 16px' }}>
+              <h1 style={{ fontSize: 34, fontWeight: 800, color: '#0f172a', borderLeft: '8px solid #00cfc1', paddingLeft: 20, lineHeight: 1.3, margin: 0 }}>{title}</h1>
+              <div style={{ height: 4, width: 110, background: '#00cfc1', opacity: .45, marginTop: 10, marginLeft: 28 }} />
+            </div>
+            {/* hero band */}
+            <div style={{ position: 'relative', width: '100%', flex: 1, minHeight: 0, borderRadius: 14, overflow: 'hidden', background: 'linear-gradient(135deg, #0f172a 0%, #134e4a 55%, #00cfc1 130%)' }}>
+              <div style={{ position: 'absolute', right: -70, top: -70, width: 240, height: 240, borderRadius: '50%', background: 'rgba(0,207,193,0.16)' }} />
+              <div style={{ position: 'absolute', right: 60, bottom: -90, width: 200, height: 200, borderRadius: '50%', background: 'rgba(254,183,0,0.10)' }} />
+              <div style={{ position: 'absolute', left: -40, bottom: -60, width: 180, height: 180, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.10)' }} />
+              <div style={{ position: 'absolute', left: 30, bottom: 24 }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 3, color: 'rgba(255,255,255,0.55)' }}>HOLISTIC FINANCIAL PLANNING</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginTop: 5 }}>แผนการเงินแบบองค์รวม 6 ด้าน ตามมาตรฐานวิชาชีพ CFP®</div>
+                <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.75)', marginTop: 3 }}>สภาพคล่อง · การลงทุน · ประกัน & ความเสี่ยง · เกษียณอายุ · ภาษี · มรดก</div>
+              </div>
+            </div>
+            {/* prepared for / advisor */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, padding: '18px 0 0', borderTop: `1px solid ${HAIR}`, marginTop: 18 }}>
               <div>
-                <div style={{ fontSize: 10.5, color: MUTED, letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 700 }}>เสนอโดย</div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: INK, marginTop: 1 }}>{advisor?.fullName || 'ที่ปรึกษาการเงิน'}</div>
-                <div style={{ fontSize: 12.5, color: SUB }}>{[advisor?.position, advisor?.phone, advisor?.email].filter(Boolean).join('  ·  ')}</div>
+                <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 5 }}>จัดทำเพื่อ</div>
+                <div style={{ fontSize: 19, fontWeight: 800, color: '#0f172a' }}>คุณ{clientFull}{hasSpouse && spouseFull ? ` · คุณ${spouseFull}` : ''}</div>
+                <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>เอกสารเฉพาะบุคคล · ห้ามเผยแพร่ · วันที่จัดทำ {today}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 13, alignItems: 'center', justifyContent: 'flex-end' }}>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: 2, color: MUTED, textTransform: 'uppercase', marginBottom: 5 }}>นักวางแผนการเงิน</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>{advisor?.fullName || 'ที่ปรึกษาการเงิน'}</div>
+                  <div style={{ fontSize: 11.5, color: SUB }}>{[advisor?.position, advisor?.phone, advisor?.email].filter(Boolean).join(' · ')}</div>
+                </div>
+                {advisor?.photo
+                  ? <img src={advisor.photo} alt="" style={{ width: 54, height: 54, borderRadius: '50%', objectFit: 'cover', border: '2px solid #00cfc1', flexShrink: 0 }} />
+                  : <div style={{ width: 54, height: 54, borderRadius: '50%', background: LINE, flexShrink: 0 }} />}
               </div>
             </div>
           </div>
