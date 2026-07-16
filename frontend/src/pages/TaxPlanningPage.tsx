@@ -506,16 +506,48 @@ export default function TaxPlanningPage() {
             })}
           </Sec>
 
-          {c.deducts.length > 0 && (
+          {(c.deducts.length > 0 || cP.deducts.length > 0) && (
             <Sec title="รายการลดหย่อน">
-              {c.deducts.map((d, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5, padding: '3px 0' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)' }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: d.c }} />{d.l}
-                  </span>
-                  <span style={{ fontFamily: 'monospace', color: 'var(--text-primary)' }}>{fmt(d.v)}</span>
+              {hasPlanned && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 82px 82px', gap: 8, padding: '0 0 5px', borderBottom: '1px solid var(--card-border)', marginBottom: 3 }}>
+                  <span />
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textAlign: 'right' }}>ปัจจุบัน</span>
+                  <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 700, textAlign: 'right' }}>หลังวางแผน</span>
                 </div>
-              ))}
+              )}
+              {(() => {
+                // รวมรายการจากทั้งสองกรณี (บางรายการมีเฉพาะหลังวางแผน)
+                const items = hasPlanned
+                  ? cP.deducts.map(dp => ({ ...dp, cur: c.deducts.find(d => d.l === dp.l)?.v ?? 0, plan: dp.v }))
+                      .concat(c.deducts.filter(d => !cP.deducts.some(dp => dp.l === d.l)).map(d => ({ ...d, cur: d.v, plan: 0 })))
+                  : c.deducts.map(d => ({ ...d, cur: d.v, plan: d.v }))
+                return items.map((d, i) => (
+                  hasPlanned ? (
+                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 82px 82px', gap: 8, alignItems: 'center', fontSize: 11.5, padding: '3px 0' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', minWidth: 0 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: d.c, flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.l}</span>
+                      </span>
+                      <span style={{ fontFamily: 'monospace', color: 'var(--text-primary)', textAlign: 'right' }}>{d.cur > 0 ? fmt(d.cur) : '—'}</span>
+                      <span style={{ fontFamily: 'monospace', color: d.plan !== d.cur ? '#22c55e' : 'var(--text-muted)', textAlign: 'right' }}>{d.plan > 0 ? fmt(d.plan) : '—'}</span>
+                    </div>
+                  ) : (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5, padding: '3px 0' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)' }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: d.c }} />{d.l}
+                      </span>
+                      <span style={{ fontFamily: 'monospace', color: 'var(--text-primary)' }}>{fmt(d.cur)}</span>
+                    </div>
+                  )
+                ))
+              })()}
+              {hasPlanned && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 82px 82px', gap: 8, alignItems: 'center', fontSize: 12, padding: '5px 0 0', marginTop: 3, borderTop: '1px solid var(--card-border)', fontWeight: 700 }}>
+                  <span style={{ color: 'var(--text-primary)' }}>รวมลดหย่อน</span>
+                  <span style={{ fontFamily: 'monospace', color: 'var(--text-primary)', textAlign: 'right' }}>{fmt(c.allD - c.expD)}</span>
+                  <span style={{ fontFamily: 'monospace', color: '#22c55e', textAlign: 'right' }}>{fmt(cP.allD - cP.expD)}</span>
+                </div>
+              )}
             </Sec>
           )}
         </div>
