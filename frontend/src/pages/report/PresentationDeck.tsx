@@ -2114,26 +2114,27 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
           </Slide>
         ) : (() => {
             const f = forward
-            const cellW = `${(100 / (f.ages.length + 2)).toFixed(2)}%`
             const expTotal = f.ages.map((_, i) => f.fixedTotal[i] + f.varTotal[i] + f.savTotal[i] + f.tax[i])
             const net = f.ages.map((_, i) => f.incomeTotal[i] - expTotal[i])
             const remain = net.map((v, i) => v - f.goalTotal[i])
-            // ฟอนต์ต้องไม่กว้างเกินคอลัมน์ (กันตัวเลขชนกันเมื่อจำนวนปีมาก) — แต่ไม่บีบต่ำกว่าขนาดอ่านออก
+            // ฟอนต์คงที่ 10px — ถ้าจำนวนปีทำให้คอลัมน์แคบเกิน แบ่ง "ช่วงอายุ" ออกหลายสไลด์แทนการบีบฟอนต์
+            const fz = 10
             const maxVal = Math.max(...f.incomeTotal, ...expTotal, ...net.map(Math.abs), ...remain.map(Math.abs), 1)
             const maxChars = fmt(Math.round(maxVal)).length + 1
-            const colPx = (1040 - 150) / f.ages.length - 6
-            const fzFit = colPx / (maxChars * 0.62)
-            const fz = Math.max(7.5, Math.min(10.5, fzFit))
-            const rowH = Math.max(14, Math.ceil(fz * 1.25) + 6)
-            const padY = Math.max(2, Math.floor((rowH - fz * 1.25) / 2))
+            const colNeedPx = maxChars * 0.62 * fz + 6
+            const maxCols = Math.max(4, Math.floor((1040 - 150) / colNeedPx))
+            const padY = 3
             // ความสูงแถวจริง (ฟอนต์ + padding บนล่าง + เส้นคั่น) เทียบพื้นที่ตารางจริงในสไลด์
             // (สูง ~792 − padding บน 40 − หัวสไลด์ ~70 − footer/เลขหน้า ~45 − แถวหัวตาราง ~20 ≈ 560px)
             const rowPx = fz * 1.25 + padY * 2 + 1
             const rowsPerPage = Math.max(10, Math.floor(560 / rowPx))
+            // แบ่งช่วงอายุ (คอลัมน์) เป็นก้อน ๆ ละไม่เกิน maxCols ปี
+            const ageChunks: { s: number; e: number }[] = []
+            for (let s = 0; s < f.ages.length; s += maxCols) ageChunks.push({ s, e: Math.min(s + maxCols, f.ages.length) })
             const num = (v: number, c?: string, b?: boolean): React.CSSProperties => ({ padding: `${padY}px 3px`, textAlign: 'right', fontFamily: 'monospace', fontSize: fz, lineHeight: 1.2, color: c ?? (v > 0 ? INK : '#c3ccd6'), fontWeight: b ? 800 : 400, whiteSpace: 'nowrap' })
             const lbl = (indent = false, b = false, c?: string): React.CSSProperties => ({ padding: `${padY}px 3px ${padY}px ${indent ? 10 : 3}px`, textAlign: 'left', fontSize: fz, lineHeight: 1.2, color: c ?? (b ? INK : SUB), fontWeight: b ? 800 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 150 })
-            const SecRow = ({ title, color }: { title: string; color: string }) => (
-              <tr><td colSpan={f.ages.length + 1} style={{ padding: `${padY + 1}px 3px ${padY}px`, fontSize: fz + 0.5, lineHeight: 1.2, fontWeight: 800, color, borderBottom: `1px solid ${LINE}` }}>{title}</td></tr>
+            const SecRow = ({ title, color, cols }: { title: string; color: string; cols: number }) => (
+              <tr><td colSpan={cols + 1} style={{ padding: `${padY + 1}px 3px ${padY}px`, fontSize: fz + 0.5, lineHeight: 1.2, fontWeight: 800, color, borderBottom: `1px solid ${LINE}` }}>{title}</td></tr>
             )
             const LineRow = ({ r }: { r: { label: string; vals: number[] } }) => (
               <tr style={{ borderBottom: `1px solid ${HAIR}` }}>
@@ -2147,49 +2148,54 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                 {vals.map((v, i) => <td key={i} style={num(v, color, true)}>{fmt(v)}</td>)}
               </tr>
             )
-            // แถวทั้งหมดเรียงลำดับเดียวกับหน้างบการเงินล่วงหน้า → ตัดแบ่งเป็นหน้า ๆ ละ rowsPerPage แถว
-            const rows: React.ReactNode[] = [
-              <SecRow key="sec-in" title="กระแสเงินสดรับ" color={GR} />,
-              ...f.incomeLines.map((r, i) => <LineRow key={`in${i}`} r={r} />),
-              <TotalRow key="t-in" label="รวมรายรับ" vals={f.incomeTotal} color={GR} />,
-              <SecRow key="sec-fx" title="ค่าใช้จ่ายคงที่" color={AM} />,
-              ...f.fixedLines.map((r, i) => <LineRow key={`fx${i}`} r={r} />),
-              <TotalRow key="t-fx" label="รวมค่าใช้จ่ายคงที่" vals={f.fixedTotal} color={AM} />,
-              <SecRow key="sec-vr" title="ค่าใช้จ่ายผันแปร + ภาษี" color={RD} />,
-              ...f.varLines.map((r, i) => <LineRow key={`vr${i}`} r={r} />),
-              <LineRow key="tax" r={{ label: 'ภาษีเงินได้', vals: f.tax }} />,
-              <TotalRow key="t-vr" label="รวมผันแปร (รวมภาษี)" vals={f.ages.map((_, i) => f.varTotal[i] + f.tax[i])} color={RD} />,
-              <SecRow key="sec-sv" title="เงินออม/ลงทุน" color={VI} />,
-              ...f.savLines.map((r, i) => <LineRow key={`sv${i}`} r={r} />),
-              <TotalRow key="t-sv" label="รวมออม/ลงทุน" vals={f.savTotal} color={VI} />,
-              <TotalRow key="t-exp" label="รวมกระแสเงินสดจ่าย" vals={expTotal} color={RD} />,
-              <tr key="net" style={{ borderTop: '1.5px solid #cbd5e1' }}>
-                <td style={lbl(false, true)}>กระแสเงินสดสุทธิ</td>
-                {net.map((v, i) => <td key={i} style={num(v, v >= 0 ? CY : RD, true)}>{fmt(v)}</td>)}
-              </tr>,
-              <SecRow key="sec-gl" title="ค่าใช้จ่ายเพื่อเป้าหมายทางการเงิน" color={CY} />,
-              ...f.goalLines.map((r, i) => <LineRow key={`gl${i}`} r={r} />),
-              <TotalRow key="t-gl" label="รวมรายจ่ายเพื่อเป้าหมาย" vals={f.goalTotal} color={CY} />,
-              <tr key="remain" style={{ borderTop: '1.5px solid #cbd5e1' }}>
-                <td style={lbl(false, true)}>กระแสเงินสดคงเหลือ</td>
-                {remain.map((v, i) => <td key={i} style={num(v, v >= 0 ? CY : RD, true)}>{fmt(v)}</td>)}
-              </tr>,
-            ]
-            const pages: React.ReactNode[][] = []
-            for (let i = 0; i < rows.length; i += rowsPerPage) pages.push(rows.slice(i, i + rowsPerPage))
-            return pages.map((pageRows, pi) => (
+            // สร้างหน้า: ต่อ 1 ช่วงอายุ → แถวทั้งหมด (ลำดับเดียวกับหน้างบการเงินล่วงหน้า) ตัดแบ่งหน้า ๆ ละ rowsPerPage แถว
+            const pages: { ages: number[]; rows: React.ReactNode[] }[] = []
+            for (const ch of ageChunks) {
+              const sl = (arr: number[]) => arr.slice(ch.s, ch.e)
+              const cols = ch.e - ch.s
+              const rows: React.ReactNode[] = [
+                <SecRow key="sec-in" title="กระแสเงินสดรับ" color={GR} cols={cols} />,
+                ...f.incomeLines.map((r, i) => <LineRow key={`in${i}`} r={{ label: r.label, vals: sl(r.vals) }} />),
+                <TotalRow key="t-in" label="รวมรายรับ" vals={sl(f.incomeTotal)} color={GR} />,
+                <SecRow key="sec-fx" title="ค่าใช้จ่ายคงที่" color={AM} cols={cols} />,
+                ...f.fixedLines.map((r, i) => <LineRow key={`fx${i}`} r={{ label: r.label, vals: sl(r.vals) }} />),
+                <TotalRow key="t-fx" label="รวมค่าใช้จ่ายคงที่" vals={sl(f.fixedTotal)} color={AM} />,
+                <SecRow key="sec-vr" title="ค่าใช้จ่ายผันแปร + ภาษี" color={RD} cols={cols} />,
+                ...f.varLines.map((r, i) => <LineRow key={`vr${i}`} r={{ label: r.label, vals: sl(r.vals) }} />),
+                <LineRow key="tax" r={{ label: 'ภาษีเงินได้', vals: sl(f.tax) }} />,
+                <TotalRow key="t-vr" label="รวมผันแปร (รวมภาษี)" vals={sl(f.ages.map((_, i) => f.varTotal[i] + f.tax[i]))} color={RD} />,
+                <SecRow key="sec-sv" title="เงินออม/ลงทุน" color={VI} cols={cols} />,
+                ...f.savLines.map((r, i) => <LineRow key={`sv${i}`} r={{ label: r.label, vals: sl(r.vals) }} />),
+                <TotalRow key="t-sv" label="รวมออม/ลงทุน" vals={sl(f.savTotal)} color={VI} />,
+                <TotalRow key="t-exp" label="รวมกระแสเงินสดจ่าย" vals={sl(expTotal)} color={RD} />,
+                <tr key="net" style={{ borderTop: '1.5px solid #cbd5e1' }}>
+                  <td style={lbl(false, true)}>กระแสเงินสดสุทธิ</td>
+                  {sl(net).map((v, i) => <td key={i} style={num(v, v >= 0 ? CY : RD, true)}>{fmt(v)}</td>)}
+                </tr>,
+                <SecRow key="sec-gl" title="ค่าใช้จ่ายเพื่อเป้าหมายทางการเงิน" color={CY} cols={cols} />,
+                ...f.goalLines.map((r, i) => <LineRow key={`gl${i}`} r={{ label: r.label, vals: sl(r.vals) }} />),
+                <TotalRow key="t-gl" label="รวมรายจ่ายเพื่อเป้าหมาย" vals={sl(f.goalTotal)} color={CY} />,
+                <tr key="remain" style={{ borderTop: '1.5px solid #cbd5e1' }}>
+                  <td style={lbl(false, true)}>กระแสเงินสดคงเหลือ</td>
+                  {sl(remain).map((v, i) => <td key={i} style={num(v, v >= 0 ? CY : RD, true)}>{fmt(v)}</td>)}
+                </tr>,
+              ]
+              for (let i = 0; i < rows.length; i += rowsPerPage)
+                pages.push({ ages: sl(f.ages), rows: rows.slice(i, i + rowsPerPage) })
+            }
+            return pages.map((pg, pi) => (
               <Slide slideId="forward" key={`fwd-${pi}`}>
                 <SlideHead icon={Banknote} kicker="Forward Cashflow"
-                  title={`งบการเงินล่วงหน้า · ${selfName} (อายุ ${f.ages[0]}–${f.ages[f.ages.length - 1]})${pages.length > 1 ? ` · ${pi + 1}/${pages.length}` : ''}`} accent={CY} />
+                  title={`งบการเงินล่วงหน้า · ${selfName} (อายุ ${pg.ages[0]}–${pg.ages[pg.ages.length - 1]})${pages.length > 1 ? ` · ${pi + 1}/${pages.length}` : ''}`} accent={CY} />
                 <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                     <thead>
                       <tr style={{ borderBottom: '1.5px solid #cbd5e1' }}>
                         <th style={{ ...lbl(false, true), width: 150 }}>อายุ / ปี</th>
-                        {f.ages.map(a => <th key={a} style={{ ...num(1, SUB, true), width: cellW }}>{a}</th>)}
+                        {pg.ages.map(a => <th key={a} style={{ ...num(1, SUB, true), width: `${(100 / (pg.ages.length + 2)).toFixed(2)}%` }}>{a}</th>)}
                       </tr>
                     </thead>
-                    <tbody>{pageRows}</tbody>
+                    <tbody>{pg.rows}</tbody>
                   </table>
                 </div>
               </Slide>
