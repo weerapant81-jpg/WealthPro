@@ -459,7 +459,6 @@ function PersonPanel({ data, onChange, color, isSelf }: {
   const pvdAtRetire = pvdPlan?.[personKey]?.valueAtRetirement ?? fb.pvdAtRetire
   const sevNet = sevPlan?.[personKey]?.netSeverance ?? fb.sevNet
 
-  const filledSettings = useRef(false)
   // ชื่อ/อายุ ดึงจาก clientProfile — reactive (re-run เมื่อค่ากลับเป็น default) กัน race กับ mergeManual ที่โหลด saved ทีหลัง
   useEffect(() => {
     if (!clientProfile) return
@@ -476,19 +475,10 @@ function PersonPanel({ data, onChange, color, isSelf }: {
     if (first && isDefaultName && data.name !== `คุณ${first}`) patch.name = `คุณ${first}`
     if (Object.keys(patch).length) onChange({ ...data, ...patch })
   }, [clientProfile, data.name, data.currentAge])
-  useEffect(() => {
-    if (filledSettings.current || !profile) return
-    const lifeExp = isSelf ? profile.lifeExpectancySelf : profile.lifeExpectancySpouse
-    const updates: Partial<Person> = {}
-    if (lifeExp) updates.lifeExpectancy = lifeExp
-    if (profile.inflationRate != null) updates.inflationRate = profile.inflationRate
-    if (profile.preRetirementReturn != null) updates.preRetirementReturn = profile.preRetirementReturn
-    if (profile.postRetirementReturn != null) updates.postRetirementReturn = profile.postRetirementReturn
-    if (Object.keys(updates).length > 0) {
-      onChange({ ...data, ...updates })
-      filledSettings.current = true
-    }
-  }, [profile])
+  // เงินเฟ้อ/ผลตอบแทนก่อน-หลังเกษียณ = แหล่งเดียวจากหน้าสมมติฐาน — override ค่าที่บันทึกในแผน
+  const inflSetting = profile?.inflationRate ?? data.inflationRate
+  const preRetSetting = profile?.preRetirementReturn ?? data.preRetirementReturn
+  const postRetSetting = profile?.postRetirementReturn ?? data.postRetirementReturn
   // อายุเกษียณ = แหล่งเดียวจากหน้าสมมติฐาน (profile) — override ค่าที่บันทึกในแผนตอนคำนวณ/แสดงผล
   const retAgeSetting = (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? 60
   // อายุขัย = แหล่งเดียวจากหน้าสมมติฐาน (profile) — override ค่าที่บันทึกในแผนตอนคำนวณ/แสดงผล
@@ -537,13 +527,13 @@ function PersonPanel({ data, onChange, color, isSelf }: {
   const extraAssets = ssoPV + pvdAtRetire + sevNet
   const totalAssets = assetAtRetirement + extraAssets
   // คอลัมน์ "สินทรัพย์เดิม" = ค่ากลาง Monte Carlo ราย "อายุ" (ถ้าไม่มี → โตด้วยผลตอบแทนพอร์ต)
-  const result = useMemo(() => calcPerson({ ...data, currentAge: currentAgeSetting, retirementAge: retAgeSetting, lifeExpectancy: lifeExpSetting }, assetAtRetirement, extraAssets, portReturn ?? 0, medianByAge), [data, currentAgeSetting, retAgeSetting, lifeExpSetting, assetAtRetirement, extraAssets, portReturn, medianByAge])
+  const result = useMemo(() => calcPerson({ ...data, currentAge: currentAgeSetting, retirementAge: retAgeSetting, lifeExpectancy: lifeExpSetting, inflationRate: inflSetting, preRetirementReturn: preRetSetting, postRetirementReturn: postRetSetting }, assetAtRetirement, extraAssets, portReturn ?? 0, medianByAge), [data, currentAgeSetting, retAgeSetting, lifeExpSetting, inflSetting, preRetSetting, postRetSetting, assetAtRetirement, extraAssets, portReturn, medianByAge])
 
   // Graduated savings: solve first-year payment of a growing annuity whose FV == gap
   const gradSavings = useMemo(() => {
     const n = result.saveYears   // ออมงวดสุดท้ายที่อายุ (เกษียณ − 1)
     const gap = result.gap
-    const i = data.preRetirementReturn / 100
+    const i = preRetSetting / 100
     const gr = data.savingsGrowthRate / 100
     if (n <= 0 || gap <= 0) return { first: 0, last: 0 }
     const x = (1 + gr) / (1 + i)
@@ -554,7 +544,7 @@ function PersonPanel({ data, onChange, color, isSelf }: {
     const first = gap / factor
     const last = first * Math.pow(1 + gr, n - 1)
     return { first, last }
-  }, [result.saveYears, result.gap, data.preRetirementReturn, data.savingsGrowthRate])
+  }, [result.saveYears, result.gap, preRetSetting, data.savingsGrowthRate])
 
   const chartData = result.projectionRows.map(row => ({
     age: row.age,
@@ -627,9 +617,12 @@ function PersonPanel({ data, onChange, color, isSelf }: {
         </div>
 
         <SectionLabel>ข้อมูลเศรษฐกิจ</SectionLabel>
-        <InputRow label="เงินเฟ้อ (g)" value={data.inflationRate} onChange={v => set('inflationRate', v)} unit="%" step={0.1} pct />
-        <InputRow label="ผลตอบแทนก่อนเกษียณ (i)" value={data.preRetirementReturn} onChange={v => set('preRetirementReturn', v)} unit="%" step={0.1} pct />
-        <InputRow label="ผลตอบแทนหลังเกษียณ (r)" value={data.postRetirementReturn} onChange={v => set('postRetirementReturn', v)} unit="%" step={0.1} pct />
+        {([['เงินเฟ้อ (g)', inflSetting], ['ผลตอบแทนก่อนเกษียณ (i)', preRetSetting], ['ผลตอบแทนหลังเกษียณ (r)', postRetSetting]] as const).map(([lbl, val]) => (
+          <div key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, lineHeight: 1.3, color: 'var(--text-secondary)' }}>{lbl}</span>
+            <span style={{ flexShrink: 0, fontSize: 13 }}><span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--cyan)' }}>{val}</span> <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>% · จากสมมติฐาน</span></span>
+          </div>
+        ))}
         <div style={{ marginTop: 6, padding: '4px 8px', background: 'var(--navy-900)', borderRadius: 6 }}>
           <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Real rate = <strong style={{ color }}>{result.realRate.toFixed(2)}%</strong></span>
         </div>
