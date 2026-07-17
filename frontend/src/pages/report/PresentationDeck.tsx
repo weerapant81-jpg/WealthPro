@@ -2121,8 +2121,10 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
             const fz = 9
             const maxVal = Math.max(...f.incomeTotal, ...expTotal, ...net.map(Math.abs), ...remain.map(Math.abs), 1)
             const maxChars = fmt(Math.round(maxVal)).length + 1
-            const colNeedPx = maxChars * 0.62 * fz + 6
-            const maxCols = Math.max(4, Math.floor((1040 - 150) / colNeedPx))
+            // คอลัมน์ชื่อรายการแคบลง (120px) + เผื่อความกว้างตัวอักษร monospace จริง (~0.62em) กันตัวเลขล้นขอบ
+            const labelW = 120
+            const colNeedPx = maxChars * 0.62 * fz + 7
+            const maxCols = Math.max(4, Math.floor((1008 - labelW) / colNeedPx))
             const padY = 3
             // ความสูงแถวจริง (ฟอนต์ + padding บนล่าง + เส้นคั่น) เทียบพื้นที่ตารางจริงในสไลด์
             // (สูง ~792 − padding บน 40 − หัวสไลด์ ~70 − footer/เลขหน้า ~45 − แถวหัวตาราง ~20 ≈ 560px)
@@ -2133,7 +2135,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
             const ageChunks: { s: number; e: number }[] = []
             for (let s = 0; s < f.ages.length; s += maxCols) ageChunks.push({ s, e: Math.min(s + maxCols, f.ages.length) })
             const num = (v: number, c?: string, b?: boolean): React.CSSProperties => ({ padding: `${padY}px 3px`, textAlign: 'right', fontFamily: 'monospace', fontSize: fz, lineHeight: 1.2, color: c ?? (v > 0 ? INK : '#c3ccd6'), fontWeight: b ? 800 : 400, whiteSpace: 'nowrap' })
-            const lbl = (indent = false, b = false, c?: string): React.CSSProperties => ({ padding: `${padY}px 3px ${padY}px ${indent ? 10 : 3}px`, textAlign: 'left', fontSize: fz, lineHeight: 1.2, color: c ?? (b ? INK : SUB), fontWeight: b ? 800 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 150 })
+            const lbl = (indent = false, b = false, c?: string): React.CSSProperties => ({ padding: `${padY}px 3px ${padY}px ${indent ? 10 : 3}px`, textAlign: 'left', fontSize: fz, lineHeight: 1.2, color: c ?? (b ? INK : SUB), fontWeight: b ? 800 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 120 })
             const SecRow = ({ title, color, cols }: { title: string; color: string; cols: number }) => (
               <tr><td colSpan={cols + 1} style={{ padding: `${padY + 1}px 3px ${padY}px`, fontSize: fz + 0.5, lineHeight: 1.2, fontWeight: 800, color, borderBottom: `1px solid ${LINE}` }}>{title}</td></tr>
             )
@@ -2192,8 +2194,8 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                   <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                     <thead>
                       <tr style={{ borderBottom: '1.5px solid #cbd5e1' }}>
-                        <th style={{ ...lbl(false, true), width: 150 }}>อายุ / ปี</th>
-                        {pg.ages.map(a => <th key={a} style={{ ...num(1, SUB, true), width: `${(100 / (pg.ages.length + 2)).toFixed(2)}%` }}>{a}</th>)}
+                        <th style={{ ...lbl(false, true), width: 120 }}>อายุ / ปี</th>
+                        {pg.ages.map(a => <th key={a} style={{ ...num(1, SUB, true) }}>{a}</th>)}
                       </tr>
                     </thead>
                     <tbody>{pg.rows}</tbody>
