@@ -2126,7 +2126,10 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
             const fz = Math.max(7.5, Math.min(10.5, fzFit))
             const rowH = Math.max(14, Math.ceil(fz * 1.25) + 6)
             const padY = Math.max(2, Math.floor((rowH - fz * 1.25) / 2))
-            const rowsPerPage = Math.max(10, Math.floor(650 / rowH))
+            // ความสูงแถวจริง (ฟอนต์ + padding บนล่าง + เส้นคั่น) เทียบพื้นที่ตารางจริงในสไลด์
+            // (สูง ~792 − padding บน 40 − หัวสไลด์ ~70 − footer/เลขหน้า ~45 − แถวหัวตาราง ~20 ≈ 560px)
+            const rowPx = fz * 1.25 + padY * 2 + 1
+            const rowsPerPage = Math.max(10, Math.floor(560 / rowPx))
             const num = (v: number, c?: string, b?: boolean): React.CSSProperties => ({ padding: `${padY}px 3px`, textAlign: 'right', fontFamily: 'monospace', fontSize: fz, lineHeight: 1.2, color: c ?? (v > 0 ? INK : '#c3ccd6'), fontWeight: b ? 800 : 400, whiteSpace: 'nowrap' })
             const lbl = (indent = false, b = false, c?: string): React.CSSProperties => ({ padding: `${padY}px 3px ${padY}px ${indent ? 10 : 3}px`, textAlign: 'left', fontSize: fz, lineHeight: 1.2, color: c ?? (b ? INK : SUB), fontWeight: b ? 800 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 150 })
             const SecRow = ({ title, color }: { title: string; color: string }) => (
