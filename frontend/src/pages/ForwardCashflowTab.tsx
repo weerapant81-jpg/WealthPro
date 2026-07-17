@@ -132,13 +132,14 @@ function seedData(
   for (const e of vr) d.expVar.push({ id: uid(), label: e.name, base: toMonthly(toNum(e.amount), e.frequency) * 12, growth: infl, startAge: currentAge, endAge: retireAge - 1, auto: true })
   for (const e of sv) d.expSaving.push({ id: uid(), label: e.name, base: toMonthly(toNum(e.amount), e.frequency) * 12, growth: 0, startAge: currentAge, endAge: retireAge - 1, auto: true })
 
-  // หนี้ → ค่าใช้จ่ายคงที่ (จ่ายจนปิดหนี้)
-  for (const l of (liabilities ?? [])) {
+  // หนี้ → ค่าใช้จ่ายคงที่ (จ่ายจนปิดหนี้) — ดึงจากตารางหนี้สินคงค้าง (ข้อมูลสินทรัพย์และการลงทุน) เหมือนงบกระแสเงินสด
+  ;(liabilities ?? []).forEach((l: any, i: number) => {
     const annual = toNum(l.monthlyPayment) * 12
-    if (annual <= 0) continue
-    const yearsLeft = Math.max(1, Math.ceil(toNum(l.balance) / annual))
-    d.expFixed.push({ id: uid(), label: l.name || 'ผ่อนหนี้', base: annual, growth: 0, startAge: currentAge, endAge: Math.min(currentAge + yearsLeft - 1, retireAge - 1), auto: true })
-  }
+    if (annual <= 0) return
+    const name = [l.debtType || `หนี้สินที่ ${i + 1}`, l.assetRef].filter(Boolean).join(' · ')
+    const yearsLeft = Math.max(1, Math.ceil(toNum(l.currentBalance) / annual))
+    d.expFixed.push({ id: uid(), label: `ผ่อนชำระหนี้ · ${name}`, base: annual, growth: 0, startAge: currentAge, endAge: Math.min(currentAge + yearsLeft - 1, retireAge - 1), auto: true })
+  })
 
   // รายการหักอัตโนมัติ (ประกันสังคม/PVD/เบี้ยประกันชีวิต) — ไม่ได้อยู่ใน /expenses
   d.expFixed.push(...autoFixedItems(isSelf, cp, lifeInsurances, currentAge, retireAge))
@@ -219,8 +220,10 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
   // รายจ่าย/หนี้สิน = ดึงแยกต่อบุคคลจากงบกระแสเงินสด/งบดุล (person: client+shared / spouse+shared) ให้ตรงกับหน้างบการเงิน
   const { data: expensesSelf } = useQuery({ queryKey: ['expenses', 'client'], queryFn: () => api.get('/expenses', { params: { person: 'client' } }).then(r => r.data), retry: false })
   const { data: expensesSpouse } = useQuery({ queryKey: ['expenses', 'spouse'], queryFn: () => api.get('/expenses', { params: { person: 'spouse' } }).then(r => r.data), retry: false })
-  const { data: liabilitiesSelf } = useQuery({ queryKey: ['liabilities', 'client'], queryFn: () => api.get('/liabilities', { params: { person: 'client' } }).then(r => r.data), retry: false })
-  const { data: liabilitiesSpouse } = useQuery({ queryKey: ['liabilities', 'spouse'], queryFn: () => api.get('/liabilities', { params: { person: 'spouse' } }).then(r => r.data), retry: false })
+  // หนี้สิน = ตารางหนี้สินคงค้างในหน้าข้อมูลสินทรัพย์และการลงทุน (แหล่งเดียวกับงบกระแสเงินสด)
+  const { data: invProfile } = useQuery({ queryKey: ['investment-profile'], queryFn: () => api.get('/investment-profile').then(r => r.data), retry: false })
+  const liabilitiesSelf = invProfile === undefined ? undefined : (invProfile?.liabilities ?? [])
+  const liabilitiesSpouse = invProfile === undefined ? undefined : (invProfile?.spouseData?.liabilities ?? [])
   const expenses = person === 'self' ? expensesSelf : expensesSpouse
   const liabilities = person === 'self' ? liabilitiesSelf : liabilitiesSpouse
   const { data: lifeInsurances } = useQuery({ queryKey: ['life-insurances'], queryFn: () => api.get('/life-insurances').then(r => r.data), retry: false })
