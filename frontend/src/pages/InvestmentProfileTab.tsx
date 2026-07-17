@@ -77,6 +77,7 @@ type Liability = {
   creditor: string        // ชื่อเจ้าหนี้
   currentBalance: string  // มูลค่าหนี้ปัจจุบัน
   termYears: string       // ระยะเวลาครบกำหนด (ปี)
+  monthlyPayment?: string  // ผ่อนชำระต่อเดือน (บาท)
 }
 
 const LIABILITY_TYPES = [
@@ -89,7 +90,7 @@ const LIABILITY_TYPES = [
 ]
 
 function emptyLiability(): Liability {
-  return { debtType: '', assetRef: '', creditor: '', currentBalance: '', termYears: '' }
+  return { debtType: '', assetRef: '', creditor: '', currentBalance: '', termYears: '', monthlyPayment: '' }
 }
 
 type InvestmentConstraint = {
@@ -759,6 +760,7 @@ export default function InvestmentProfileTab({ person = 'client' }: { person?: '
                   { label: 'ชื่อ/ทะเบียน', align: 'left' },
                   { label: 'ชื่อเจ้าหนี้', align: 'left' },
                   { label: 'มูลค่าหนี้ปัจจุบัน (บาท)', align: 'right' },
+                  { label: 'ผ่อนชำระต่อเดือน (บาท)', align: 'right' },
                   { label: 'ระยะเวลาครบกำหนด (ปี)', align: 'right' },
                   { label: '', align: 'left' },
                 ].map(h => (
@@ -785,6 +787,9 @@ export default function InvestmentProfileTab({ person = 'client' }: { person?: '
                     <NumInput value={l.currentBalance} onChange={v => setLB(i, 'currentBalance', v)} placeholder="0" style={{ ...inp, fontSize: 11, width: '100%', boxSizing: 'border-box', textAlign: 'right' }} />
                   </td>
                   <td style={{ padding: '6px 8px', width: 150 }}>
+                    <NumInput value={l.monthlyPayment ?? ''} onChange={v => setLB(i, 'monthlyPayment', v)} placeholder="0" style={{ ...inp, fontSize: 11, width: '100%', boxSizing: 'border-box', textAlign: 'right' }} />
+                  </td>
+                  <td style={{ padding: '6px 8px', width: 130 }}>
                     <input type="number" value={l.termYears} onChange={e => setLB(i, 'termYears', e.target.value)} placeholder="เช่น 10" style={{ ...inp, fontSize: 11, width: '100%', boxSizing: 'border-box', textAlign: 'right' }} />
                   </td>
                   <td style={{ padding: '6px 4px' }}>
@@ -803,6 +808,7 @@ export default function InvestmentProfileTab({ person = 'client' }: { person?: '
                 <td />
                 <td />
                 <td style={{ padding: '8px 10px', fontSize: 13, fontWeight: 700, color: '#fb7185', textAlign: 'right' }}>{fmtNum(String(totalLiabilities))}</td>
+                <td style={{ padding: '8px 10px', fontSize: 13, fontWeight: 700, color: '#f59e0b', textAlign: 'right' }}>{fmtNum(String(liabilities.reduce((x, l) => x + (parseFloat((l.monthlyPayment ?? '').replace(/,/g, '')) || 0), 0)))}</td>
                 <td />
                 <td />
               </tr>
