@@ -2126,8 +2126,9 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
             const padY = 3
             // ความสูงแถวจริง (ฟอนต์ + padding บนล่าง + เส้นคั่น) เทียบพื้นที่ตารางจริงในสไลด์
             // (สูง ~792 − padding บน 40 − หัวสไลด์ ~70 − footer/เลขหน้า ~45 − แถวหัวตาราง ~20 ≈ 560px)
-            const rowPx = fz * 1.25 + padY * 2 + 1
-            const rowsPerPage = Math.max(10, Math.floor(560 / rowPx))
+            // เผื่อขอบล่างเพิ่ม — แถวใดแสดงไม่เต็มบรรทัดให้ตกไปหน้าใหม่ ไม่ให้โดนตัดที่ขอบสไลด์
+            const rowPx = Math.ceil(fz * 1.25 + padY * 2 + 1)
+            const rowsPerPage = Math.max(10, Math.floor(500 / rowPx))
             // แบ่งช่วงอายุ (คอลัมน์) เป็นก้อน ๆ ละไม่เกิน maxCols ปี
             const ageChunks: { s: number; e: number }[] = []
             for (let s = 0; s < f.ages.length; s += maxCols) ageChunks.push({ s, e: Math.min(s + maxCols, f.ages.length) })
