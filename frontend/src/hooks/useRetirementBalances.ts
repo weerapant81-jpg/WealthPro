@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { calcPerson, useProjectedAssetAtRetirement, fallbackProjections, type Person } from '../pages/RetirementPlanPage'
+import { calcPerson, useProjectedAssetAtRetirement, usePortfolioReturn, fallbackProjections, type Person } from '../pages/RetirementPlanPage'
+import { useInvestmentMedianByAge } from './useInvestmentMonteCarlo'
 
 /** มูลค่ารวม/คงเหลือ กองทุนเกษียณ รายปี (closeBalance) — reuse calcPerson เดียวกับหน้าวางแผนเกษียณ
  *  คืน { retireAge, byAge } โดย byAge[อายุ] = เงินคงเหลือหลังเกษียณของปีนั้น */
@@ -19,19 +20,31 @@ export function useRetirementBalances(person: 'client' | 'spouse') {
   const retireAge = (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? dataRaw?.retirementAge ?? 60
   const lifeExp = (isSelf ? profile?.lifeExpectancySelf : profile?.lifeExpectancySpouse) ?? dataRaw?.lifeExpectancy ?? 85
   const projectedAsset = useProjectedAssetAtRetirement(retireAge, isSelf)
+  const portReturn = usePortfolioReturn(isSelf)
+  const medianByAge = useInvestmentMedianByAge(isSelf)
 
   const byAge: Record<number, number> = {}       // มูลค่ารวม/คงเหลือ ปลายปี (closeBalance) — compound แล้ว
   const byAgeOpen: Record<number, number> = {}    // มูลค่ากองทุนต้นปี (openBalance)
   const byAgeExp: Record<number, number> = {}     // ค่าใช้จ่าย/ปี + เป้าหมายพิเศษ + เงินมรดก (เงินถอนใช้)
   const byAgeReturn: Record<number, number> = {}  // ผลตอบแทนที่กองทุนสร้างในปีนั้น (FV growth)
   if (!dataRaw) return { retireAge, byAge, byAgeOpen, byAgeExp, byAgeReturn }
-  const data: Person = { ...dataRaw, retirementAge: retireAge, lifeExpectancy: lifeExp }
+  // override ให้ตรงกับหน้าวางแผนเกษียณทุกตัว: อายุปัจจุบันจากข้อมูลลูกค้า + เงินเฟ้อ/ผลตอบแทนจากสมมติฐาน
+  const derivedAge = isSelf
+    ? (clientProfile?.birthDate ? new Date().getFullYear() - new Date(clientProfile.birthDate).getFullYear() : null)
+    : (clientProfile?.spouseAge ?? null)
+  const data: Person = {
+    ...dataRaw, retirementAge: retireAge, lifeExpectancy: lifeExp,
+    currentAge: (derivedAge && derivedAge > 0) ? derivedAge : dataRaw.currentAge,
+    inflationRate: profile?.inflationRate ?? dataRaw.inflationRate,
+    preRetirementReturn: profile?.preRetirementReturn ?? dataRaw.preRetirementReturn,
+    postRetirementReturn: profile?.postRetirementReturn ?? dataRaw.postRetirementReturn,
+  }
   const fb = fallbackProjections(clientProfile, profile, isSelf)
   const ssoPV = ssoPlan?.[key]?.pensionPV ?? fb.ssoPV
   const pvdAtRetire = pvdPlan?.[key]?.valueAtRetirement ?? fb.pvdAtRetire
   const sevNet = sevPlan?.[key]?.netSeverance ?? fb.sevNet
   const extraAssets = ssoPV + pvdAtRetire + sevNet
-  const res = calcPerson(data, projectedAsset ?? 0, extraAssets)
+  const res = calcPerson(data, projectedAsset ?? 0, extraAssets, portReturn ?? 0, medianByAge)
   for (const row of res.projectionRows) if (row.phase === 'retirement') {
     const wd = (row.withdrawalLiving ?? 0) + (row.withdrawalGoals ?? 0) + (row.withdrawalLegacy ?? 0)
     byAge[row.age] = Math.max(0, row.closeBalance ?? 0)

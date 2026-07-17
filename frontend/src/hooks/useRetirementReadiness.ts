@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { calcPerson, useProjectedAssetAtRetirement, fallbackProjections, type Person } from '../pages/RetirementPlanPage'
+import { calcPerson, useProjectedAssetAtRetirement, usePortfolioReturn, fallbackProjections, type Person } from '../pages/RetirementPlanPage'
+import { useInvestmentMedianByAge } from './useInvestmentMonteCarlo'
 
 /** ความพร้อมเกษียณ — reuse calc เดียวกับหน้าแผนเกษียณ (กัน drift)
  *  คืน { needed, have, gap, readinessPct } หรือ null ถ้ายังไม่มีข้อมูลพอ */
@@ -19,9 +20,21 @@ export function useRetirementReadiness(person: 'client' | 'spouse') {
   const retireAge = (isSelf ? profile?.retirementAgeSelf : profile?.retirementAgeSpouse) ?? dataRaw?.retirementAge ?? 60
   const lifeExp = (isSelf ? profile?.lifeExpectancySelf : profile?.lifeExpectancySpouse) ?? dataRaw?.lifeExpectancy ?? 85
   const projectedAsset = useProjectedAssetAtRetirement(retireAge, isSelf)
+  const portReturn = usePortfolioReturn(isSelf)
+  const medianByAge = useInvestmentMedianByAge(isSelf)
 
   if (!dataRaw) return null
-  const data: Person = { ...dataRaw, retirementAge: retireAge, lifeExpectancy: lifeExp }
+  // override ให้ตรงกับหน้าวางแผนเกษียณทุกตัว: อายุปัจจุบันจากข้อมูลลูกค้า + เงินเฟ้อ/ผลตอบแทนจากสมมติฐาน
+  const derivedAge = isSelf
+    ? (clientProfile?.birthDate ? new Date().getFullYear() - new Date(clientProfile.birthDate).getFullYear() : null)
+    : (clientProfile?.spouseAge ?? null)
+  const data: Person = {
+    ...dataRaw, retirementAge: retireAge, lifeExpectancy: lifeExp,
+    currentAge: (derivedAge && derivedAge > 0) ? derivedAge : dataRaw.currentAge,
+    inflationRate: profile?.inflationRate ?? dataRaw.inflationRate,
+    preRetirementReturn: profile?.preRetirementReturn ?? dataRaw.preRetirementReturn,
+    postRetirementReturn: profile?.postRetirementReturn ?? dataRaw.postRetirementReturn,
+  }
   const fb = fallbackProjections(clientProfile, profile, isSelf)
   const ssoPV = ssoPlan?.[key]?.pensionPV ?? fb.ssoPV
   const pvdAtRetire = pvdPlan?.[key]?.valueAtRetirement ?? fb.pvdAtRetire
@@ -29,9 +42,9 @@ export function useRetirementReadiness(person: 'client' | 'spouse') {
   const extraAssets = ssoPV + pvdAtRetire + sevNet
   const assetAtRetirement = projectedAsset ?? 0
 
-  const res = calcPerson(data, assetAtRetirement, extraAssets)
+  const res = calcPerson(data, assetAtRetirement, extraAssets, portReturn ?? 0, medianByAge)
   // สถานการณ์ "ไม่ออมเพิ่ม" — สินทรัพย์เดิม + เงินก้อน (ปกส./PVD/ชดเชย) โตเอง ไม่มีเงินออมสะสมใหม่
-  const resNoSave = calcPerson(data, assetAtRetirement, extraAssets, undefined, undefined, true)
+  const resNoSave = calcPerson(data, assetAtRetirement, extraAssets, portReturn ?? 0, medianByAge, true)
   const have = assetAtRetirement + extraAssets
   const needed = res.totalNeeded
   if (!(needed > 0)) return null
