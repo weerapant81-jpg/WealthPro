@@ -398,7 +398,9 @@ export function fallbackProjections(cp: any, prof: any, isSelf: boolean) {
   const ratePct = N >= 180 ? 20 + ((N - 180) / 12) * 1.5 : 0
   const annual = (ratePct / 100) * pensionBase * 12
   const factor = discountRate === 0 ? pensionYears : (1 - Math.pow(1 + discountRate, -pensionYears)) / discountRate
-  const ssoPV = annual * factor
+  // เคารพติ๊ก "ไม่มี" ที่การ์ดสวัสดิการ (ข้อมูลส่วนบุคคล)
+  const welfareSrc: any = isSelf ? cp : cp.spouseProfile
+  const ssoPV = welfareSrc?.hasSocialSecurity === false ? 0 : annual * factor
 
   // PVD value at retirement (openingBalance สมมติ 0)
   const empRate = isSelf ? rpNum(cp.pvdEmployeeRate) : 0
@@ -411,7 +413,7 @@ export function fallbackProjections(cp: any, prof: any, isSelf: boolean) {
     empBal = (empBal + ys * (empRate / 100) * 12) * (1 + rr)
     erBal = (erBal + ys * (employerRate / 100) * 12) * (1 + rr)
   }
-  const pvdAtRetire = empBal + erBal
+  const pvdAtRetire = welfareSrc?.hasPVD === false ? 0 : empBal + erBal
 
   // Severance after tax
   const yearsToRetire = Math.max(0, retirementAge - currentAge)
@@ -424,7 +426,7 @@ export function fallbackProjections(cp: any, prof: any, isSelf: boolean) {
   const deduct2 = Math.max(0, severance - deduct1) * 0.5
   const netIncome = Math.max(0, severance - deduct1 - deduct2)
   const tax = serviceYears >= 5 ? rpProgressiveTax(netIncome) : 0
-  const sevNet = severance - tax
+  const sevNet = welfareSrc?.hasSocialSecurity === false ? 0 : severance - tax
 
   return { ssoPV, pvdAtRetire, sevNet }
 }

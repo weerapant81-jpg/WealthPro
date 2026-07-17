@@ -158,8 +158,13 @@ export default function ProjectionSeveranceTab({ person = 'self' }: { person?: '
   const saveSev = useMutation({
     mutationFn: (merged: any) => { qc.setQueryData(['severance-plan'], merged); return api.put('/severance-plan', merged) },
   })
+  // ติ๊ก "ไม่มีประกันสังคม" = ไม่ใช่ลูกจ้างในระบบ → ไม่มีเงินชดเชยตามกฎหมายแรงงาน (ล้างเป็น 0)
+  const sevWelfareSrc: any = isSelf ? clientProfile : clientProfile?.spouseProfile
+  const noWelfare = clientProfile !== undefined && sevWelfareSrc?.hasSocialSecurity === false
   useEffect(() => {
-    const slice = { netSeverance: calc.netSeverance, serviceYears: calc.serviceYears, tax: calc.tax }
+    const slice = noWelfare
+      ? { netSeverance: 0, serviceYears: 0, tax: 0 }
+      : { netSeverance: calc.netSeverance, serviceYears: calc.serviceYears, tax: calc.tax }
     if (JSON.stringify(savedSevRef.current?.[person] ?? {}) === JSON.stringify(slice)) return
     if (sevTimer.current) clearTimeout(sevTimer.current)
     sevTimer.current = setTimeout(() => {
@@ -168,7 +173,17 @@ export default function ProjectionSeveranceTab({ person = 'self' }: { person?: '
       saveSev.mutate(merged)
     }, 800)
     return () => { if (sevTimer.current) clearTimeout(sevTimer.current) }
-  }, [calc.netSeverance, calc.serviceYears, calc.tax, person])
+  }, [calc.netSeverance, calc.serviceYears, calc.tax, person, noWelfare])
+
+  if (noWelfare) return (
+    <div style={{ padding: '40px 24px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, textAlign: 'center' }}>
+      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>ไม่มีเงินชดเชยตามกฎหมายแรงงาน</div>
+      <div style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.8 }}>
+        ระบุไว้ที่หน้า "ข้อมูลส่วนบุคคล → สวัสดิการที่มี" ว่า <b>ไม่มี</b> ประกันสังคม (ไม่ใช่ลูกจ้างในระบบ) — เงินชดเชยเกษียณถูกล้างเป็น 0 และไม่นำไปรวมในแผนเกษียณ<br />
+        หากต้องการคำนวณ ให้กลับไปติ๊ก "มี" ที่หน้าข้อมูลส่วนบุคคลก่อน
+      </div>
+    </div>
+  )
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

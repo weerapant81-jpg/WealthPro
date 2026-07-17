@@ -154,6 +154,19 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
   // full saved object {self, spouse}; this person's slice = savedPlan?.[person]
   const fullSavedRef = useRef<any>(null)
   fullSavedRef.current = savedPlan ?? {}
+
+  // ติ๊ก "ไม่มีประกันสังคม" ที่ข้อมูลส่วนบุคคล → ล้างค่าแผนเป็น 0 และไม่คำนวณ
+  const welfareSrc: any = isSelf ? clientProfile : clientProfile?.spouseProfile
+  const noWelfare = clientProfile !== undefined && welfareSrc?.hasSocialSecurity === false
+  const noWelfareRef = useRef(noWelfare)
+  noWelfareRef.current = noWelfare
+  useEffect(() => {
+    if (!noWelfare || !isFetched) return
+    const cur = (fullSavedRef.current ?? {})[person]
+    if (!cur || (Number(cur.pensionPV) || 0) !== 0 || (Number(cur.openingBalance) || 0) !== 0)
+      persist({ pensionPV: 0, openingBalance: 0 }).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noWelfare, isFetched])
   useEffect(() => {
     if (loadedRef.current || !isFetched) return
     const p = savedPlan?.[person]
@@ -194,7 +207,7 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
   valuesRef.current = { salary, baseOverrides, empRate, employerRate, govRate, returnRate, openingBalance, currentAge, retirementAge, startContribAge, discountRate }
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    if (!loadedRef.current) return
+    if (!loadedRef.current || noWelfareRef.current) return
     setStatus('saving')
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => save.mutate(valuesRef.current), 800)
@@ -202,7 +215,7 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
   }, [salary, baseOverrides, empRate, employerRate, govRate, returnRate, openingBalance, currentAge, retirementAge, startContribAge, discountRate])
   useEffect(() => {
     return () => {
-      if (loadedRef.current && valuesRef.current) {
+      if (loadedRef.current && valuesRef.current && !noWelfareRef.current) {
         persist(valuesRef.current).catch(() => {})
       }
     }
@@ -273,6 +286,16 @@ export default function ProjectionSocialSecurityTab({ person = 'self' }: { perso
   }))
 
   const C_EMP = '#06b6d4', C_ER = '#22c55e', C_GOV = '#f59e0b', C_CARRY = '#94a3b8'
+
+  if (noWelfare) return (
+    <div style={{ padding: '40px 24px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, textAlign: 'center' }}>
+      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>ไม่มีสวัสดิการประกันสังคม</div>
+      <div style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.8 }}>
+        ระบุไว้ที่หน้า "ข้อมูลส่วนบุคคล → สวัสดิการที่มี" ว่า <b>ไม่มี</b> ประกันสังคม — มูลค่าบำนาญถูกล้างเป็น 0 และไม่นำไปรวมในแผนเกษียณ<br />
+        หากต้องการคำนวณ ให้กลับไปติ๊ก "มี" ที่หน้าข้อมูลส่วนบุคคลก่อน
+      </div>
+    </div>
+  )
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

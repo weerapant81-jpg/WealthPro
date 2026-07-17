@@ -139,6 +139,18 @@ export default function ProjectionPVDTab({ person = 'self' }: { person?: 'self' 
   })
   const fullSavedRef = useRef<any>(null)
   fullSavedRef.current = savedPlan ?? {}
+
+  // ติ๊ก "ไม่มีกองทุนสำรองเลี้ยงชีพ" ที่ข้อมูลส่วนบุคคล → ล้างค่าแผนเป็น 0 และไม่คำนวณ
+  const noWelfare = clientProfile !== undefined && pvdWelfare?.hasPVD === false
+  const noWelfareRef = useRef(noWelfare)
+  noWelfareRef.current = noWelfare
+  useEffect(() => {
+    if (!noWelfare || !isFetched) return
+    const cur = (fullSavedRef.current ?? {})[person]
+    if (!cur || (Number(cur.valueAtRetirement) || 0) !== 0 || (Number(cur.openingBalance) || 0) !== 0)
+      persist({ valueAtRetirement: 0, openingBalance: 0 }).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noWelfare, isFetched])
   useEffect(() => {
     if (loadedRef.current || !isFetched) return
     const p = savedPlan?.[person]
@@ -180,7 +192,7 @@ export default function ProjectionPVDTab({ person = 'self' }: { person?: 'self' 
 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    if (!loadedRef.current) return
+    if (!loadedRef.current || noWelfareRef.current) return
     setStatus('saving')
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => save.mutate(valuesRef.current), 800)
@@ -190,7 +202,7 @@ export default function ProjectionPVDTab({ person = 'self' }: { person?: 'self' 
   // Flush the latest values immediately when leaving the tab/page (debounce may not have fired)
   useEffect(() => {
     return () => {
-      if (loadedRef.current && valuesRef.current) {
+      if (loadedRef.current && valuesRef.current && !noWelfareRef.current) {
         persist(valuesRef.current).catch(() => {})
       }
     }
@@ -229,6 +241,16 @@ export default function ProjectionPVDTab({ person = 'self' }: { person?: 'self' 
   const chartData = rows.map(r => ({ age: r.age, emp: r.empEnd, er: r.erEnd, carry: r.carry, total: r.total }))
 
   const C_EMP = '#06b6d4', C_ER = '#22c55e', C_CARRY = '#94a3b8'
+
+  if (noWelfare) return (
+    <div style={{ padding: '40px 24px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, textAlign: 'center' }}>
+      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>ไม่มีกองทุนสำรองเลี้ยงชีพ (PVD)</div>
+      <div style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.8 }}>
+        ระบุไว้ที่หน้า "ข้อมูลส่วนบุคคล → สวัสดิการที่มี" ว่า <b>ไม่มี</b> กองทุนสำรองเลี้ยงชีพ — มูลค่ากองทุนถูกล้างเป็น 0 และไม่นำไปรวมในแผนเกษียณ<br />
+        หากต้องการคำนวณ ให้กลับไปติ๊ก "มี" ที่หน้าข้อมูลส่วนบุคคลก่อน
+      </div>
+    </div>
+  )
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
