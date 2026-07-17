@@ -112,6 +112,41 @@ export default function ClientsPage() {
         />
       </div>
 
+      {/* Add new client */}
+      {!showAdd ? (
+        <div style={{ margin: '0 0 24px', padding: '20px 24px', background: 'var(--card-bg)', border: '1px dashed var(--card-border)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>เพิ่มลูกค้าใหม่</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>สร้างลูกค้าใหม่ในความดูแลของคุณได้ทันที</div>
+          </div>
+          <button onClick={openAdd}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--cyan)', border: 'none', borderRadius: 8, color: '#00201d', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            <UserPlus size={14} /> สร้างลูกค้า
+          </button>
+        </div>
+      ) : (
+        <div style={{ margin: '0 0 24px', padding: '20px 24px', background: 'var(--card-bg)', border: '1px solid var(--cyan)', borderRadius: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{editId ? 'แก้ไขข้อมูลลูกค้า' : 'สร้างลูกค้าใหม่'}</div>
+            <button onClick={resetForm} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+            {([['firstName', 'ชื่อ *', 'text'], ['lastName', 'นามสกุล *', 'text'], ['email', 'อีเมล *', 'email'], ['phone', 'เบอร์โทร *', 'tel']] as const).map(([k, ph, type]) => (
+              <input key={k} type={type} value={form[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))} placeholder={ph}
+                style={{ padding: '10px 12px', background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, outline: 'none' }} />
+            ))}
+          </div>
+          {err && <div style={{ marginTop: 10, fontSize: 12.5, color: '#f43f5e' }}>{err}</div>}
+          <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
+            <button onClick={() => save.mutate()} disabled={!canSubmit || save.isPending}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 20px', background: 'var(--cyan)', border: 'none', borderRadius: 8, color: '#00201d', fontSize: 13, fontWeight: 700, cursor: (!canSubmit || save.isPending) ? 'not-allowed' : 'pointer', opacity: (!canSubmit || save.isPending) ? 0.5 : 1 }}>
+              <UserPlus size={14} /> {save.isPending ? 'กำลังบันทึก...' : editId ? 'บันทึกการแก้ไข' : 'สร้างและเริ่มกรอกข้อมูล'}
+            </button>
+            <button onClick={resetForm} style={{ padding: '9px 16px', background: 'none', border: '1px solid var(--card-border)', borderRadius: 8, color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>ยกเลิก</button>
+          </div>
+        </div>
+      )}
+
       {/* List */}
       {isLoading ? (
         <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 40 }}>กำลังโหลด...</div>
@@ -187,40 +222,6 @@ export default function ClientsPage() {
         </div>
       )}
 
-      {/* Add new client */}
-      {!showAdd ? (
-        <div style={{ marginTop: 32, padding: '20px 24px', background: 'var(--card-bg)', border: '1px dashed var(--card-border)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>เพิ่มลูกค้าใหม่</div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>สร้างลูกค้าใหม่ในความดูแลของคุณได้ทันที</div>
-          </div>
-          <button onClick={openAdd}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--cyan)', border: 'none', borderRadius: 8, color: '#00201d', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-            <UserPlus size={14} /> สร้างลูกค้า
-          </button>
-        </div>
-      ) : (
-        <div style={{ marginTop: 32, padding: '20px 24px', background: 'var(--card-bg)', border: '1px solid var(--cyan)', borderRadius: 14 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{editId ? 'แก้ไขข้อมูลลูกค้า' : 'สร้างลูกค้าใหม่'}</div>
-            <button onClick={resetForm} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-            {([['firstName', 'ชื่อ *', 'text'], ['lastName', 'นามสกุล *', 'text'], ['email', 'อีเมล *', 'email'], ['phone', 'เบอร์โทร *', 'tel']] as const).map(([k, ph, type]) => (
-              <input key={k} type={type} value={form[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))} placeholder={ph}
-                style={{ padding: '10px 12px', background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, outline: 'none' }} />
-            ))}
-          </div>
-          {err && <div style={{ marginTop: 10, fontSize: 12.5, color: '#f43f5e' }}>{err}</div>}
-          <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
-            <button onClick={() => save.mutate()} disabled={!canSubmit || save.isPending}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 20px', background: 'var(--cyan)', border: 'none', borderRadius: 8, color: '#00201d', fontSize: 13, fontWeight: 700, cursor: (!canSubmit || save.isPending) ? 'not-allowed' : 'pointer', opacity: (!canSubmit || save.isPending) ? 0.5 : 1 }}>
-              <UserPlus size={14} /> {save.isPending ? 'กำลังบันทึก...' : editId ? 'บันทึกการแก้ไข' : 'สร้างและเริ่มกรอกข้อมูล'}
-            </button>
-            <button onClick={resetForm} style={{ padding: '9px 16px', background: 'none', border: '1px solid var(--card-border)', borderRadius: 8, color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>ยกเลิก</button>
-          </div>
-        </div>
-      )}
 
       {consentFor && <ConsentModal client={consentFor} onClose={() => setConsentFor(null)} />}
     </div>
