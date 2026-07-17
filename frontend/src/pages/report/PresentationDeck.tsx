@@ -2118,7 +2118,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
             const net = f.ages.map((_, i) => f.incomeTotal[i] - expTotal[i])
             const remain = net.map((v, i) => v - f.goalTotal[i])
             // ฟอนต์คงที่ 10px — ถ้าจำนวนปีทำให้คอลัมน์แคบเกิน แบ่ง "ช่วงอายุ" ออกหลายสไลด์แทนการบีบฟอนต์
-            const fz = 9
+            const fz = 8
             const maxVal = Math.max(...f.incomeTotal, ...expTotal, ...net.map(Math.abs), ...remain.map(Math.abs), 1)
             const maxChars = fmt(Math.round(maxVal)).length + 1
             // คอลัมน์ชื่อรายการแคบลง (120px) + เผื่อความกว้างตัวอักษร monospace จริง (~0.62em) กันตัวเลขล้นขอบ
