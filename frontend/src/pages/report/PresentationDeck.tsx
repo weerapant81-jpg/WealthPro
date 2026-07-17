@@ -791,8 +791,9 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
     const curAge = selfAge
     const retAge = profile?.retirementAgeSelf ?? 60
     if (!data || curAge == null || retAge <= curAge) return null
+    // ไม่รวมปีที่เกษียณ (ทุกรายการสิ้นสุดที่อายุเกษียณ − 1 คอลัมน์ปีเกษียณจึงว่างทั้งคอลัมน์)
     const ages: number[] = []
-    for (let a = curAge; a <= retAge; a++) ages.push(a)
+    for (let a = curAge; a < retAge; a++) ages.push(a)
     const lineRows = (lines: CfLine[] | undefined) => (lines ?? [])
       .map(l => ({ label: l.label || '—', vals: ages.map(a => lineAt(l, a, retAge)) }))
       .filter(r => r.vals.some(v => v > 0))
