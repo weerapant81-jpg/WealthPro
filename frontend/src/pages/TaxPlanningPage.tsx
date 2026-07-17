@@ -494,13 +494,28 @@ export default function TaxPlanningPage() {
           </Sec>
 
           <Sec title="ภาษีแต่ละขั้น">
+            {hasPlanned && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 82px 82px', gap: 8, padding: '0 0 5px', borderBottom: '1px solid var(--card-border)', marginBottom: 3 }}>
+                <span />
+                <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textAlign: 'right' }}>ปัจจุบัน</span>
+                <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 700, textAlign: 'right' }}>หลังวางแผน</span>
+              </div>
+            )}
             {BRACKETS.map((b, i) => {
               const filled = c.ni > b.min ? Math.min(c.ni, b.max) - b.min : 0
-              if (filled <= 0 && b.rate > 0) return null
-              return (
+              const filledP = cP.ni > b.min ? Math.min(cP.ni, b.max) - b.min : 0
+              if (filled <= 0 && filledP <= 0 && b.rate > 0) return null
+              const tCur = filled * b.rate, tPlan = filledP * b.rate
+              return hasPlanned ? (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 82px 82px', gap: 8, alignItems: 'center', fontSize: 11.5, padding: '3px 0', color: 'var(--text-secondary)' }}>
+                  <span>{b.rate === 0 ? 'ยกเว้น' : `${b.rate * 100}%`} · {fmt(b.min)}–{b.max > 5e9 ? '∞' : fmt(b.max)}</span>
+                  <span style={{ fontFamily: 'monospace', textAlign: 'right', color: tCur > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>{fmt(tCur)}</span>
+                  <span style={{ fontFamily: 'monospace', textAlign: 'right', color: tPlan !== tCur ? '#22c55e' : 'var(--text-muted)' }}>{fmt(tPlan)}</span>
+                </div>
+              ) : (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, padding: '3px 0', color: 'var(--text-secondary)' }}>
                   <span>{b.rate === 0 ? 'ยกเว้น' : `${b.rate * 100}%`} · {fmt(b.min)}–{b.max > 5e9 ? '∞' : fmt(b.max)}</span>
-                  <span style={{ fontFamily: 'monospace', color: filled * b.rate > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>{fmt(filled * b.rate)}</span>
+                  <span style={{ fontFamily: 'monospace', color: tCur > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>{fmt(tCur)}</span>
                 </div>
               )
             })}
