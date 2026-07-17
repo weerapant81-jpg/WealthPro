@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
@@ -30,6 +30,10 @@ export default function ClientsPage() {
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '' })
   const [err, setErr] = useState('')
+  // เปิดฟอร์มสร้างลูกค้าอัตโนมัติเมื่อมาจากปุ่ม "สร้างลูกค้าใหม่" (?new=1)
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('new') === '1') setShowAdd(true)
+  }, [])
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
   const canSubmit = !!form.firstName.trim() && !!form.lastName.trim() && emailOk && !!form.phone.trim()
 

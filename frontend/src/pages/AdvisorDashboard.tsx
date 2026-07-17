@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useClient, type ClientInfo } from '../context/ClientContext'
-import { Landmark, Wallet, Users, CheckCircle2, ChevronRight, Search, Circle, X, Rocket, ArrowRight, ShieldAlert } from 'lucide-react'
+import { Landmark, Wallet, Users, CheckCircle2, ChevronRight, Search, Circle, X, Rocket, ArrowRight, ShieldAlert, UserPlus
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useIsCompact } from '../hooks/useViewport'
 import { AppointmentsWidget, TasksWidget, NewsWidget } from '../components/AdvisorWidgets'
@@ -86,6 +87,10 @@ export default function AdvisorDashboard() {
           <button onClick={() => navigate('/clients')}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--cyan)', color: '#00201d', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
             <Users size={16} /> ลูกค้าทั้งหมด
+          </button>
+          <button onClick={() => navigate('/clients?new=1')}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'transparent', color: 'var(--cyan)', border: '1px solid var(--cyan)', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            <UserPlus size={16} /> สร้างลูกค้าใหม่
           </button>
         </div>
       </div>
