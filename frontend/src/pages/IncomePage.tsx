@@ -478,6 +478,11 @@ function CashFlowTab({ person }: { person: 'client' | 'spouse' }) {
     queryFn: () => api.get('/life-insurances').then(r => r.data),
     retry: false,
   })
+  const { data: invProfileCF } = useQuery<any>({
+    queryKey: ['investment-profile'],
+    queryFn: () => api.get('/investment-profile').then(r => r.data),
+    retry: false,
+  })
   const invalidate = () => qc.invalidateQueries({ queryKey: ['expenses'] })
 
   const addExpense = useMutation({
@@ -528,6 +533,15 @@ function CashFlowTab({ person }: { person: 'client' | 'spouse' }) {
     .reduce((s, p) => s + (p.premium ?? 0), 0)
   const lifePremiumMonthly = lifePremiumAnnual / 12
 
+  // ผ่อนชำระหนี้สินต่อเดือน — ดึงจากตารางหนี้สินคงค้าง (ข้อมูลสินทรัพย์และการลงทุน) อัตโนมัติ
+  const debtRows: { name: string; monthly: number }[] = (((person === 'spouse' ? invProfileCF?.spouseData : invProfileCF)?.liabilities ?? []) as any[])
+    .map((l: any, i: number) => ({
+      name: [l.debtType || `หนี้สินที่ ${i + 1}`, l.assetRef].filter(Boolean).join(' · '),
+      monthly: parseFloat(String(l.monthlyPayment ?? '').replace(/,/g, '')) || 0,
+    }))
+    .filter(d => d.monthly > 0)
+  const debtMonthly = debtRows.reduce((x, d) => x + d.monthly, 0)
+
   // income from incomeSources: โบนัส is annual lump sum; others are monthly
   const incomeMonthly = (src: IncomeSource) => {
     const amt = parseFloat(src.amount) || 0
@@ -536,12 +550,12 @@ function CashFlowTab({ person }: { person: 'client' | 'spouse' }) {
 
   const totals = useMemo(() => {
     const income   = incomeSources.filter(s => s.amount).reduce((sum, s) => sum + incomeMonthly(s), 0)
-    const fixed    = fixedItems.reduce((s, e) => s + toMonthly(e.amount, e.frequency), 0) + ssMonthly + pvdMonthly + lifePremiumMonthly
+    const fixed    = fixedItems.reduce((s, e) => s + toMonthly(e.amount, e.frequency), 0) + ssMonthly + pvdMonthly + lifePremiumMonthly + debtMonthly
     const variable = variableItems.reduce((s, e) => s + toMonthly(e.amount, e.frequency), 0)
     const saving   = savingItems.reduce((s, e) => s + toMonthly(e.amount, e.frequency), 0)
     return { income, fixed, variable, saving, total: fixed + variable + saving, net: income - (fixed + variable + saving) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [incomeSources, fixedItems, variableItems, savingItems, ssMonthly, pvdMonthly, lifePremiumMonthly])
+  }, [incomeSources, fixedItems, variableItems, savingItems, ssMonthly, pvdMonthly, lifePremiumMonthly, debtMonthly])
 
   return (
     <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
@@ -574,7 +588,7 @@ function CashFlowTab({ person }: { person: 'client' | 'spouse' }) {
 
       {/* รายจ่ายคงที่ */}
       <SectionCard title="รายจ่ายคงที่" sub="Fixed Expenses" accent="#f43f5e" total={totals.fixed}>
-        {fixedItems.length === 0 && !hasSS && !hasPVD && lifePremiumMonthly <= 0 && (
+        {fixedItems.length === 0 && !hasSS && !hasPVD && lifePremiumMonthly <= 0 && debtRows.length === 0 && (
           <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, padding: '10px 0' }}>ยังไม่มีรายจ่ายคงที่</p>
         )}
         {fixedItems.map(e => (
@@ -604,6 +618,13 @@ function CashFlowTab({ person }: { person: 'client' | 'spouse' }) {
             note={`ดึงจากข้อมูลการประกัน · เบี้ยรวม ${fmt(lifePremiumAnnual)} บาท/ปี`}
             totalAnnualIncome={totals.income * 12} />
         )}
+        {debtRows.map((d, i) => (
+          <AutoCalcRow key={`debt-${i}`}
+            label={`ผ่อนชำระหนี้ · ${d.name}`}
+            amount={d.monthly}
+            note={`ดึงจากหนี้สินคงค้าง · ${fmt(d.monthly * 12)} บาท/ปี`}
+            totalAnnualIncome={totals.income * 12} />
+        ))}
         <AddRow
           cats={FIXED_CATS}
           usedCats={fixedItems.map(e => e.category)}
