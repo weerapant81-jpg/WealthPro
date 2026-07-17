@@ -519,6 +519,18 @@ export default function TaxPlanningPage() {
                 </div>
               )
             })}
+            {hasPlanned ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 82px 82px', gap: 8, alignItems: 'center', fontSize: 12, padding: '5px 0 0', marginTop: 3, borderTop: '1px solid var(--card-border)' }}>
+                <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>ภาษีรวม</span>
+                <b style={{ fontFamily: 'monospace', textAlign: 'right', color: '#f59e0b' }}>{fmt(c.tax)}</b>
+                <b style={{ fontFamily: 'monospace', textAlign: 'right', color: '#22c55e' }}>{fmt(cP.tax)}</b>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '5px 0 0', marginTop: 3, borderTop: '1px solid var(--card-border)' }}>
+                <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>ภาษีรวม</span>
+                <b style={{ fontFamily: 'monospace', color: '#f59e0b' }}>{fmt(c.tax)}</b>
+              </div>
+            )}
           </Sec>
 
           {(c.deducts.length > 0 || cP.deducts.length > 0) && (
