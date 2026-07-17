@@ -176,11 +176,12 @@ function RatioCard({ entry, advice }: { entry: RatioEntry; advice: string | null
 
 // ─── Section ──────────────────────────────────────────────────────────────────
 
-function Section({ title, icon: Icon, color, keys, ratios, advice }: {
+function Section({ title, icon: Icon, color, keys, ratios, advice, footer }: {
   title: string; icon: React.FC<any>; color: string
   keys: string[]
   ratios: RatioEntry[]
   advice: Record<string, string | null>
+  footer?: React.ReactNode
 }) {
   const entries = keys.map(k => ratios.find(r => r.key === k)!).filter(Boolean)
   const stateCounts = { good: 0, warning: 0, danger: 0, nodata: 0 }
@@ -204,8 +205,12 @@ function Section({ title, icon: Icon, color, keys, ratios, advice }: {
           {stateCounts.danger > 0  && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'rgba(244,63,94,0.15)',  color: '#f43f5e' }}>เร่งด่วน {stateCounts.danger}</span>}
         </div>
       </div>
-      <div style={{ padding: '12px 16px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {entries.map(e => <RatioCard key={e.key} entry={e} advice={advice[e.key]} />)}
+      <div style={{ padding: '12px 16px 16px' }}>
+        {/* อัตราส่วนเรียงแนวนอนในแถวเดียว (จอแคบยุบเป็นคอลัมน์) */}
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, 280px), 1fr))`, gap: 10, alignItems: 'stretch' }}>
+          {entries.map(e => <RatioCard key={e.key} entry={e} advice={advice[e.key]} />)}
+        </div>
+        {footer && <div style={{ marginTop: 12 }}>{footer}</div>}
       </div>
     </div>
   )
@@ -372,132 +377,93 @@ export default function FinancialRatioTab({ person = 'client' }: { person?: 'cli
 
       {hasData && <SummaryBanner summary={data.summary} />}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 20, alignItems: 'start' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <Section
-            title="การวิเคราะห์สภาพคล่อง"
-            icon={Droplets} color="#22d3ee"
-            keys={['ratio1', 'ratio2', 'ratio3']}
-            ratios={data.ratios} advice={data.advice}
-          />
-          <Section
-            title="การออมและการลงทุน"
-            icon={PiggyBank} color="#a78bfa"
-            keys={['ratio7', 'ratio8']}
-            ratios={data.ratios} advice={data.advice}
-          />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <Section
-            title="การวิเคราะห์หนี้สิน"
-            icon={CreditCard} color="#f43f5e"
-            keys={['ratio4', 'ratio5', 'ratio6']}
-            ratios={data.ratios} advice={data.advice}
-          />
-          {/* Advice Summary */}
-          {hasData && (
-            <div style={{ ...card, padding: '16px 20px' }}>
-              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 14 }}>
-                สรุปคำแนะนำทางการเงิน
+      {/* 3 bento เต็มความกว้าง: สภาพคล่อง → หนี้สิน → ออม/ลงทุน (อัตราส่วนเรียงแนวนอน + คอมเมนต์ใต้แถว) */}
+      {(() => {
+        const CAT_META = {
+          liquidity: { label: 'ด้านสภาพคล่อง', color: '#22d3ee', icon: Droplets, keys: ['ratio1', 'ratio2', 'ratio3'] },
+          debt:      { label: 'ด้านหนี้สิน',    color: '#f43f5e', icon: CreditCard, keys: ['ratio4', 'ratio5', 'ratio6'] },
+          savings:   { label: 'ด้านการออม/ลงทุน', color: '#a78bfa', icon: PiggyBank, keys: ['ratio7', 'ratio8'] },
+        } as const
+        const CatAdvice = (cat: 'liquidity' | 'debt' | 'savings') => {
+          if (!hasData) return null
+          const catMeta = CAT_META[cat]
+          const catKeys = catMeta.keys as unknown as string[]
+          const worstEntry = data.ratios
+            .filter(r => catKeys.includes(r.key))
+            .sort(a => a.state === 'danger' ? -1 : a.state === 'warning' ? 0 : 1)[0]
+          const advice = worstEntry ? data.advice[worstEntry.key] : null
+          const st = worstEntry ? STATE_STYLE[worstEntry.state] : STATE_STYLE.nodata
+          const SIcon = st.icon
+          const note = notes[cat] ?? ''
+          const isEdit = editing === cat
+          return (
+            <div style={{ padding: '12px 14px', background: `${catMeta.color}08`, borderRadius: 10, border: `1px solid ${catMeta.color}25` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: catMeta.color }}>สรุปคำแนะนำ{catMeta.label}</span>
+                <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: st.color }}>
+                  <SIcon size={12} /> {worstEntry?.state === 'good' ? 'ดี' : worstEntry?.state === 'warning' ? 'ควรระวัง' : worstEntry?.state === 'danger' ? 'เร่งด่วน' : '—'}
+                </span>
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.65, marginBottom: 10 }}>
+                {advice ?? 'ยังไม่มีข้อมูลเพียงพอสำหรับการวิเคราะห์'}
               </p>
-              {(['liquidity', 'debt', 'savings'] as const).map(cat => {
-                const catMeta = {
-                  liquidity: { label: 'ด้านสภาพคล่อง', color: '#22d3ee', icon: Droplets },
-                  debt:      { label: 'ด้านหนี้สิน',    color: '#f43f5e', icon: CreditCard },
-                  savings:   { label: 'ด้านการออม/ลงทุน', color: '#a78bfa', icon: PiggyBank },
-                }[cat]
-                const catKeys = {
-                  liquidity: ['ratio1','ratio2','ratio3'],
-                  debt:      ['ratio4','ratio5','ratio6'],
-                  savings:   ['ratio7','ratio8'],
-                }[cat]
-                const worstEntry = data.ratios
-                  .filter(r => catKeys.includes(r.key))
-                  .sort(a => a.state === 'danger' ? -1 : a.state === 'warning' ? 0 : 1)[0]
-                const advice = worstEntry ? data.advice[worstEntry.key] : null
-                const s = worstEntry ? STATE_STYLE[worstEntry.state] : STATE_STYLE.nodata
-                const SIcon = s.icon
-                const CIcon = catMeta.icon
-
-                const note = notes[cat] ?? ''
-                const isEdit = editing === cat
-
-                return (
-                  <div key={cat} style={{ marginBottom: 12, padding: '12px 14px',
-                    background: `${catMeta.color}08`, borderRadius: 10,
-                    border: `1px solid ${catMeta.color}25` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                      <CIcon size={13} color={catMeta.color} />
-                      <span style={{ fontSize: 12, fontWeight: 600, color: catMeta.color }}>{catMeta.label}</span>
-                      <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: s.color }}>
-                        <SIcon size={12} /> {worstEntry?.state === 'good' ? 'ดี' : worstEntry?.state === 'warning' ? 'ควรระวัง' : worstEntry?.state === 'danger' ? 'เร่งด่วน' : '—'}
-                      </span>
-                    </div>
-                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.65, marginBottom: 10 }}>
-                      {advice ?? 'ยังไม่มีข้อมูลเพียงพอสำหรับการวิเคราะห์'}
+              {worstEntry && worstEntry.state !== 'good' && worstEntry.state !== 'nodata' && (() => {
+                const plan = actionPlan(worstEntry.key, worstEntry.value, data.summary)
+                return plan ? (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: note || isEdit ? 10 : 0,
+                    padding: '10px 12px', background: `${catMeta.color}12`, borderRadius: 8, border: `1px dashed ${catMeta.color}55` }}>
+                    <TrendingUp size={14} color={catMeta.color} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.65 }}>
+                      <strong style={{ color: catMeta.color }}>แนะนำให้ปรับ: </strong>{plan}
                     </p>
-
-                    {/* Concrete action plan — แสดงเมื่อยังไม่ผ่านเกณฑ์ */}
-                    {worstEntry && worstEntry.state !== 'good' && worstEntry.state !== 'nodata' && (() => {
-                      const plan = actionPlan(worstEntry.key, worstEntry.value, data.summary)
-                      return plan ? (
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: note || isEdit ? 10 : 0,
-                          padding: '10px 12px', background: `${catMeta.color}12`, borderRadius: 8, border: `1px dashed ${catMeta.color}55` }}>
-                          <TrendingUp size={14} color={catMeta.color} style={{ flexShrink: 0, marginTop: 1 }} />
-                          <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.65 }}>
-                            <strong style={{ color: catMeta.color }}>แนะนำให้ปรับ: </strong>{plan}
-                          </p>
-                        </div>
-                      ) : null
-                    })()}
-
-                    {/* Additional advisor note */}
-                    {isEdit ? (
-                      <div>
-                        <textarea
-                          value={draft}
-                          onChange={e => setDraft(e.target.value)}
-                          placeholder="พิมพ์ความเห็นเพิ่มเติม..."
-                          rows={3}
-                          autoFocus
-                          style={{ ...inp, resize: 'vertical' as const, fontSize: 12, lineHeight: 1.6, marginBottom: 8 }}
-                        />
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button onClick={() => saveEdit(cat)}
-                            style={{ display: 'flex', alignItems: 'center', gap: 4, background: catMeta.color, border: 'none', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', color: '#fff', fontSize: 12 }}>
-                            <Check size={12} /> บันทึก
-                          </button>
-                          <button onClick={cancelEdit}
-                            style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: '1px solid var(--card-border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12 }}>
-                            <X size={12} /> ยกเลิก
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                        {note && (
-                          <div style={{ flex: 1, fontSize: 12, color: catMeta.color, lineHeight: 1.65,
-                            background: `${catMeta.color}12`, borderRadius: 6, padding: '7px 10px',
-                            borderLeft: `3px solid ${catMeta.color}60` }}>
-                            <span style={{ fontSize: 10, color: `${catMeta.color}99`, display: 'block', marginBottom: 2 }}>ความเห็นเพิ่มเติม</span>
-                            {note}
-                          </div>
-                        )}
-                        <button onClick={() => startEdit(cat)}
-                          style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4, background: 'none',
-                            border: `1px solid ${catMeta.color}40`, borderRadius: 6, padding: '4px 10px',
-                            cursor: 'pointer', color: catMeta.color, fontSize: 11, marginTop: note ? 0 : undefined }}>
-                          <Pencil size={11} /> {note ? 'แก้ไข' : 'เพิ่มความเห็น'}
-                        </button>
-                      </div>
-                    )}
                   </div>
-                )
-              })}
+                ) : null
+              })()}
+              {isEdit ? (
+                <div>
+                  <textarea value={draft} onChange={e => setDraft(e.target.value)} placeholder="พิมพ์ความเห็นเพิ่มเติม..." rows={3} autoFocus
+                    style={{ ...inp, resize: 'vertical' as const, fontSize: 12, lineHeight: 1.6, marginBottom: 8 }} />
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={() => saveEdit(cat)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 4, background: catMeta.color, border: 'none', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', color: '#fff', fontSize: 12 }}>
+                      <Check size={12} /> บันทึก
+                    </button>
+                    <button onClick={cancelEdit}
+                      style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: '1px solid var(--card-border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12 }}>
+                      <X size={12} /> ยกเลิก
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                  {note && (
+                    <div style={{ flex: 1, fontSize: 12, color: catMeta.color, lineHeight: 1.65,
+                      background: `${catMeta.color}12`, borderRadius: 6, padding: '7px 10px', borderLeft: `3px solid ${catMeta.color}60` }}>
+                      <span style={{ fontSize: 10, color: `${catMeta.color}99`, display: 'block', marginBottom: 2 }}>ความเห็นเพิ่มเติม</span>
+                      {note}
+                    </div>
+                  )}
+                  <button onClick={() => startEdit(cat)}
+                    style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4, background: 'none',
+                      border: `1px solid ${catMeta.color}40`, borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: catMeta.color, fontSize: 11 }}>
+                    <Pencil size={11} /> {note ? 'แก้ไข' : 'เพิ่มความเห็น'}
+                  </button>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </div>
+          )
+        }
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <Section title="อัตราส่วนสภาพคล่อง" icon={Droplets} color="#22d3ee"
+              keys={['ratio1', 'ratio2', 'ratio3']} ratios={data.ratios} advice={data.advice} footer={CatAdvice('liquidity')} />
+            <Section title="อัตราส่วนหนี้สิน" icon={CreditCard} color="#f43f5e"
+              keys={['ratio4', 'ratio5', 'ratio6']} ratios={data.ratios} advice={data.advice} footer={CatAdvice('debt')} />
+            <Section title="อัตราส่วนการออม/ลงทุน" icon={PiggyBank} color="#a78bfa"
+              keys={['ratio7', 'ratio8']} ratios={data.ratios} advice={data.advice} footer={CatAdvice('savings')} />
+          </div>
+        )
+      })()}
     </div>
   )
 }
