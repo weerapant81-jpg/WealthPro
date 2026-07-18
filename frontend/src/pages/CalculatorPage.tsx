@@ -535,27 +535,32 @@ function InsuranceIRRCalc() {
   // ทุนประกัน — แสดงประกอบเท่านั้น ไม่มีผลต่อ IRR · แก้รายปีได้ (บางแบบทุนเพิ่มขึ้นตามปี)
   const [sumAssured, setSumAssured] = useState(0)
   const [saOv, setSaOv] = useState<Record<number, number>>({})
+  // เงินรับรายปีที่แก้ทับในตาราง (บางแบบคืนไม่เท่ากันในแต่ละปี) — มีผลต่อ IRR
+  const [cbOv, setCbOv] = useState<Record<number, number>>({})
 
   const res = useMemo(() => {
     const N = Math.max(1, Math.round(termYears))
     const pay = Math.min(Math.max(1, Math.round(payYears)), N)
     const ev = Math.max(0, Math.round(everyYears))
     const st = Math.max(1, Math.round(startYear))
+    // เงินคืนตามรอบ → ทับด้วยค่าที่แก้เองรายปี (cbOv) ถ้ามี
+    const sched: number[] = Array.from({ length: N + 1 }, () => 0)
+    if (ev > 0 && cashback > 0) for (let t = st; t < N; t += ev) sched[t] = cashback
+    const backAt = (t: number) => cbOv[t] ?? sched[t]
     // cfs[t] = กระแสเงินสด ณ ต้นปีที่ t+1 (t=0..N) — เบี้ยจ่ายต้นปี, เงินคืน/ครบสัญญารับปลายปี
     const cfs: number[] = Array.from({ length: N + 1 }, () => 0)
     for (let t = 0; t < pay; t++) cfs[t] -= premium
-    let nCashback = 0
-    if (ev > 0 && cashback > 0) for (let t = st; t < N; t += ev) { cfs[t] += cashback; nCashback++ }
+    let nCashback = 0, totalCashback = 0
+    for (let t = 0; t < N; t++) { const b = backAt(t); if (b > 0) { cfs[t] += b; nCashback++; totalCashback += b } }
     cfs[N] += maturity
     const irr = irrOf(cfs)
     const totalPremium = premium * pay
-    const totalCashback = nCashback * cashback
     const totalReceive = totalCashback + maturity
     // แสดงทุกปี 1..N (คอลัมน์ทุนประกันต้องมีทุกปีแม้ปีนั้นไม่มีจ่าย/รับ)
     const rows = cfs.map((cf, t) => ({ year: t, out: t < pay ? premium : 0, back: cf + (t < pay ? premium : 0) }))
       .filter((r, t) => t < N || r.back > 0)
     return { irr, totalPremium, totalCashback, nCashback, totalReceive, net: totalReceive - totalPremium, rows, N }
-  }, [premium, payYears, cashback, startYear, everyYears, termYears, maturity])
+  }, [premium, payYears, cashback, startYear, everyYears, termYears, maturity, cbOv])
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : 'minmax(0, 380px) minmax(0, 1fr)', gap: 20, alignItems: 'start' }}>
@@ -611,7 +616,21 @@ function InsuranceIRRCalc() {
                   <tr key={i} style={{ borderBottom: '1px solid var(--divider)' }}>
                     <td style={{ padding: '3px 8px', color: 'var(--text-secondary)' }}>{r.year === res.N ? `${res.N} (ครบสัญญา)` : r.year + 1}</td>
                     <td style={{ padding: '3px 8px', textAlign: 'right', fontFamily: 'monospace', color: r.out > 0 ? '#f87171' : 'var(--text-muted)' }}>{r.out > 0 ? fmt0(r.out) : '–'}</td>
-                    <td style={{ padding: '3px 8px', textAlign: 'right', fontFamily: 'monospace', color: r.back > 0 ? '#4ade80' : 'var(--text-muted)' }}>{r.back > 0 ? fmt0(r.back) : '–'}</td>
+                    <td style={{ padding: '2px 4px', textAlign: 'right' }}>
+                      {r.year < res.N ? (
+                        <input type="text" inputMode="numeric" title="แก้ไขเงินรับของปีนี้ได้ · มีผลต่อ IRR"
+                          value={r.back ? r.back.toLocaleString('en-US') : ''}
+                          placeholder="–"
+                          onChange={e => {
+                            const raw = e.target.value.replace(/,/g, '')
+                            if (raw !== '' && !/^\d+$/.test(raw)) return
+                            setCbOv(p => ({ ...p, [r.year]: raw === '' ? 0 : Number(raw) }))
+                          }}
+                          style={{ width: 92, padding: '2px 6px', textAlign: 'right', background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 5, color: '#4ade80', fontSize: 11, fontFamily: 'monospace', outline: 'none' }} />
+                      ) : (
+                        <span style={{ fontFamily: 'monospace', fontSize: 12, color: r.back > 0 ? '#4ade80' : 'var(--text-muted)', paddingRight: 4 }}>{r.back > 0 ? fmt0(r.back) : '–'}</span>
+                      )}
+                    </td>
                     <td style={{ padding: '3px 8px', textAlign: 'right', fontFamily: 'monospace', color: r.back - r.out >= 0 ? 'var(--cyan)' : '#f87171' }}>{fmt0(r.back - r.out)}</td>
                     <td style={{ padding: '2px 4px', textAlign: 'right' }}>
                       <input type="text" inputMode="numeric"
