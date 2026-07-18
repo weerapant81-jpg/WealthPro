@@ -532,6 +532,9 @@ function InsuranceIRRCalc() {
   const [everyYears, setEveryYears] = useState(2)
   const [termYears, setTermYears] = useState(20)
   const [maturity, setMaturity] = useState(600000)
+  // ทุนประกัน — แสดงประกอบเท่านั้น ไม่มีผลต่อ IRR · แก้รายปีได้ (บางแบบทุนเพิ่มขึ้นตามปี)
+  const [sumAssured, setSumAssured] = useState(0)
+  const [saOv, setSaOv] = useState<Record<number, number>>({})
 
   const res = useMemo(() => {
     const N = Math.max(1, Math.round(termYears))
@@ -548,8 +551,9 @@ function InsuranceIRRCalc() {
     const totalPremium = premium * pay
     const totalCashback = nCashback * cashback
     const totalReceive = totalCashback + maturity
+    // แสดงทุกปี 1..N (คอลัมน์ทุนประกันต้องมีทุกปีแม้ปีนั้นไม่มีจ่าย/รับ)
     const rows = cfs.map((cf, t) => ({ year: t, out: t < pay ? premium : 0, back: cf + (t < pay ? premium : 0) }))
-      .filter(r => r.out > 0 || r.back > 0)
+      .filter((r, t) => t < N || r.back > 0)
     return { irr, totalPremium, totalCashback, nCashback, totalReceive, net: totalReceive - totalPremium, rows, N }
   }, [premium, payYears, cashback, startYear, everyYears, termYears, maturity])
 
@@ -568,6 +572,7 @@ function InsuranceIRRCalc() {
         <Field label="คืนทุก ๆ"><NumIn value={everyYears} onChange={setEveryYears} suffix="ปี" /></Field>
         <Field label="ครบสัญญากี่ปี"><NumIn value={termYears} onChange={setTermYears} suffix="ปี" /></Field>
         <Field label="เงินครบสัญญา"><MoneyInput value={maturity} onChange={setMaturity} /></Field>
+        <Field label="ทุนประกัน" hint="แสดงประกอบในตาราง · ไม่มีผลต่อ IRR"><MoneyInput value={sumAssured} onChange={setSumAssured} /></Field>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={card}>
@@ -598,6 +603,7 @@ function InsuranceIRRCalc() {
                   <th style={{ textAlign: 'right', padding: '4px 8px' }}>เบี้ยจ่าย</th>
                   <th style={{ textAlign: 'right', padding: '4px 8px' }}>เงินรับ</th>
                   <th style={{ textAlign: 'right', padding: '4px 8px' }}>สุทธิ</th>
+                  <th style={{ textAlign: 'right', padding: '4px 8px' }} title="แก้ไขรายปีได้ · ไม่มีผลต่อ IRR">ทุนประกัน</th>
                 </tr>
               </thead>
               <tbody>
@@ -607,6 +613,17 @@ function InsuranceIRRCalc() {
                     <td style={{ padding: '3px 8px', textAlign: 'right', fontFamily: 'monospace', color: r.out > 0 ? '#f87171' : 'var(--text-muted)' }}>{r.out > 0 ? fmt0(r.out) : '–'}</td>
                     <td style={{ padding: '3px 8px', textAlign: 'right', fontFamily: 'monospace', color: r.back > 0 ? '#4ade80' : 'var(--text-muted)' }}>{r.back > 0 ? fmt0(r.back) : '–'}</td>
                     <td style={{ padding: '3px 8px', textAlign: 'right', fontFamily: 'monospace', color: r.back - r.out >= 0 ? 'var(--cyan)' : '#f87171' }}>{fmt0(r.back - r.out)}</td>
+                    <td style={{ padding: '2px 4px', textAlign: 'right' }}>
+                      <input type="text" inputMode="numeric"
+                        value={(saOv[r.year] ?? sumAssured) ? (saOv[r.year] ?? sumAssured).toLocaleString('en-US') : ''}
+                        placeholder="–"
+                        onChange={e => {
+                          const raw = e.target.value.replace(/,/g, '')
+                          if (raw !== '' && !/^\d+$/.test(raw)) return
+                          setSaOv(p => ({ ...p, [r.year]: raw === '' ? 0 : Number(raw) }))
+                        }}
+                        style={{ width: 92, padding: '2px 6px', textAlign: 'right', background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 5, color: '#a78bfa', fontSize: 11, fontFamily: 'monospace', outline: 'none' }} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
