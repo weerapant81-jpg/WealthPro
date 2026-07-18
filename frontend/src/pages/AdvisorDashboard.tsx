@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useClient, type ClientInfo } from '../context/ClientContext'
-import { Landmark, Wallet, Users, CheckCircle2, ChevronRight, Search, Circle, X, Rocket, ArrowRight, ShieldAlert, UserPlus
+import { Landmark, Wallet, Users, CheckCircle2, ChevronRight, Search, Circle, X, Rocket, ArrowRight, ShieldAlert, UserPlus, Gamepad2, ExternalLink
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useIsCompact } from '../hooks/useViewport'
@@ -112,8 +112,69 @@ export default function AdvisorDashboard() {
         <TasksWidget />
       </div>
 
+      {/* Lead จากเกมเศรษฐี */}
+      <GameLeadsWidget />
+
       {/* ข่าวสารจากผู้ให้บริการ */}
       <NewsWidget />
+    </div>
+  )
+}
+
+/* ── ผู้เล่น "เกมเศรษฐี" ที่ฝากช่องทางติดต่อไว้ (lead จาก /game) ── */
+function GameLeadsWidget() {
+  const { data: leads = [], refetch } = useQuery<any[]>({
+    queryKey: ['game-leads'],
+    queryFn: () => api.get('/game/leads').then(r => r.data),
+    retry: false,
+  })
+  const markContacted = async (id: string, contacted: boolean) => {
+    await api.put(`/game/leads/${id}`, { contacted })
+    refetch()
+  }
+  const pending = leads.filter(l => !l.contacted).length
+  return (
+    <div style={card}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <Gamepad2 size={18} color="var(--gold)" />
+        <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>ผู้เล่นเกมเศรษฐีที่สนใจรับคำปรึกษา</span>
+        {pending > 0 && (
+          <span style={{ fontSize: 11, fontWeight: 800, color: '#1a1200', background: 'var(--gold)', borderRadius: 20, padding: '2px 9px' }}>{pending} รอติดต่อ</span>
+        )}
+        <a href="/game" target="_blank" rel="noreferrer"
+          style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--cyan)', fontSize: 12.5, fontWeight: 700, textDecoration: 'none' }}>
+          เปิดเกม / แชร์ให้ลูกค้า <ExternalLink size={13} />
+        </a>
+      </div>
+      {leads.length === 0 ? (
+        <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 10 }}>
+          ยังไม่มี lead — แชร์ลิงก์ <b>/game</b> ให้ลูกค้าหรือกลุ่มไลน์ ผู้เล่นที่กรอกฟอร์มท้ายเกมจะมาปรากฏที่นี่
+        </div>
+      ) : (
+        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
+          {leads.map(l => (
+            <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, border: '1px solid var(--card-border)', background: l.contacted ? 'transparent' : 'var(--navy-900)', opacity: l.contacted ? 0.6 : 1 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
+                  {l.name} <span style={{ fontWeight: 600, color: 'var(--cyan)' }}>· {l.contact}</span>
+                </div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1 }}>
+                  {l.career ?? '—'} · เกรด {l.grade ?? '—'} ({l.score ?? '—'}/100)
+                  {l.result?.fundedAge != null && ` · เงินพอถึงอายุ ${l.result.fundedAge >= 100 ? '100+' : l.result.fundedAge}`}
+                  {' · '}{new Date(l.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+                </div>
+              </div>
+              <button onClick={() => markContacted(l.id, !l.contacted)}
+                style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 8, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  border: `1px solid ${l.contacted ? 'var(--card-border)' : 'var(--cyan)'}`,
+                  background: l.contacted ? 'transparent' : 'var(--cyan-dim)',
+                  color: l.contacted ? 'var(--text-muted)' : 'var(--cyan)' }}>
+                {l.contacted ? 'ติดต่อแล้ว ✓' : 'ติดต่อกลับ'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -32,6 +32,7 @@ const AuditLogPage = lazy(() => import('./pages/AuditLogPage'))
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'))
 const UserGuidePage = lazy(() => import('./pages/UserGuidePage'))
+const GamePage = lazy(() => import('./pages/game/GamePage'))
 
 const qc = new QueryClient()
 
@@ -117,6 +118,7 @@ export default function App() {
             <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/game" element={<GamePage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />
               <Route path="/" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />

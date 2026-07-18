@@ -48,8 +48,8 @@ const nav = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/client', icon: ClipboardList, label: 'ข้อมูลลูกค้า' },
   { to: '/financial-plan', icon: Target, label: 'วางแผนการเงิน' },
-  { to: '/forward-cashflow', icon: CalendarRange, label: 'งบการเงินล่วงหน้า' },
   { to: '/action-plan', icon: ClipboardCheck, label: 'แผนปฏิบัติการ' },
+  { to: '/forward-cashflow', icon: CalendarRange, label: 'งบการเงินล่วงหน้า' },
   { to: '/calculator', icon: Calculator, label: 'เครื่องคิดเลข' },
   { to: '/settings', icon: Settings, label: 'สมมติฐาน' },
 ]

@@ -434,6 +434,21 @@ model AuditLog {
 }
 
 // ความยินยอม PDPA ของลูกค้า (เก็บประวัติ ให้/ถอน) — ไม่มี FK เพื่อให้ record คงอยู่แม้ลบลูกค้า (หลักฐาน)
+// Lead จาก "เกมเศรษฐี" (/game — หน้า public) — ผู้เล่นกรอกสมัครใจตอนจบเกม
+model GameLead {
+  id         String   @id @default(cuid())
+  name       String
+  contact    String   // เบอร์โทร หรือ Line ID
+  career     String?  // อาชีพที่เลือกในเกม
+  score      Int?
+  grade      String?
+  result     Json?    // สรุปผลเกม (fundedAge, netWorth, happiness)
+  contacted  Boolean  @default(false)  // FA ติดต่อกลับแล้วหรือยัง
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 model Consent {
   id            String    @id @default(cuid())
   clientId      String    // ลูกค้าที่ให้ความยินยอม (User.id role USER)

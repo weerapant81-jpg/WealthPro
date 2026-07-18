@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--prefix", "backend"],
       "port": 3001
+    },
+    {
+      "name": "ultimate",
+      "runtimeExecutable": "E:\\UltimateWeb\\ultimate-life-advisor\\dev-headless.cmd",
+      "runtimeArgs": [],
+      "port": 3000
     }
   ]
 }

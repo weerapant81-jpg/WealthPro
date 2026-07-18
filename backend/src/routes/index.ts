@@ -41,9 +41,15 @@ import { listAuditLogs } from '../controllers/audit.controller'
 import { exportClient } from '../controllers/admin.controller'
 import { status2fa, setup2fa, enable2fa, disable2fa } from '../controllers/twofa.controller'
 import { getConsent, grantConsent, revokeConsent } from '../controllers/consent.controller'
+import { createGameLead, listGameLeads, updateGameLead } from '../controllers/gamelead.controller'
 import { authenticate, requireAdmin, requireSuperAdmin } from '../middleware/auth'
 
 const r = Router()
+
+// เกมเศรษฐี (/game) — ฟอร์ม lead เป็น public (มี throttle ในตัว) · รายการ lead เฉพาะ FA
+r.post('/game/lead', createGameLead)
+r.get('/game/leads', authenticate, requireAdmin, listGameLeads)
+r.put('/game/leads/:id', authenticate, requireAdmin, updateGameLead)
 
 // Auth
 r.post('/auth/register', register)
