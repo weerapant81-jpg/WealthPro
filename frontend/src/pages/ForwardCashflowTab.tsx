@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { calc, calcTax, defaultState, type TaxState } from '../lib/tax'
 import { createPortal } from 'react-dom'
-import { Plus, Trash2, Check, Loader2, RefreshCw, X, Maximize2 } from 'lucide-react'
+import { Plus, Trash2, Check, Loader2, RefreshCw, X, Maximize2, FileText } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { ResponsiveContainer, ComposedChart, Bar, Line as RLine, XAxis, YAxis, Tooltip, CartesianGrid, Legend, Cell, ReferenceLine } from 'recharts'
 import { ChartFrame, ExcelButton, type ExcelSheet } from '../components/exportable'
 import { useRetirementBalances } from '../hooks/useRetirementBalances'
@@ -215,6 +216,7 @@ const card: React.CSSProperties = { background: 'var(--card-bg)', border: '1px s
 /* ════════ MAIN ════════ */
 export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self' | 'spouse' }) {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const { data: cp } = useQuery({ queryKey: ['client-profile'], queryFn: () => api.get('/client-profile').then(r => r.data), retry: false })
   const { data: prof } = useQuery({ queryKey: ['profile'], queryFn: () => api.get('/profile').then(r => r.data), retry: false })
   // รายจ่าย/หนี้สิน = ดึงแยกต่อบุคคลจากงบกระแสเงินสด/งบดุล (person: client+shared / spouse+shared) ให้ตรงกับหน้างบการเงิน
@@ -502,6 +504,10 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
           <button onClick={reseed} title="ดึงรายรับ/รายจ่าย/หนี้สินล่าสุดมาสร้างใหม่ (เขียนทับการแก้ไขในหน้านี้)"
             style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 8, border: '1px solid var(--cyan)', background: 'var(--cyan-dim)', color: 'var(--cyan-light)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
             <RefreshCw size={12} /> ดึงข้อมูลใหม่
+          </button>
+          <button onClick={() => navigate('/report')} title="ไปหน้ารายงานเพื่อสร้าง/ดาวน์โหลด PDF (มีหน้างบการเงินล่วงหน้ารวมอยู่ด้วย)"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 8, border: 'none', background: 'var(--cyan)', color: '#06222e', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+            <FileText size={12} /> สร้างรายงาน PDF
           </button>
         </div>
       </div>
