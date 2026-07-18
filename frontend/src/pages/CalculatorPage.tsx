@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Calculator, Home, Car, Clock, CreditCard } from 'lucide-react'
+import { Calculator, Home, Car, Clock, CreditCard, ShieldCheck } from 'lucide-react'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
 import { ChartFrame, TableExcelButton } from '../components/exportable'
 import { useIsCompact } from '../hooks/useViewport'
@@ -506,11 +506,124 @@ const thR: React.CSSProperties = { ...th, textAlign: 'right' }
 const td: React.CSSProperties = { padding: '6px 8px', color: 'var(--text-secondary)' }
 const tdR: React.CSSProperties = { padding: '6px 8px', textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-secondary)' }
 
+/* ── 5. IRR แบบประกัน — กระแสเงินสด: จ่ายเบี้ยต้นปี · เงินคืนระหว่างสัญญา · เงินครบสัญญาปีสุดท้าย ── */
+function irrOf(cfs: number[]): number | null {
+  // NPV(r) = Σ cf_t / (1+r)^t — หา r ด้วย bisection (ช่วง -99% ถึง 100%)
+  const npv = (r: number) => cfs.reduce((s, cf, t) => s + cf / Math.pow(1 + r, t), 0)
+  let lo = -0.99, hi = 1
+  const nLo = npv(lo), nHi = npv(hi)
+  if (isNaN(nLo) || isNaN(nHi) || nLo * nHi > 0) return null
+  for (let i = 0; i < 200; i++) {
+    const mid = (lo + hi) / 2
+    const v = npv(mid)
+    if (Math.abs(v) < 1e-7) return mid
+    if (v * nLo > 0) lo = mid; else hi = mid
+  }
+  return (lo + hi) / 2
+}
+
+function InsuranceIRRCalc() {
+  const compact = useIsCompact()
+  const [name, setName] = useState('')
+  const [premium, setPremium] = useState(50000)
+  const [payYears, setPayYears] = useState(10)
+  const [cashback, setCashback] = useState(5000)
+  const [startYear, setStartYear] = useState(2)
+  const [everyYears, setEveryYears] = useState(2)
+  const [termYears, setTermYears] = useState(20)
+  const [maturity, setMaturity] = useState(600000)
+
+  const res = useMemo(() => {
+    const N = Math.max(1, Math.round(termYears))
+    const pay = Math.min(Math.max(1, Math.round(payYears)), N)
+    const ev = Math.max(0, Math.round(everyYears))
+    const st = Math.max(1, Math.round(startYear))
+    // cfs[t] = กระแสเงินสด ณ ต้นปีที่ t+1 (t=0..N) — เบี้ยจ่ายต้นปี, เงินคืน/ครบสัญญารับปลายปี
+    const cfs: number[] = Array.from({ length: N + 1 }, () => 0)
+    for (let t = 0; t < pay; t++) cfs[t] -= premium
+    let nCashback = 0
+    if (ev > 0 && cashback > 0) for (let t = st; t < N; t += ev) { cfs[t] += cashback; nCashback++ }
+    cfs[N] += maturity
+    const irr = irrOf(cfs)
+    const totalPremium = premium * pay
+    const totalCashback = nCashback * cashback
+    const totalReceive = totalCashback + maturity
+    const rows = cfs.map((cf, t) => ({ year: t, out: t < pay ? premium : 0, back: cf + (t < pay ? premium : 0) }))
+      .filter(r => r.out > 0 || r.back > 0)
+    return { irr, totalPremium, totalCashback, nCashback, totalReceive, net: totalReceive - totalPremium, rows, N }
+  }, [premium, payYears, cashback, startYear, everyYears, termYears, maturity])
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : 'minmax(0, 380px) minmax(0, 1fr)', gap: 20, alignItems: 'start' }}>
+      <div style={card}>
+        <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>ข้อมูลแบบประกัน</p>
+        <Field label="ชื่อแบบประกัน">
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="เช่น สะสมทรัพย์ 20/10"
+            style={{ ...numStyle, width: 190, textAlign: 'left', fontFamily: 'inherit' }} />
+        </Field>
+        <Field label="เบี้ยประกัน/ปี"><MoneyInput value={premium} onChange={setPremium} /></Field>
+        <Field label="ชำระเบี้ยกี่ปี"><NumIn value={payYears} onChange={setPayYears} suffix="ปี" /></Field>
+        <Field label="เงินคืนระหว่างสัญญา/ครั้ง" hint="กรอก 0 ถ้าไม่มีเงินคืน"><MoneyInput value={cashback} onChange={setCashback} /></Field>
+        <Field label="ปีที่เริ่มคืน" hint="เงินคืนครั้งแรกสิ้นปีที่เท่าไหร่"><NumIn value={startYear} onChange={setStartYear} suffix="ปี" /></Field>
+        <Field label="คืนทุก ๆ"><NumIn value={everyYears} onChange={setEveryYears} suffix="ปี" /></Field>
+        <Field label="ครบสัญญากี่ปี"><NumIn value={termYears} onChange={setTermYears} suffix="ปี" /></Field>
+        <Field label="เงินครบสัญญา"><MoneyInput value={maturity} onChange={setMaturity} /></Field>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={card}>
+          <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10 }}>
+            ผลการคำนวณ{name.trim() ? ` · ${name.trim()}` : ''}
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+            <ResultCard label="IRR (ผลตอบแทนที่แท้จริง)" value={res.irr == null ? '—' : (res.irr * 100).toFixed(2)} unit="%/ปี" color={res.irr != null && res.irr > 0 ? '#4ade80' : '#f87171'} big />
+            <ResultCard label="เบี้ยรวมที่จ่าย" value={fmt0(res.totalPremium)} color="#f87171" />
+            <ResultCard label={`เงินคืนระหว่างสัญญา (${res.nCashback} ครั้ง)`} value={fmt0(res.totalCashback)} color="#f59e0b" />
+            <ResultCard label="เงินรับรวมทั้งสัญญา" value={fmt0(res.totalReceive)} color="var(--cyan)" />
+            <ResultCard label="ส่วนต่างรับ − จ่าย" value={fmt0(res.net)} color={res.net >= 0 ? '#4ade80' : '#f87171'} />
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10, lineHeight: 1.7 }}>
+            สมมติฐาน: จ่ายเบี้ยต้นปี (ปีที่ 1–{Math.min(payYears, termYears)}) · เงินคืนเริ่มสิ้นปีที่ {startYear} รับทุก ๆ {everyYears || '—'} ปี จนถึงก่อนครบสัญญา · เงินครบสัญญารับปลายปีที่ {res.N} · IRR ไม่รวมมูลค่าความคุ้มครองชีวิต
+          </p>
+        </div>
+        <div style={card}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', flex: 1 }}>ตารางกระแสเงินสด</p>
+            <TableExcelButton filename={`irr-ประกัน${name.trim() ? '-' + name.trim() : ''}`} />
+          </div>
+          <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: 11 }}>
+                  <th style={{ textAlign: 'left', padding: '4px 8px' }}>ปีที่</th>
+                  <th style={{ textAlign: 'right', padding: '4px 8px' }}>เบี้ยจ่าย</th>
+                  <th style={{ textAlign: 'right', padding: '4px 8px' }}>เงินรับ</th>
+                  <th style={{ textAlign: 'right', padding: '4px 8px' }}>สุทธิ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {res.rows.map((r, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid var(--divider)' }}>
+                    <td style={{ padding: '3px 8px', color: 'var(--text-secondary)' }}>{r.year === res.N ? `${res.N} (ครบสัญญา)` : r.year + 1}</td>
+                    <td style={{ padding: '3px 8px', textAlign: 'right', fontFamily: 'monospace', color: r.out > 0 ? '#f87171' : 'var(--text-muted)' }}>{r.out > 0 ? fmt0(r.out) : '–'}</td>
+                    <td style={{ padding: '3px 8px', textAlign: 'right', fontFamily: 'monospace', color: r.back > 0 ? '#4ade80' : 'var(--text-muted)' }}>{r.back > 0 ? fmt0(r.back) : '–'}</td>
+                    <td style={{ padding: '3px 8px', textAlign: 'right', fontFamily: 'monospace', color: r.back - r.out >= 0 ? 'var(--cyan)' : '#f87171' }}>{fmt0(r.back - r.out)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const TABS = [
   { key: 'home', label: 'คำนวณหนี้บ้าน', icon: Home, Comp: HomeLoanCalc },
   { key: 'car', label: 'คำนวณหนี้รถ', icon: Car, Comp: CarLoanCalc },
   { key: 'debt', label: 'คำนวณหนี้', icon: CreditCard, Comp: DebtCalc },
   { key: 'tvm', label: 'มูลค่าเงินตามเวลา', icon: Clock, Comp: TVMCalc },
+  { key: 'insirr', label: 'IRR แบบประกัน', icon: ShieldCheck, Comp: InsuranceIRRCalc },
 ]
 
 export default function CalculatorPage() {
