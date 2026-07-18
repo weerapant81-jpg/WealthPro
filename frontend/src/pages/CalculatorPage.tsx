@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Calculator, Home, Car, Clock, CreditCard, ShieldCheck } from 'lucide-react'
+import { Calculator, Home, Car, Clock, CreditCard, ShieldCheck, RefreshCw } from 'lucide-react'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
 import { ChartFrame, TableExcelButton } from '../components/exportable'
 import { useIsCompact } from '../hooks/useViewport'
@@ -565,7 +565,16 @@ function InsuranceIRRCalc() {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : 'minmax(0, 380px) minmax(0, 1fr)', gap: 20, alignItems: 'start' }}>
       <div style={card}>
-        <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>ข้อมูลแบบประกัน</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)', flex: 1 }}>ข้อมูลแบบประกัน</p>
+          <button onClick={() => {
+            setName(''); setPremium(0); setPayYears(0); setCashback(0); setStartYear(0)
+            setEveryYears(0); setTermYears(0); setMaturity(0); setSumAssured(0); setSaOv({}); setCbOv({})
+          }} title="ล้างทุกค่าเป็น 0 เพื่อกรอกแบบใหม่"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 7, border: '1px solid var(--card-border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>
+            <RefreshCw size={11} /> เริ่มต้นใหม่
+          </button>
+        </div>
         <Field label="ชื่อแบบประกัน">
           <input value={name} onChange={e => setName(e.target.value)} placeholder="เช่น สะสมทรัพย์ 20/10"
             style={{ ...numStyle, width: 190, textAlign: 'left', fontFamily: 'inherit' }} />
