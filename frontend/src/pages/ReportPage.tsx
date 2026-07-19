@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { FileText, Printer, Check, Loader2, FileStack, Presentation, Pencil, Download } from 'lucide-react'
+import { FileText, Printer, Check, Loader2, FileStack, Presentation, Pencil, Download, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useIsCompact } from '../hooks/useViewport'
 import { useClient } from '../context/ClientContext'
 import { PageHeader } from '../components/ui'
@@ -123,6 +123,7 @@ export default function ReportPage() {
   const [mode, setMode] = useState<'full' | 'pres'>('full')
   const [pres, setPres] = useState<Record<string, { comment?: string; hidden?: boolean; off?: boolean }>>({})
   const [editMode, setEditMode] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(true)   // หุบเมนูเลือกหน้า เพื่อเพิ่มพื้นที่เอกสาร
   const [overlays, setOverlays] = useState<Record<string, SlideEl[]>>({})
   const [customSlides, setCustomSlides] = useState<CustomSlide[]>([])
   const [thankYouPhoto, setThankYouPhoto] = useState('')
@@ -2049,6 +2050,12 @@ export default function ReportPage() {
         <PageHeader icon={FileText} title="รายงานแผนการเงิน (PDF)" subtitle="เลือกรูปแบบ แล้วพิมพ์/บันทึกเป็น PDF"
           right={
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+              {/* หุบ/เปิดเมนูเลือกหน้า เพื่อเพิ่มพื้นที่เอกสาร */}
+              <button onClick={() => setPanelOpen(o => !o)} title={panelOpen ? 'หุบเมนู เพิ่มพื้นที่เอกสาร' : 'เปิดเมนูเลือกหน้า'}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--card-border)' }}>
+                {panelOpen ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />} {panelOpen ? 'หุบเมนู' : 'เมนู'}
+              </button>
               {/* สลับโหมด ฉบับเต็ม / นำเสนอ */}
               <div style={{ display: 'flex', background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 10, padding: 3, gap: 3 }}>
                 {([['full', 'ฉบับเต็ม', FileStack], ['pres', 'นำเสนอ', Presentation]] as const).map(([m, lbl, Ic]) => (
@@ -2079,8 +2086,9 @@ export default function ReportPage() {
       </div>
 
       {mode === 'pres' ? (
-      <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : '250px 1fr', gap: 20, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: (compact || !panelOpen) ? '1fr' : '250px 1fr', gap: 20, alignItems: 'start' }}>
         {/* เมนูเลือกหน้าสไลด์ (เหมือนฉบับเต็ม) */}
+        {panelOpen && (
         <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 'calc(100vh - 140px)', overflowY: 'auto', paddingRight: 4 }}>
           {DECK_SLIDES.map(sl => (
             <label key={sl.id} style={{ ...ecard, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', opacity: pres[sl.id]?.off ? 0.55 : 1 }}>
@@ -2090,6 +2098,7 @@ export default function ReportPage() {
             </label>
           ))}
         </div>
+        )}
         <div style={{ minWidth: 0 }}>
         <PresentationDeck title={title} pres={pres} advisorBio={(secs['advprofile']?.text ?? '') !== '' ? secs['advprofile'].text : undefined}
           editMode={editMode}
@@ -2109,8 +2118,9 @@ export default function ReportPage() {
       </div>
       ) : (
       <SlideEditor.Provider value={{ editMode, snap: false, overlays, setEls: (id, els) => setOverlays(o => ({ ...o, [id]: els })), advisorName: advisor?.fullName, advisorPhone: advisor?.phone }}>
-      <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : '250px 1fr', gap: 20, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: (compact || !panelOpen) ? '1fr' : '250px 1fr', gap: 20, alignItems: 'start' }}>
         {/* Editor */}
+        {panelOpen && (
         <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 'calc(100vh - 140px)', overflowY: 'auto', paddingRight: 4 }}>
           <div style={ecard}>
             <label style={elbl}>ชื่อรายงาน</label>
@@ -2133,6 +2143,7 @@ export default function ReportPage() {
             </div>
           ))}
         </div>
+        )}
 
         {/* Paper preview */}
         <div id="report-paper" style={{ display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
