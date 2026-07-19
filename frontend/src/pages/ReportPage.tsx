@@ -1975,16 +1975,26 @@ export default function ReportPage() {
       const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([import('jspdf'), import('html2canvas')])
       const fmtPage: [number, number] = isPres ? [297, 210] : [210, 297]   // mm (pres = A4 แนวนอน)
       const pdf = new jsPDF({ orientation: isPres ? 'landscape' : 'portrait', unit: 'mm', format: fmtPage })
+      // จับที่ "ความกว้างออกแบบ" เสมอ ไม่ผูกกับความกว้างจอ (บน iPad จอแคบ layout จะยุบ/ตัดขอบ)
+      // 1123px ≈ A4 แนวนอน · 794px ≈ A4 แนวตั้ง (ที่ ~96dpi)
+      const designW = isPres ? 1123 : 794
+      const presH = Math.round(designW * 210 / 297)   // ความสูงสไลด์ (อัตราส่วนคงที่)
+      const nextFrame = () => new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())))
       for (let i = 0; i < els.length; i++) {
         const el = els[i]
-        // เปิด overflow ชั่วคราว + จับความสูงเต็ม (scrollHeight) กันเนื้อหาแน่นโดนตัดขอบล่าง
-        const prevOverflow = el.style.overflow
+        const prev = { width: el.style.width, height: el.style.height, maxWidth: el.style.maxWidth, aspectRatio: el.style.aspectRatio, overflow: el.style.overflow }
+        // บังคับขนาดออกแบบ → เนื้อหา (2 คอลัมน์/กราฟ/ตาราง) จัดเต็มความกว้างเหมือนบนจอใหญ่
+        el.style.maxWidth = 'none'
+        el.style.width = designW + 'px'
+        if (isPres) { el.style.height = presH + 'px'; el.style.aspectRatio = 'auto' }
         el.style.overflow = 'visible'
-        const fullH = el.scrollHeight
+        await nextFrame()          // ให้ layout + AutoFit ปรับตามความกว้างใหม่ก่อนจับภาพ
+        await new Promise<void>(r => setTimeout(r, 30))
+        const capH = isPres ? presH : el.scrollHeight
         const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false,
-          height: fullH, windowHeight: fullH,
+          width: designW, height: capH, windowWidth: designW, windowHeight: capH,
           ignoreElements: e => e.classList?.contains('no-print') })
-        el.style.overflow = prevOverflow
+        Object.assign(el.style, prev)
         const img = canvas.toDataURL('image/jpeg', 0.92)
         if (i > 0) pdf.addPage(fmtPage, isPres ? 'landscape' : 'portrait')
         // contain-fit: ย่อภาพให้พอดีหน้าโดยคงสัดส่วน + จัดกึ่งกลาง (ไม่ตัด ไม่ยืด)
