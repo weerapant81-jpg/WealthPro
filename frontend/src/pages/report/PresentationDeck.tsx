@@ -991,7 +991,8 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
     })
     return items
   }, [client, people, retPlan, edu])
-  const mainGoals = goalItems.filter(g => g.cat !== 'ins')
+  // สไลด์เป้าหมาย: เฉพาะที่ลูกค้ากรอกในหน้าเป้าหมายทางการเงิน (ไม่รวมยอดที่คำนวณจากแผนเกษียณ/การศึกษา)
+  const mainGoals = goalItems.filter(g => g.cat === 'manual')
   const insGoals = goalItems.filter(g => g.cat === 'ins')
 
   const cOf = (k: string) => pres[k]?.comment || ''
@@ -1251,12 +1252,12 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
           </div>
         </Slide>
 
-        {/* ── 5. แผนผังเป้าหมายทางการเงิน ── */}
+        {/* ── 5. เป้าหมายทางการเงิน (เฉพาะที่กรอกในหน้าเป้าหมาย) ── */}
         <Slide slideId="goals" footer={commentFooter('goals')}>
-          <SlideHead icon={Target} kicker="Goals" title="แผนผังเป้าหมายทางการเงิน" accent={GR} />
+          <SlideHead icon={Target} kicker="Goals" title="เป้าหมายทางการเงิน" accent={GR} />
           {mainGoals.length > 0
             ? <GoalTable title="เป้าหมายทางการเงิน" rows={mainGoals} totalColor={GR} />
-            : <Empty text="ยังไม่มีเป้าหมายทางการเงิน — กรอกที่หน้าเป้าหมาย หรือแผนเกษียณ/การศึกษา" />}
+            : <Empty text="ยังไม่มีเป้าหมายทางการเงิน — กรอกที่หน้าเป้าหมายทางการเงินก่อน" />}
         </Slide>
 
         {/* ── 5b. เป้าหมายด้านการประกัน ── */}

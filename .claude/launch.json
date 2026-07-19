@@ -14,6 +14,12 @@
       "port": 3001
     },
     {
+      "name": "usage-widget-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "serve", "-l", "8139", "E:/ClaudeUsageWidget"],
+      "port": 8139
+    },
+    {
       "name": "ultimate",
       "runtimeExecutable": "E:\\UltimateWeb\\ultimate-life-advisor\\dev-headless.cmd",
       "runtimeArgs": [],
