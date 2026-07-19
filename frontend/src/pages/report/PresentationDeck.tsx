@@ -957,17 +957,17 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
 
   // เป้าหมายทางการเงินทั้งหมด: กรอกเอง (financialGoals) + เกษียณ + ทุนการศึกษาบุตร
   const goalItems = useMemo(() => {
-    const items: { name: string; when: string; amount: number; cat: string }[] = []
+    const items: { name: string; when: string; amount: number; cat: string; owner?: string }[] = []
     const bands: ('short' | 'medium' | 'long')[] = ['short', 'medium', 'long']
     const bandLabel: Record<string, string> = { short: 'ระยะสั้น (≤3 ปี)', medium: 'ระยะกลาง (3–7 ปี)', long: 'ระยะยาว (>7 ปี)' }
-    const pushGoals = (g: any) => bands.forEach(b => (g?.[b] ?? []).forEach((r: any) => {
+    const pushGoals = (g: any, owner: string) => bands.forEach(b => (g?.[b] ?? []).forEach((r: any) => {
       if (!r?.name?.trim()) return
       const td = r.targetDate ? String(r.targetDate).trim() : ''
       const when = td ? (/^\d+$/.test(td) ? `ภายใน ${td} ปี` : td) : bandLabel[b]
-      items.push({ name: r.name, when, amount: toNum(r.targetAmount), cat: 'manual' })
+      items.push({ name: r.name, when, amount: toNum(r.targetAmount), cat: 'manual', owner })
     }))
     const fg = client?.financialGoals || {}
-    if (fg.self || fg.spouse) { pushGoals(fg.self); pushGoals(fg.spouse) } else pushGoals(fg)
+    if (fg.self || fg.spouse) { pushGoals(fg.self, 'self'); pushGoals(fg.spouse, 'spouse') } else pushGoals(fg, 'self')
     // เกษียณ (ต่อคน)
     people.forEach(p => {
       if (p.ret && p.ret.needed > 0) {
@@ -1252,12 +1252,21 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
           </div>
         </Slide>
 
-        {/* ── 5. เป้าหมายทางการเงิน (เฉพาะที่กรอกในหน้าเป้าหมาย) ── */}
+        {/* ── 5. เป้าหมายทางการเงิน (เฉพาะที่กรอกในหน้าเป้าหมาย · มีคู่สมรส → แยกตารางรายคน) ── */}
         <Slide slideId="goals" footer={commentFooter('goals')}>
           <SlideHead icon={Target} kicker="Goals" title="เป้าหมายทางการเงิน" accent={GR} />
-          {mainGoals.length > 0
-            ? <GoalTable title="เป้าหมายทางการเงิน" rows={mainGoals} totalColor={GR} />
-            : <Empty text="ยังไม่มีเป้าหมายทางการเงิน — กรอกที่หน้าเป้าหมายทางการเงินก่อน" />}
+          {mainGoals.length > 0 ? (() => {
+            const selfGoals = mainGoals.filter(g => g.owner !== 'spouse')
+            const spouseGoals = mainGoals.filter(g => g.owner === 'spouse')
+            if (!hasSpouse || spouseGoals.length === 0)
+              return <GoalTable title="เป้าหมายทางการเงิน" rows={mainGoals} totalColor={GR} />
+            return (
+              <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 14, overflow: 'hidden' }}>
+                {selfGoals.length > 0 && <GoalTable title={`เป้าหมายทางการเงิน · ${selfName}`} rows={selfGoals} totalColor={GR} />}
+                <GoalTable title={`เป้าหมายทางการเงิน · ${spouseName}`} rows={spouseGoals} totalColor={VI} />
+              </div>
+            )
+          })() : <Empty text="ยังไม่มีเป้าหมายทางการเงิน — กรอกที่หน้าเป้าหมายทางการเงินก่อน" />}
         </Slide>
 
         {/* ── 5b. เป้าหมายด้านการประกัน ── */}
