@@ -2101,6 +2101,8 @@ export default function ReportPage() {
         )}
         <div style={{ minWidth: 0 }}>
         <PresentationDeck title={title} pres={pres} advisorBio={(secs['advprofile']?.text ?? '') !== '' ? secs['advprofile'].text : undefined}
+          onComment={(k, t) => setPres(p => ({ ...p, [k]: { ...p[k], comment: t } }))}
+          onToggleHide={k => setPres(p => ({ ...p, [k]: { ...p[k], hidden: !p[k]?.hidden } }))}
           editMode={editMode}
           overlays={overlays}
           onOverlayChange={(id, els) => setOverlays(o => ({ ...o, [id]: els }))}
