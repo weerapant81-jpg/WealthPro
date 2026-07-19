@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, createContext, useContext } from 'react'
+import { useMemo, useState, useRef, useLayoutEffect, createContext, useContext } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { useRetirementReadiness } from '../../hooks/useRetirementReadiness'
@@ -152,7 +152,38 @@ function annualizedReturn(cost: number, value: number, investDate: string): numb
 
 /* ══════════════════════════ ส่วนประกอบพื้นฐาน ══════════════════════════ */
 
-function Slide({ children, footer, pad = 40, slideId, noFooter }: { children?: React.ReactNode; footer?: React.ReactNode; pad?: number; slideId?: string; noFooter?: boolean }) {
+/* จัดเนื้อหาให้พอดี 1 หน้าเสมอ — ถ้าเนื้อหาสูงเกินพื้นที่ (เช่นเปิดบน iPad จอแคบ) ย่อสัดส่วนลงให้พอดี
+ * โดยไม่แตะกล่องคำแนะนำ/footer (อยู่นอกตัวย่อ) */
+function AutoFit({ children }: { children: React.ReactNode }) {
+  const boxRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
+  useLayoutEffect(() => {
+    const box = boxRef.current
+    if (!box) return
+    // วัดจาก layout (scrollHeight/clientHeight ไม่นับ transform → ไม่เกิด loop)
+    const measure = () => {
+      const avail = box.clientHeight
+      const need = box.scrollHeight
+      if (avail <= 0 || need <= 0) return
+      const s = need > avail + 1 ? Math.max(0.5, avail / need) : 1
+      setScale(prev => Math.abs(prev - s) > 0.004 ? s : prev)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(box)
+    return () => ro.disconnect()
+  }, [children])
+  // ชั้นนอกครอบ+ตัดส่วนเกิน · ชั้นในเป็น flex column เต็มความสูง (children ที่ใช้ flex:1 ทำงานเหมือนเดิม) แล้วย่อทั้งก้อนเมื่อเนื้อหาล้น
+  return (
+    <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div ref={boxRef} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', transformOrigin: 'top center', transform: scale < 1 ? `scale(${scale})` : undefined }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function Slide({ children, footer, pad = 40, slideId, noFooter, fit = true }: { children?: React.ReactNode; footer?: React.ReactNode; pad?: number; slideId?: string; noFooter?: boolean; fit?: boolean }) {
   const { advisorName, advisorPhone } = useContext(SlideEditor)
   return (
     <div className="pd-slide" data-slide={slideId} style={{
@@ -161,7 +192,7 @@ function Slide({ children, footer, pad = 40, slideId, noFooter }: { children?: R
       padding: `${pad}px 56px ${pad - 12}px`,
       display: 'flex', flexDirection: 'column', fontFamily: "'Sarabun', sans-serif", position: 'relative', overflow: 'hidden',
     }}>
-      {children}
+      {fit && !noFooter ? <AutoFit>{children}</AutoFit> : children}
       {footer}
       {/* footer แบรนด์ + ที่ปรึกษา (ทุกสไลด์ ยกเว้นหน้าปก) */}
       {!noFooter && (
