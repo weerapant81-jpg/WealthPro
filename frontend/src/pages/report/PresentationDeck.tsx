@@ -11,7 +11,7 @@ import { lineAt, sumAt, buildTaxState, type CashflowData, type Line as CfLine } 
 import { PORTFOLIO_SETS, DEFAULT_ASSETS, DEFAULT_CORR, computePortfolio, applyMarketData, applyCorrelation } from '../../lib/portfolioReturns'
 import {
   ShieldCheck, TrendingUp, PiggyBank, GraduationCap, Landmark, ClipboardCheck,
-  Activity, Pencil, X, Check, User, Users, GripVertical, EyeOff, Plus,
+  Activity, User, Users, GripVertical,
   Wallet, Scale, Receipt, Baby, Target, HeartPulse, Banknote, CalendarClock, Briefcase,
   Type as TypeIcon, ImagePlus, Trash2, ArrowUp, ArrowDown, Bold, AlignLeft, AlignCenter, AlignRight, FilePlus2,
   RotateCcw, RotateCw, BringToFront, SendToBack, Grid3x3, ScrollText
@@ -456,82 +456,6 @@ function TwoCol({ children, grow = false }: { children: React.ReactNode; grow?: 
 }
 
 /* กล่องคำแนะนำของที่ปรึกษา + ปุ่มแก้ไข/ซ่อน */
-function AdvisorComment({ slideKey, label, comment, hidden, onEdit, onToggleHide }: {
-  slideKey: string; label: string; comment?: string; hidden?: boolean
-  onEdit: (k: string) => void; onToggleHide: (k: string) => void
-}) {
-  if (hidden) return (
-    <div className="no-print" style={{ marginTop: 16, paddingTop: 10, flexShrink: 0 }}>
-      <button onClick={() => onToggleHide(slideKey)}
-        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', background: 'none', border: `1px dashed ${MUTED}`, borderRadius: 999, color: MUTED, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-        <Plus size={12} /> แสดงคำแนะนำที่ปรึกษา
-      </button>
-    </div>
-  )
-  return (
-    <div style={{ marginTop: 16, paddingTop: 12, flexShrink: 0, borderTop: `1px solid ${HAIR}` }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, fontWeight: 800, letterSpacing: '0.16em', color: SUB, textTransform: 'uppercase' }}><span style={{ width: 12, height: 2, borderRadius: 2, background: CY }} />คำแนะนำของที่ปรึกษา</div>
-        <div className="no-print" style={{ display: 'flex', gap: 6 }}>
-          <button onClick={() => onEdit(slideKey)}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', background: '#f0fdfa', border: `1px solid ${CY}`, borderRadius: 999, color: CY, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-            <Pencil size={12} /> {comment ? 'แก้ไข' : 'เขียน'}
-          </button>
-          <button onClick={() => onToggleHide(slideKey)} title="ซ่อนคำแนะนำหน้านี้"
-            style={{ display: 'flex', alignItems: 'center', padding: '4px 8px', background: 'none', border: `1px solid ${LINE}`, borderRadius: 999, color: MUTED, cursor: 'pointer' }}>
-            <EyeOff size={13} />
-          </button>
-        </div>
-      </div>
-      <div style={{ fontSize: 13.5, color: comment ? INK : MUTED, lineHeight: 1.55, whiteSpace: 'pre-wrap', minHeight: 62, background: PAPER, border: `1px solid ${LINE}`, borderLeft: `3px solid ${comment ? CY : LINE}`, borderRadius: 10, padding: '9px 14px', transition: 'border-color .15s' }}>
-        {comment || `บันทึกคำแนะนำสำหรับ${label}...`}
-      </div>
-    </div>
-  )
-}
-
-function CommentDialog({ title, value, onSave, onClose }: { title: string; value: string; onSave: (v: string) => void; onClose: () => void }) {
-  const [text, setText] = useState(value)
-  const [pos, setPos] = useState({ x: 0, y: 0 })
-  const draggingRef = useRef(false)   // true ระหว่าง/ทันทีหลังลาก — กัน backdrop onClick ปิดกล่องหลังลาก
-  const onDragStart = (e: React.PointerEvent) => {
-    e.preventDefault()
-    const start = { sx: e.clientX, sy: e.clientY, ox: pos.x, oy: pos.y }
-    draggingRef.current = false
-    const move = (ev: PointerEvent) => {
-      draggingRef.current = true
-      setPos({ x: start.ox + (ev.clientX - start.sx), y: start.oy + (ev.clientY - start.sy) })
-    }
-    const up = () => {
-      window.removeEventListener('pointermove', move)
-      window.removeEventListener('pointerup', up)
-      setTimeout(() => { draggingRef.current = false }, 0)   // เคลียร์หลัง click event ผ่านไปแล้ว
-    }
-    window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', up)
-  }
-  return (
-    <div className="no-print" onClick={() => { if (!draggingRef.current) onClose() }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 784, background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', gap: 12, transform: `translate(${pos.x}px, ${pos.y}px)`, boxShadow: 'var(--shadow)' }}>
-        <div onPointerDown={onDragStart} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'move', userSelect: 'none', touchAction: 'none' }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><GripVertical size={16} style={{ color: 'var(--text-muted)' }} />คำแนะนำ · {title}</h3>
-          <button onClick={onClose} onMouseDown={e => e.stopPropagation()} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
-        </div>
-        <textarea value={text} onChange={e => setText(e.target.value)} autoFocus rows={10}
-          placeholder="เขียนคำแนะนำ/ข้อสังเกตของแผนด้านนี้..."
-          style={{ width: '100%', boxSizing: 'border-box', padding: '11px 13px', background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 9, color: 'var(--text-primary)', fontSize: 14, lineHeight: 1.6, outline: 'none', resize: 'vertical', fontFamily: 'inherit' }} />
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button onClick={onClose} style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--card-border)', borderRadius: 9, color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>ยกเลิก</button>
-          <button onClick={() => { onSave(text); onClose() }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 20px', background: 'var(--cyan)', border: 'none', borderRadius: 9, color: '#00201d', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-            <Check size={15} /> บันทึก
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 /* เกจครึ่งวงกลม (Health Score) */
 function HealthGauge({ score, label, size = 200 }: { score: number; label: string; size?: number }) {
   const p = Math.max(0, Math.min(100, score)) / 100
@@ -611,12 +535,10 @@ function MiniPie({ data, height = 190, radius = [44, 74] }: { data: { name: stri
 
 /* ══════════════════════════ Deck ══════════════════════════ */
 
-export default function PresentationDeck({ title, pres, onComment, onToggleHide,
+export default function PresentationDeck({ title, pres,
   editMode, overlays, onOverlayChange, customSlides, thankYouPhoto, onThankYouPhoto, advisorBio, onAddSlide, onDelSlide, onMoveSlide }: {
   title: string
   pres: Record<string, { comment?: string; hidden?: boolean; off?: boolean }>
-  onComment: (key: string, text: string) => void
-  onToggleHide: (key: string) => void
   editMode: boolean
   overlays: Record<string, SlideEl[]>
   onOverlayChange: (slideId: string, els: SlideEl[]) => void
@@ -629,7 +551,6 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   onMoveSlide: (id: string, dir: -1 | 1) => void
 }) {
   const thankPhotoRef = useRef<HTMLInputElement>(null)
-  const [dialog, setDialog] = useState<{ key: string; title: string } | null>(null)
   const [snap, setSnap] = useState(true)
 
   const { data: client } = useQuery({ queryKey: ['client-profile'], queryFn: () => api.get('/client-profile').then(r => r.data), retry: false })
@@ -1029,21 +950,6 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   const mainGoals = goalItems.filter(g => g.cat === 'manual')
   const insGoals = goalItems.filter(g => g.cat === 'ins')
 
-  const cOf = (k: string) => pres[k]?.comment || ''
-  const hidOf = (k: string) => !!pres[k]?.hidden
-  const SLIDE_LABEL: Record<string, string> = {
-    family: 'ข้อมูลครอบครัว', work: 'ข้อมูลการทำงานและสวัสดิการ', goals: 'เป้าหมายการเงิน', insgoals: 'เป้าหมายด้านการประกัน', balance: 'งบดุล', cashflow: 'งบกระแสเงินสด',
-    ratios: 'อัตราส่วน/สุขภาพการเงิน', liquidity: 'การบริหารสภาพคล่อง/หนี้สิน', rebalance: 'การปรับสัดส่วนการลงทุน', insneed: 'การบริหารความเสี่ยง/การประกัน', retiresave: 'การออมเพื่อการเกษียณ', taxplan2: 'การวางแผนภาษี', estateplan2: 'การวางแผนมรดก',
-    insurance: 'ความเสี่ยง & ประกัน', investment: 'การลงทุน', retirement: 'แผนเกษียณ',
-    education: 'ทุนการศึกษาบุตร', edu2: 'การออมเพื่อทุนการศึกษา', tax: 'ภาษีเงินได้', estate: 'การจัดการมรดก', action: 'แผนปฏิบัติการ', retire2: 'กราฟเกษียณ', holistic: 'ไทม์ไลน์แผนดำเนินการ', forward: 'งบการเงินล่วงหน้า (ถึงเกษียณ)',
-  }
-  const labelOf = (key: string) => {
-    const m = /^action-(\d+)$/.exec(key)
-    if (m) return `แผนปฏิบัติการ (หน้า ${m[1]})`
-    return SLIDE_LABEL[key] ?? key
-  }
-  const openDialog = (key: string) => setDialog({ key, title: labelOf(key) })
-  const commentFooter = (key: string) => <AdvisorComment slideKey={key} label={labelOf(key)} comment={cOf(key)} hidden={hidOf(key)} onEdit={openDialog} onToggleHide={onToggleHide} />
 
   const RATIO_META: Record<string, { name: string; std: string; unit: string }> = {
     ratio1: { name: 'สภาพคล่อง', std: '> 1 เท่า', unit: 'times' },
@@ -1240,7 +1146,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         </Slide>
 
         {/* ── 4b. ข้อมูลการทำงานและสวัสดิการ ── */}
-        <Slide slideId="work" footer={commentFooter('work')}>
+        <Slide slideId="work">
           <SlideHead icon={Briefcase} kicker="Work & Benefits" title="ข้อมูลการทำงานและสวัสดิการ" accent={CY} />
           <div style={{ display: 'grid', gridTemplateColumns: hasSpouse ? '1fr 1fr' : '1fr', gap: 16, flex: 1, alignContent: 'start' }}>
             {([
@@ -1287,7 +1193,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         </Slide>
 
         {/* ── 5. เป้าหมายทางการเงิน (เฉพาะที่กรอกในหน้าเป้าหมาย · มีคู่สมรส → แยกตารางรายคน) ── */}
-        <Slide slideId="goals" footer={commentFooter('goals')}>
+        <Slide slideId="goals">
           <SlideHead icon={Target} kicker="Goals" title="เป้าหมายทางการเงิน" accent={GR} />
           {mainGoals.length > 0 ? (() => {
             const selfGoals = mainGoals.filter(g => g.owner !== 'spouse')
@@ -1308,7 +1214,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         </Slide>
 
         {/* ── 5b. เป้าหมายด้านการประกัน (มีคู่สมรส → แยกตารางรายคน) ── */}
-        <Slide slideId="insgoals" footer={commentFooter('insgoals')}>
+        <Slide slideId="insgoals">
           <SlideHead icon={ShieldCheck} kicker="Protection Goals" title="เป้าหมายด้านการประกัน" accent={VI} />
           {insGoals.length > 0 ? (() => {
             const selfIns = insGoals.filter(g => g.owner !== 'spouse')
@@ -1328,7 +1234,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         </Slide>
 
         {/* ── 6. งบดุล ── */}
-        <Slide slideId="balance" footer={commentFooter('balance')}>
+        <Slide slideId="balance">
           <SlideHead icon={Scale} kicker="Balance Sheet" title="งบดุล (ณ ปัจจุบัน)" />
           <TwoCol>
             {people.map(p => {
@@ -1354,7 +1260,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         </Slide>
 
         {/* ── 7. งบกระแสเงินสด ── */}
-        <Slide slideId="cashflow" footer={commentFooter('cashflow')}>
+        <Slide slideId="cashflow">
           <SlideHead icon={Banknote} kicker="Cash Flow" title="งบกระแสเงินสด (ต่อปี)" accent={GR} />
           <TwoCol>
             {people.map(p => {
@@ -1394,7 +1300,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         </Slide>
 
         {/* ── 10. อัตราส่วน + Health Score ── */}
-        <Slide slideId="ratios" footer={commentFooter('ratios')}>
+        <Slide slideId="ratios">
           <SlideHead icon={Activity} kicker="Financial Health" title="สถานะสุขภาพทางการเงิน" />
           <TwoCol>
             {people.map(p => (
@@ -1424,7 +1330,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         </Slide>
 
         {/* ── 14. ทุนการศึกษาบุตร ── */}
-        <Slide slideId="education" footer={commentFooter('education')}>
+        <Slide slideId="education">
           <SlideHead icon={GraduationCap} kicker="Education" title="เป้าหมายและแผนการศึกษาบุตร" accent={AM} />
           {edu ? (
             <div style={{ display: 'flex', gap: 22, marginTop: 24, marginBottom: 24 }}>
@@ -1446,7 +1352,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
           ) : <Empty text="ยังไม่มีข้อมูลบุตร/ค่าเล่าเรียน" />}
         </Slide>
         {/* ── 11. ความเสี่ยง & ประกัน ── */}
-        <Slide slideId="insurance" footer={commentFooter('insurance')}>
+        <Slide slideId="insurance">
           <SlideHead icon={ShieldCheck} kicker="Risk & Protection" title="ความเสี่ยงและความคุ้มครอง" accent={VI} />
           <TwoCol>
             {people.map(p => (
@@ -1500,7 +1406,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         </Slide>
 
         {/* ── 12. การลงทุนปัจจุบัน — พอร์ต + มูลค่า ณ เกษียณ 3 สมมุติฐาน (ทั้งคู่) ── */}
-        <Slide slideId="investment" footer={commentFooter('investment')}>
+        <Slide slideId="investment">
           <SlideHead icon={TrendingUp} kicker="Investment" title="สถานะการลงทุน" accent={GR} />
           <div style={{ display: 'grid', gridTemplateColumns: hasSpouse ? '1fr 1fr' : '1fr', gap: 16, flex: 1, alignContent: 'start' }}>
             {([['self', selfName, CY, invPeople.self], ...(hasSpouse && invPeople.spouse ? [['spouse', spouseName, VI, invPeople.spouse]] : [])] as any[]).map(([key, name, tint, iv]) => (
@@ -1531,7 +1437,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         </Slide>
 
         {/* ── 13. เป้าหมาย & แผนเกษียณ ── */}
-        <Slide slideId="retirement" footer={commentFooter('retirement')}>
+        <Slide slideId="retirement">
           <SlideHead icon={PiggyBank} kicker="Retirement" title="เป้าหมายและแผนเกษียณ" accent={CY} />
           <div style={{ display: 'flex', gap: 22, flex: 1, minHeight: 0 }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -1572,7 +1478,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         </Slide>
 
         {/* ── 13b. คาดการณ์มูลค่ากองทุนเกษียณ ── */}
-        <Slide slideId="retire2" footer={commentFooter('retire2')}>
+        <Slide slideId="retire2">
           <SlideHead icon={PiggyBank} kicker="Retirement Projection" title="คาดการณ์มูลค่ากองทุนเกษียณ" accent={CY} />
           {retChart.data.length > 0 ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -1600,7 +1506,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
 
 
         {/* ── 15. ภาษีเงินได้ ── */}
-        <Slide slideId="tax" footer={commentFooter('tax')}>
+        <Slide slideId="tax">
           <SlideHead icon={Receipt} kicker="Income Tax" title="ภาษีเงินได้" accent={CY} />
           <TwoCol>
             {people.map(p => {
@@ -1627,7 +1533,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
           </TwoCol>
         </Slide>
         {/* ── 16. การจัดการมรดก ── */}
-        <Slide slideId="estate" footer={commentFooter('estate')}>
+        <Slide slideId="estate">
           <SlideHead icon={Landmark} kicker="Estate" title="เป้าหมายและการจัดการมรดก" accent={VI} />
           <div style={{ display: 'grid', gridTemplateColumns: estate.spouse ? '1fr 1fr' : '1fr', gap: 16, flex: 1, alignContent: 'start' }}>
             {([['self', `กรณี${selfName}เสียชีวิต`, CY, estate.self], ...(estate.spouse ? [['spouse', `กรณี${spouseName}เสียชีวิต`, VI, estate.spouse]] : [])] as any[]).map(([key, caption, tint, es]) => (
@@ -1668,7 +1574,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         </Slide>
 
         {/* ── คำแนะนำ: การบริหารสภาพคล่อง/หนี้สิน — อัตราส่วนที่ไม่ผ่านเกณฑ์ ── */}
-        <Slide slideId="liquidity" footer={commentFooter('liquidity')}>
+        <Slide slideId="liquidity">
           <SlideHead icon={Wallet} kicker="Liquidity & Debt" title="การบริหารสภาพคล่อง/หนี้สิน" accent={CY} />
           <TwoCol>
             {people.map(p => {
@@ -1700,7 +1606,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         </Slide>
 
         {/* ── คำแนะนำ: การปรับสัดส่วนการลงทุน ── */}
-        <Slide slideId="rebalance" footer={commentFooter('rebalance')}>
+        <Slide slideId="rebalance">
           <SlideHead icon={TrendingUp} kicker="Rebalancing" title="การปรับสัดส่วนการลงทุน" accent={GR} />
           <TwoCol>
             {people.map(p => {
@@ -1763,7 +1669,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         </Slide>
 
         {/* ── 14b. กราฟเงินออมสะสมทุนการศึกษา (3 สถาบัน) ── */}
-        <Slide slideId="edu2" footer={commentFooter('edu2')}>
+        <Slide slideId="edu2">
           <SlideHead icon={GraduationCap} kicker="Education Projection" title="การออมเพื่อทุนการศึกษา" accent={AM} />
           {eduChart && eduChart.hasData ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -1830,7 +1736,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         </Slide>
 
         {/* ── คำแนะนำ: การบริหารความเสี่ยง/การประกัน ── */}
-        <Slide slideId="insneed" footer={commentFooter('insneed')}>
+        <Slide slideId="insneed">
           <SlideHead icon={ShieldCheck} kicker="Risk Management" title="การบริหารความเสี่ยง/การประกัน" accent={VI} />
           <TwoCol>
             {people.map(p => {
@@ -1886,7 +1792,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         </Slide>
 
         {/* ── คำแนะนำ: การออมเพื่อการเกษียณ ── */}
-        <Slide slideId="retiresave" footer={commentFooter('retiresave')}>
+        <Slide slideId="retiresave">
           <SlideHead icon={PiggyBank} kicker="Retirement Saving" title="การออมเพื่อการเกษียณ" accent={CY} />
           <TwoCol>
             {people.map(p => {
@@ -1943,7 +1849,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         </Slide>
 
         {/* ── คำแนะนำ: การวางแผนภาษี (ก่อน/หลังวางแผน) ── */}
-        <Slide slideId="taxplan2" footer={commentFooter('taxplan2')}>
+        <Slide slideId="taxplan2">
           <SlideHead icon={Receipt} kicker="Tax Planning" title="การวางแผนภาษี" accent={'#0ea5e9'} />
           <TwoCol>
             {people.map(p => {
@@ -2003,7 +1909,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         </Slide>
 
         {/* ── คำแนะนำ: การวางแผนมรดก ── */}
-        <Slide slideId="estateplan2" footer={commentFooter('estateplan2')}>
+        <Slide slideId="estateplan2">
           <SlideHead icon={ScrollText} kicker="Estate Planning" title="การวางแผนมรดก" accent={VI} />
           <TwoCol>
             {people.map(p => {
@@ -2073,7 +1979,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
 
         {/* ── 17. แผนปฏิบัติการ (แบ่งหลายหน้าอัตโนมัติ) ── */}
         {actionPages.map((pageItems, k) => (
-          <Slide key={actionIds[k]} slideId={actionIds[k]} footer={commentFooter(actionIds[k])}>
+          <Slide key={actionIds[k]} slideId={actionIds[k]}>
             <SlideHead icon={ClipboardCheck} kicker="Action Plan" title={`แผนปฏิบัติการที่แนะนำ${actionPages.length > 1 ? ` (${k + 1}/${actionPages.length})` : ''}`} accent={GR} />
             {actionLines.length > 0 ? (
               <div style={{ flex: 1, minHeight: 0 }}>
@@ -2113,7 +2019,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         ))}
 
         {/* ── 18. ไทม์ไลน์แผนดำเนินการ ── */}
-        <Slide slideId="holistic" footer={commentFooter('holistic')}>
+        <Slide slideId="holistic">
           <SlideHead icon={CalendarClock} kicker="Timeline" title="ไทม์ไลน์แผนดำเนินการ" accent={VI} />
           {timelineItems.length > 0 ? (() => {
             const catLabel: Record<string, string> = { liquidity: 'สภาพคล่อง', insurance: 'ประกัน', retirement: 'เกษียณ', education: 'การศึกษา', estate: 'มรดก' }
@@ -2361,7 +2267,6 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
         )}
       </div>
 
-      {dialog && <CommentDialog title={dialog.title} value={cOf(dialog.key)} onSave={t => onComment(dialog.key, t)} onClose={() => setDialog(null)} />}
     </SlideEditor.Provider>
   )
 }
