@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import {
   User, Users, FileText, Landmark, TrendingUp, ShieldCheck, GraduationCap,
-  Receipt, Bot, FileDown,
+  Receipt, FileDown,
   Target, ScrollText, ArrowRight, Camera, Trash2, ClipboardCheck, Wallet, Scale, CalendarRange,
 } from 'lucide-react'
 import { useIsCompact } from '../hooks/useViewport'
@@ -450,18 +450,6 @@ function ClientDashboard() {
         </div>
       </div>
 
-      {/* Row 6: AI Insight (placeholder) */}
-      <div style={{ ...card, order: 7, borderLeft: '4px solid var(--cyan)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-        <div style={{ width: 48, height: 48, borderRadius: 999, background: 'var(--cyan-dim)', border: '1px solid var(--cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Bot size={24} color="var(--cyan)" />
-        </div>
-        <div style={{ flex: 1, minWidth: 220 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--cyan)', letterSpacing: '0.15em', margin: 0 }}>AI INSIGHT</p>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '2px 0 0', lineHeight: 1.6 }}>
-            ผู้ช่วย AI วางแผนการเงิน (Copilot) จะสรุปโอกาสปรับปรุงและคำแนะนำเฉพาะลูกค้ารายนี้ที่นี่ — <span style={{ color: 'var(--text-muted)' }}>อยู่ระหว่างพัฒนา</span>
-          </p>
-        </div>
-      </div>
     </div>
   )
 }
