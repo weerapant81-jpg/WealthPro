@@ -1112,15 +1112,20 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
               <h1 style={{ fontSize: 34, fontWeight: 800, color: '#0f172a', borderLeft: '8px solid #00cfc1', paddingLeft: 20, lineHeight: 1.3, margin: 0 }}>{title}</h1>
               <div style={{ height: 4, width: 110, background: '#00cfc1', opacity: .45, marginTop: 10, marginLeft: 28 }} />
             </div>
-            {/* hero band */}
-            <div style={{ position: 'relative', width: '100%', flex: 1, minHeight: 0, borderRadius: 14, overflow: 'hidden', background: 'linear-gradient(135deg, #0f172a 0%, #134e4a 55%, #00cfc1 130%)' }}>
+            {/* hero band — จัดเนื้อหากึ่งกลางแนวตั้ง ให้เต็มพื้นที่ ไม่โล่งด้านบน */}
+            <div style={{ position: 'relative', width: '100%', flex: 1, minHeight: 0, borderRadius: 14, overflow: 'hidden', background: 'linear-gradient(135deg, #0f172a 0%, #134e4a 55%, #00cfc1 130%)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 48px' }}>
               <div style={{ position: 'absolute', right: -70, top: -70, width: 240, height: 240, borderRadius: '50%', background: 'rgba(0,207,193,0.16)' }} />
               <div style={{ position: 'absolute', right: 60, bottom: -90, width: 200, height: 200, borderRadius: '50%', background: 'rgba(254,183,0,0.10)' }} />
               <div style={{ position: 'absolute', left: -40, bottom: -60, width: 180, height: 180, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.10)' }} />
-              <div style={{ position: 'absolute', left: 30, bottom: 24 }}>
-                <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 3, color: 'rgba(255,255,255,0.55)' }}>HOLISTIC FINANCIAL PLANNING</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginTop: 5 }}>แผนการเงินแบบองค์รวม 6 ด้าน ตามมาตรฐานวิชาชีพ CFP®</div>
-                <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.75)', marginTop: 3 }}>สภาพคล่อง · การลงทุน · ประกัน & ความเสี่ยง · เกษียณอายุ · ภาษี · มรดก</div>
+              <div style={{ position: 'absolute', right: -30, top: 40, width: 150, height: 150, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.08)' }} />
+              <div style={{ position: 'relative', maxWidth: 660 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 4, color: 'rgba(255,255,255,0.6)' }}>HOLISTIC FINANCIAL PLANNING</div>
+                <div style={{ fontSize: 30, fontWeight: 800, color: '#fff', lineHeight: 1.28, marginTop: 12, letterSpacing: '-0.01em' }}>แผนการเงินแบบองค์รวม 6 ด้าน<br />ตามมาตรฐานวิชาชีพ CFP®</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
+                  {['สภาพคล่อง', 'การลงทุน', 'ประกัน & ความเสี่ยง', 'เกษียณอายุ', 'ภาษี', 'มรดก'].map(t => (
+                    <span key={t} style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(255,255,255,0.9)', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 999, padding: '5px 13px' }}>{t}</span>
+                  ))}
+                </div>
               </div>
             </div>
             {/* prepared for / advisor */}
