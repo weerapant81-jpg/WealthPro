@@ -33,8 +33,8 @@ function ReturnChart() {
           const y = ((maxProfit - v) / (maxProfit + maxLoss)) * chartH
           return (
             <g key={v}>
-              <line x1={0} y1={y} x2={totalW} y2={y} stroke="rgba(255,255,255,0.07)" strokeWidth={1} />
-              <text x={2} y={y - 3} fontSize={9} fill="rgba(255,255,255,0.35)">{v}%</text>
+              <line x1={0} y1={y} x2={totalW} y2={y} stroke="var(--divider)" strokeWidth={1} />
+              <text x={2} y={y - 3} fontSize={9} fill="var(--text-muted)">{v}%</text>
             </g>
           )
         })}

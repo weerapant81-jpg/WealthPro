@@ -708,7 +708,8 @@ function InsuranceRadarChart() {
       <ChartFrame title="ความคุ้มครองประกัน" filename="insurance-radar" height={380}>
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart data={radarData} outerRadius="100%" margin={{ top: 40, right: 50, bottom: 40, left: 50 }}>
-          <PolarGrid stroke="rgba(255,255,255,0.1)" />
+          {/* ใช้สีเส้นแบ่งตามธีม — สีขาวโปร่งเดิมมองไม่เห็นในโหมดสว่าง */}
+          <PolarGrid stroke="var(--divider)" />
           <PolarAngleAxis dataKey="subject" tick={<CustomRadarTick />} />
           {/* เกณฑ์ = ขอบนอก 100% อยู่แล้ว — พล็อตเฉพาะความคุ้มครองที่มี */}
           <Radar name="ความคุ้มครองปัจจุบัน" dataKey="actual" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.22} strokeWidth={2} dot={{ r: 3, fill: '#f59e0b' }} />

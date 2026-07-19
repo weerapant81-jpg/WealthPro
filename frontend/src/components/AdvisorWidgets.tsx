@@ -298,7 +298,7 @@ export function TasksWidget() {
       {tasks.map(t => (
         <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 2px' }}>
           <button onClick={() => toggle.mutate(t)}
-            style={{ width: 20, height: 20, flexShrink: 0, borderRadius: 5, border: `2px solid ${t.done ? 'var(--cyan)' : 'var(--outline, var(--card-border))'}`, background: t.done ? 'var(--cyan)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            style={{ width: 20, height: 20, minWidth: 20, minHeight: 20, maxWidth: 20, maxHeight: 20, padding: 0, boxSizing: 'border-box', alignSelf: 'center', flexShrink: 0, borderRadius: 5, border: `2px solid ${t.done ? 'var(--cyan)' : 'var(--outline, var(--card-border))'}`, background: t.done ? 'var(--cyan)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             {t.done && <Check size={13} color="#00201d" />}
           </button>
           <span style={{ flex: 1, minWidth: 0 }}>
