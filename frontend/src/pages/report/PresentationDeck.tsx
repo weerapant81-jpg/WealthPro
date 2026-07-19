@@ -380,35 +380,44 @@ function FamilyRow({ label, value, color = INK }: { label: string; value: string
   )
 }
 
-function GoalTable({ title, rows, totalColor }: { title: string; rows: { name: string; when: string; amount: number; cat: string }[]; totalColor: string }) {
+function GoalTable({ title, rows, totalColor, pad = 9, fz = 14.5 }: { title: string; rows: { name: string; when: string; amount: number; cat: string }[]; totalColor: string; pad?: number; fz?: number }) {
   const total = rows.reduce((s, g) => s + g.amount, 0)
   const catColor: Record<string, string> = { retire: CY, edu: AM, ins: VI, manual: GR }
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14.5 }}>
+    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fz }}>
       <thead>
         <tr style={{ borderBottom: `2px solid ${LINE}` }}>
-          <th style={{ textAlign: 'left', padding: '9px 7px', color: INK, fontWeight: 800, fontSize: 16 }}>{title}</th>
-          <th style={{ textAlign: 'left', padding: '9px 7px', color: SUB, fontWeight: 700, width: 220 }}>ระยะเวลาที่ต้องการ</th>
-          <th style={{ textAlign: 'right', padding: '9px 7px', color: SUB, fontWeight: 700, width: 180 }}>จำนวนเงิน (บาท)</th>
+          <th style={{ textAlign: 'left', padding: `${pad}px 7px`, color: INK, fontWeight: 800, fontSize: fz + 1.5 }}>{title}</th>
+          <th style={{ textAlign: 'left', padding: `${pad}px 7px`, color: SUB, fontWeight: 700, width: 220 }}>ระยะเวลาที่ต้องการ</th>
+          <th style={{ textAlign: 'right', padding: `${pad}px 7px`, color: SUB, fontWeight: 700, width: 180 }}>จำนวนเงิน (บาท)</th>
         </tr>
       </thead>
       <tbody>
         {rows.map((g, i) => (
           <tr key={i} style={{ borderBottom: `1px solid ${LINE}` }}>
-            <td style={{ padding: '9px 7px', color: INK }}><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 999, background: catColor[g.cat] ?? GR, marginRight: 8 }} />{g.name}</td>
-            <td style={{ padding: '9px 7px', color: SUB }}>{g.when}</td>
-            <td style={{ padding: '9px 7px', textAlign: 'right', fontFamily: 'monospace', color: INK, fontWeight: 700 }}>{fmt(g.amount)}</td>
+            <td style={{ padding: `${pad}px 7px`, color: INK }}><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 999, background: catColor[g.cat] ?? GR, marginRight: 8 }} />{g.name}</td>
+            <td style={{ padding: `${pad}px 7px`, color: SUB }}>{g.when}</td>
+            <td style={{ padding: `${pad}px 7px`, textAlign: 'right', fontFamily: 'monospace', color: INK, fontWeight: 700 }}>{fmt(g.amount)}</td>
           </tr>
         ))}
       </tbody>
       <tfoot>
         <tr style={{ borderTop: `2px solid ${LINE}` }}>
-          <td colSpan={2} style={{ padding: '10px 7px', fontWeight: 800, color: INK }}>รวม</td>
-          <td style={{ padding: '10px 7px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: totalColor }}>{fmt(total)}</td>
+          <td colSpan={2} style={{ padding: `${pad + 1}px 7px`, fontWeight: 800, color: INK }}>รวม</td>
+          <td style={{ padding: `${pad + 1}px 7px`, textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: totalColor }}>{fmt(total)}</td>
         </tr>
       </tfoot>
     </table>
   )
+}
+
+/* ระยะห่างบรรทัดตารางเป้าหมายแบบยืดหยุ่น — ยิ่งแถวเยอะ ยิ่งบีบให้พอดี 1 หน้า
+ * (นับหัวตาราง + แถวรวม ของแต่ละตารางเป็น +2 แถวต่อตาราง) */
+function goalDensity(totalRows: number): { pad: number; fz: number } {
+  if (totalRows <= 11) return { pad: 9, fz: 14.5 }
+  if (totalRows <= 14) return { pad: 6, fz: 13 }
+  if (totalRows <= 18) return { pad: 4, fz: 12 }
+  return { pad: 2.5, fz: 11 }
 }
 
 function TwoCol({ children, grow = false }: { children: React.ReactNode; grow?: boolean }) {
@@ -778,12 +787,6 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
     return (expenses ?? []).filter(e => String(e.category).startsWith(prefix) && e.category !== exclude && (e.person === ek || e.person === 'shared'))
       .reduce((s, e) => { const m = toMonthly(toNum(e.amount), e.frequency) * 12; return s + (e.person === 'shared' ? m / 2 : m) }, 0)
   }
-  const taxOf = (pkey: Person): number => {
-    const st = taxPlan?.[pkey]
-    if (!st) return 0
-    try { return calc({ ...defaultState(), ...(st as TaxState) }).tax } catch { return 0 }
-  }
-
   // ── มรดก (ลูกค้าหลัก) ──
   // ── งบการเงินล่วงหน้า (ลูกค้าหลัก) — อายุปัจจุบัน → อายุเกษียณ (บีบลง 1 สไลด์) ──
   const forward = useMemo(() => {
@@ -980,14 +983,14 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
     // ประกัน (ต่อคน): ชีวิตตามวิธีที่เลือก · ทุพพลภาพ · สุขภาพขั้นต่ำ 5 ล้าน · โรคร้ายแรงขั้นต่ำ 3 ล้าน (เสนอส่วนที่ขาด)
     people.forEach(p => {
       const methodName = p.ins?.method === 'hlv' ? 'Human Life Value' : 'Needs-Based'
-      if (p.ins && p.ins.need > 0) items.push({ name: `ทุนประกันชีวิต (${methodName}) · ${p.name}`, when: 'คุ้มครองครอบครัว', amount: p.ins.need, cat: 'ins' })
-      if (p.ins && (p.ins as any).disNeed > 0) items.push({ name: `ทุนประกันทุพพลภาพ · ${p.name}`, when: 'คุ้มครองรายได้กรณีทุพพลภาพ', amount: (p.ins as any).disNeed, cat: 'ins' })
+      if (p.ins && p.ins.need > 0) items.push({ name: `ทุนประกันชีวิต (${methodName}) · ${p.name}`, when: 'คุ้มครองครอบครัว', amount: p.ins.need, cat: 'ins', owner: p.key })
+      if (p.ins && (p.ins as any).disNeed > 0) items.push({ name: `ทุนประกันทุพพลภาพ · ${p.name}`, when: 'คุ้มครองรายได้กรณีทุพพลภาพ', amount: (p.ins as any).disNeed, cat: 'ins', owner: p.key })
       // สุขภาพ (IPD) ขั้นต่ำ 5,000,000
       const ipdRec = p.cov?.radarData?.find((d: any) => d.key === 'ipd')?.recommended ?? 0
-      items.push({ name: `ความคุ้มครองสุขภาพ · ${p.name}`, when: 'ค่ารักษาพยาบาล (ขั้นต่ำ 5 ล้าน)', amount: Math.max(ipdRec, 5_000_000), cat: 'ins' })
+      items.push({ name: `ความคุ้มครองสุขภาพ · ${p.name}`, when: 'ค่ารักษาพยาบาล (ขั้นต่ำ 5 ล้าน)', amount: Math.max(ipdRec, 5_000_000), cat: 'ins', owner: p.key })
       // โรคร้ายแรงลุกลาม — หากมีความคุ้มครองน้อยกว่า 3,000,000 เสนอเพิ่มส่วนที่ขาด
       const ciHave = toNum(p.cov?.radarData?.find((d: any) => d.key === 'criticalH')?.amount)
-      if (ciHave < 3_000_000) items.push({ name: `ประกันโรคร้ายแรง (เพิ่มส่วนที่ขาด) · ${p.name}`, when: `มีแล้ว ${fmt(ciHave)} · เกณฑ์ 3 ล้าน`, amount: 3_000_000 - ciHave, cat: 'ins' })
+      if (ciHave < 3_000_000) items.push({ name: `ประกันโรคร้ายแรง (เพิ่มส่วนที่ขาด) · ${p.name}`, when: `มีแล้ว ${fmt(ciHave)} · เกณฑ์ 3 ล้าน`, amount: 3_000_000 - ciHave, cat: 'ins', owner: p.key })
     })
     return items
   }, [client, people, retPlan, edu])
@@ -1258,23 +1261,39 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
           {mainGoals.length > 0 ? (() => {
             const selfGoals = mainGoals.filter(g => g.owner !== 'spouse')
             const spouseGoals = mainGoals.filter(g => g.owner === 'spouse')
-            if (!hasSpouse || spouseGoals.length === 0)
-              return <GoalTable title="เป้าหมายทางการเงิน" rows={mainGoals} totalColor={GR} />
+            if (!hasSpouse || spouseGoals.length === 0) {
+              const d = goalDensity(mainGoals.length + 2)
+              return <GoalTable title="เป้าหมายทางการเงิน" rows={mainGoals} totalColor={GR} pad={d.pad} fz={d.fz} />
+            }
+            // 2 ตาราง → นับแถว + หัว/รวม ของทั้งคู่ แล้วบีบระยะห่างให้พอ 1 หน้า
+            const d = goalDensity(selfGoals.length + spouseGoals.length + (selfGoals.length > 0 ? 2 : 0) + 2)
             return (
-              <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 14, overflow: 'hidden' }}>
-                {selfGoals.length > 0 && <GoalTable title={`เป้าหมายทางการเงิน · ${selfName}`} rows={selfGoals} totalColor={GR} />}
-                <GoalTable title={`เป้าหมายทางการเงิน · ${spouseName}`} rows={spouseGoals} totalColor={VI} />
+              <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: d.pad + 4, overflow: 'hidden' }}>
+                {selfGoals.length > 0 && <GoalTable title={`เป้าหมายทางการเงิน · ${selfName}`} rows={selfGoals} totalColor={GR} pad={d.pad} fz={d.fz} />}
+                <GoalTable title={`เป้าหมายทางการเงิน · ${spouseName}`} rows={spouseGoals} totalColor={VI} pad={d.pad} fz={d.fz} />
               </div>
             )
           })() : <Empty text="ยังไม่มีเป้าหมายทางการเงิน — กรอกที่หน้าเป้าหมายทางการเงินก่อน" />}
         </Slide>
 
-        {/* ── 5b. เป้าหมายด้านการประกัน ── */}
+        {/* ── 5b. เป้าหมายด้านการประกัน (มีคู่สมรส → แยกตารางรายคน) ── */}
         <Slide slideId="insgoals" footer={commentFooter('insgoals')}>
           <SlideHead icon={ShieldCheck} kicker="Protection Goals" title="เป้าหมายด้านการประกัน" accent={VI} />
-          {insGoals.length > 0
-            ? <GoalTable title="เป้าหมายด้านการประกัน" rows={insGoals} totalColor={VI} />
-            : <Empty text="ยังไม่มีข้อมูลความต้องการประกัน — กรอกที่หน้าวางแผนประกัน" />}
+          {insGoals.length > 0 ? (() => {
+            const selfIns = insGoals.filter(g => g.owner !== 'spouse')
+            const spouseIns = insGoals.filter(g => g.owner === 'spouse')
+            if (!hasSpouse || spouseIns.length === 0) {
+              const d = goalDensity(insGoals.length + 2)
+              return <GoalTable title="เป้าหมายด้านการประกัน" rows={insGoals} totalColor={VI} pad={d.pad} fz={d.fz} />
+            }
+            const d = goalDensity(selfIns.length + spouseIns.length + (selfIns.length > 0 ? 2 : 0) + 2)
+            return (
+              <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: d.pad + 4, overflow: 'hidden' }}>
+                {selfIns.length > 0 && <GoalTable title={`เป้าหมายด้านการประกัน · ${selfName}`} rows={selfIns} totalColor={GR} pad={d.pad} fz={d.fz} />}
+                <GoalTable title={`เป้าหมายด้านการประกัน · ${spouseName}`} rows={spouseIns} totalColor={VI} pad={d.pad} fz={d.fz} />
+              </div>
+            )
+          })() : <Empty text="ยังไม่มีข้อมูลความต้องการประกัน — กรอกที่หน้าวางแผนประกัน" />}
         </Slide>
 
         {/* ── 6. งบดุล ── */}
@@ -1297,11 +1316,6 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                       ))}
                     </tbody>
                   </table>
-                  {/* โครงสร้างสินทรัพย์ (กราฟเล็ก) — รวมในหน้าเดียวกับงบดุล เหลือที่ให้คอมเมนต์ */}
-                  <div style={{ marginTop: 10, background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '8px 10px 4px' }}>
-                    <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: MUTED, textTransform: 'uppercase', marginBottom: 2 }}>โครงสร้างสินทรัพย์</div>
-                    <MiniPie data={[{ name: 'สภาพคล่อง', value: b.liquid }, { name: 'ลงทุน', value: b.invest }, { name: 'ส่วนตัว', value: b.personal }]} height={140} radius={[32, 55]} />
-                  </div>
                 </div>
               )
             })}
@@ -1328,11 +1342,6 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                 ['ค่าใช้จ่ายรวม', totalExp, RD, true],
                 ['กระแสเงินสดสุทธิ', net, net >= 0 ? CY : RD, true],
               ]
-              // โครงสร้างกระแสเงินสด (กราฟเล็ก) — รวมในหน้าเดียว · ผันแปรหัก var_tax เพราะแยกก้อนภาษีต่างหาก
-              const cfTax = taxOf(p.key)
-              const cfVar = expAnnual('var_', p.key, 'var_tax')
-              const cfNet = Math.max(0, income - fixed - cfVar - saving - cfTax)
-              const pieData = [{ name: 'คงที่', value: fixed }, { name: 'ผันแปร', value: cfVar }, { name: 'ออม/ลงทุน', value: saving }, { name: 'ภาษี', value: cfTax }, { name: 'เงินสดสุทธิ', value: cfNet }].filter(d => d.value > 0)
               return (
                 <div key={p.key}>
                   <PersonHead name={p.name} tint={p.tint} />
@@ -1347,10 +1356,6 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                       ))}
                     </tbody>
                   </table>
-                  <div style={{ marginTop: 10, background: PAPER, border: `1px solid ${LINE}`, borderRadius: 12, padding: '8px 10px 4px' }}>
-                    <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: MUTED, textTransform: 'uppercase', marginBottom: 2 }}>โครงสร้างกระแสเงินสด</div>
-                    {income > 0 ? <MiniPie data={pieData} height={130} radius={[30, 50]} /> : <Empty text="ยังไม่มีข้อมูลรายรับ-รายจ่าย" />}
-                  </div>
                 </div>
               )
             })}
