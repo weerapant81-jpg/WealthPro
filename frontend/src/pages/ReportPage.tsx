@@ -2051,10 +2051,10 @@ export default function ReportPage() {
           right={
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
               {/* หุบ/เปิดเมนูเลือกหน้า เพื่อเพิ่มพื้นที่เอกสาร */}
-              <button onClick={() => setPanelOpen(o => !o)} title={panelOpen ? 'หุบเมนู เพิ่มพื้นที่เอกสาร' : 'เปิดเมนูเลือกหน้า'}
+              <button onClick={() => setPanelOpen(o => !o)} title={panelOpen ? 'ซ่อนเมนู เพิ่มพื้นที่เอกสาร' : 'เปิดเมนูเลือกหน้า'}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
                   background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--card-border)' }}>
-                {panelOpen ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />} {panelOpen ? 'หุบเมนู' : 'เมนู'}
+                {panelOpen ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />} {panelOpen ? 'ซ่อนเมนู' : 'เมนู'}
               </button>
               {/* สลับโหมด ฉบับเต็ม / นำเสนอ */}
               <div style={{ display: 'flex', background: 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 10, padding: 3, gap: 3 }}>
