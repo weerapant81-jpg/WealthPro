@@ -1229,7 +1229,8 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                       {dependents.map((d, i) => (
                         <div key={i} style={{ background: '#fff', border: `1px solid ${LINE}`, borderRadius: 10, padding: '9px 14px', minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.rel}{d.name ? ` · ${d.name}` : ''}{hasSpouse ? <span style={{ fontSize: 11, color: MUTED, fontWeight: 400 }}> (ของ{d.owner})</span> : ''}</div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.rel}{d.name ? ` · ${d.name}` : ''}</div>
+                          {hasSpouse && <div style={{ fontSize: 11, color: MUTED, fontWeight: 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>(ของ{d.owner})</div>}
                           <div style={{ fontSize: 12, color: SUB }}>อายุ {toNum(d.age) || '—'} ปี{d.health ? ` · ${d.health}` : ''}</div>
                         </div>
                       ))}
