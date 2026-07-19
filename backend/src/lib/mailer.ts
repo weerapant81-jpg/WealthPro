@@ -6,6 +6,11 @@ const enabled = !!API_KEY && API_KEY.startsWith('SG.')
 
 if (enabled) sgMail.setApiKey(API_KEY!)
 
+// log สถานะตอนบูต — ช่วยตรวจบน Render ว่าอีเมลจะส่งจริงหรือแค่ log
+console.log(enabled
+  ? `[mailer] SendGrid เปิดใช้งาน · from=${FROM}`
+  : '[mailer] SendGrid ปิด (ไม่มี SENDGRID_API_KEY ที่ขึ้นต้น SG.) — อีเมลจะถูก log ไม่ส่งจริง')
+
 /**
  * ส่งอีเมล — ถ้าไม่ได้ตั้งค่า SendGrid (dev) จะ log ลิงก์ลง console แทน
  * เพื่อให้ flow ทดสอบได้โดยไม่ต้องส่งเมลจริง

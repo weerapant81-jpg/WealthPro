@@ -50,8 +50,9 @@ export async function register(req: Request, res: Response): Promise<void> {
   const verifyUrl = `${FRONTEND_URL}/api/auth/verify-email?token=${verifyToken}`
   try {
     await sendVerifyEmail(email, name, verifyUrl)
-  } catch {
-    // ถ้าส่งเมลล้มเหลว ยังให้สมัครสำเร็จ — ผู้ใช้ขอส่งใหม่ได้ภายหลัง
+  } catch (e: any) {
+    // ยังให้สมัครสำเร็จ — ผู้ใช้ขอส่งใหม่ได้ภายหลัง · แต่ log สาเหตุไว้ตรวจบน Render
+    console.error('[register] ส่งอีเมลยืนยันไม่สำเร็จ:', e?.response?.body?.errors ?? e?.message ?? e)
   }
   // ยังไม่ออก token — ต้องยืนยันอีเมล + รออนุมัติก่อน
   res.status(201).json({ pending: true, needVerify: true, user })
@@ -85,7 +86,9 @@ export async function resendVerify(req: Request, res: Response): Promise<void> {
     })
     try {
       await sendVerifyEmail(user.email, user.name, `${FRONTEND_URL}/api/auth/verify-email?token=${verifyToken}`)
-    } catch { /* ignore */ }
+    } catch (e: any) {
+      console.error('[resendVerify] ส่งอีเมลยืนยันไม่สำเร็จ:', e?.response?.body?.errors ?? e?.message ?? e)
+    }
   }
   res.json({ message: 'หากอีเมลนี้มีอยู่ในระบบและยังไม่ยืนยัน เราได้ส่งลิงก์ยืนยันไปให้แล้ว' })
 }
