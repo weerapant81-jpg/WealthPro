@@ -174,9 +174,11 @@ function AutoFit({ children }: { children: React.ReactNode }) {
     return () => ro.disconnect()
   }, [children])
   // ชั้นนอกครอบ+ตัดส่วนเกิน · ชั้นในเป็น flex column เต็มความสูง (children ที่ใช้ flex:1 ทำงานเหมือนเดิม) แล้วย่อทั้งก้อนเมื่อเนื้อหาล้น
+  // เนื้อหาสั้น (ตาราง/การ์ด) → จัดกึ่งกลางแนวตั้งให้พื้นที่ว่างสมดุลบน-ล่าง · เนื้อหาที่ใช้ flex:1 (กราฟ) เต็มพื้นที่อยู่แล้วจึงไม่ขยับ
+  // เมื่อเนื้อหาล้น (scale<1) กลับไปชิดบนเพื่อให้การวัด/ย่อแม่นยำ
   return (
     <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      <div ref={boxRef} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', transformOrigin: 'top center', transform: scale < 1 ? `scale(${scale})` : undefined }}>
+      <div ref={boxRef} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: scale < 1 ? 'flex-start' : 'center', transformOrigin: 'top center', transform: scale < 1 ? `scale(${scale})` : undefined }}>
         {children}
       </div>
     </div>
