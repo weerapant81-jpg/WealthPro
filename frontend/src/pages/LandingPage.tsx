@@ -226,22 +226,29 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── 3 ขั้นตอน ── */}
+      {/* ── 4 ขั้นตอน ── */}
       <section style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'var(--navy-950)' }}>
         <div style={{ ...wrap, padding: compact ? '60px 20px' : '90px 40px' }}>
-          <h2 style={{ fontSize: compact ? 28 : 36, fontWeight: 800, textAlign: 'center', margin: '0 0 56px', letterSpacing: '-0.02em' }}>เริ่มวางแผนใน 3 ขั้นตอน</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : 'repeat(3, 1fr)', gap: 40 }}>
-            {[
-              { n: 1, t: 'กรอกข้อมูลลูกค้า', d: 'บันทึกข้อมูลส่วนตัว รายรับ-รายจ่าย สินทรัพย์-หนี้สิน และเป้าหมายผ่านระบบที่ใช้งานง่าย', c: 'var(--text-primary)' },
-              { n: 2, t: 'วิเคราะห์อัตโนมัติ', d: 'ระบบคำนวณตามหลักการเงินสากลทันที — Monte Carlo, Efficient Frontier, ความพร้อมเกษียณ พร้อมกราฟชัดเจน', c: AC },
-              { n: 3, t: 'ส่งมอบรายงาน', d: 'ได้แผนการเงินฉบับสมบูรณ์พร้อมคำแนะนำ ในรูปแบบรายงานฉบับเต็มหรือสไลด์นำเสนอ (PDF)', c: AC },
-            ].map(s => (
-              <div key={s.n} style={{ textAlign: 'center' }}>
-                <div style={{ width: 72, height: 72, borderRadius: '50%', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 800, fontFamily: 'monospace', color: s.n === 3 ? '#00201d' : s.c, background: s.n === 3 ? AC : 'var(--navy-800)', border: s.n === 3 ? 'none' : '1px solid rgba(255,255,255,0.1)' }}>{s.n}</div>
-                <h3 style={{ fontSize: 19, fontWeight: 800, margin: '0 0 10px' }}>{s.t}</h3>
-                <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>{s.d}</p>
-              </div>
-            ))}
+          <h2 style={{ fontSize: compact ? 28 : 36, fontWeight: 800, textAlign: 'center', margin: '0 0 56px', letterSpacing: '-0.02em' }}>เริ่มวางแผนใน 4 ขั้นตอน</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : 'repeat(4, 1fr)', gap: 32 }}>
+            {(() => {
+              const steps = [
+                { t: 'กรอกข้อมูลลูกค้า', d: 'บันทึกข้อมูลส่วนตัว รายรับ-รายจ่าย สินทรัพย์-หนี้สิน และเป้าหมายผ่านระบบที่ใช้งานง่าย' },
+                { t: 'วิเคราะห์อัตโนมัติ', d: 'ระบบคำนวณตามหลักการเงินสากลทันที — Monte Carlo, Efficient Frontier, ความพร้อมเกษียณ พร้อมกราฟชัดเจน' },
+                { t: 'จัดทำแผนการเงิน', d: 'วางแผน 6 ด้านตามเป้าหมายลูกค้า พร้อมข้อเสนอแนะและแนวทางปรับปรุงจากที่ปรึกษา' },
+                { t: 'ส่งมอบรายงาน', d: 'ได้แผนการเงินฉบับสมบูรณ์ ในรูปแบบรายงานฉบับเต็มหรือสไลด์นำเสนอ (PDF)' },
+              ]
+              return steps.map((s, i) => {
+                const n = i + 1, last = n === steps.length
+                return (
+                  <div key={n} style={{ textAlign: 'center' }}>
+                    <div style={{ width: 72, height: 72, borderRadius: '50%', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 800, fontFamily: 'monospace', color: last ? '#00201d' : (n === 1 ? 'var(--text-primary)' : AC), background: last ? AC : 'var(--navy-800)', border: last ? 'none' : '1px solid rgba(255,255,255,0.1)' }}>{n}</div>
+                    <h3 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 10px' }}>{s.t}</h3>
+                    <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>{s.d}</p>
+                  </div>
+                )
+              })
+            })()}
           </div>
         </div>
       </section>
