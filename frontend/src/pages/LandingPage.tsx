@@ -161,6 +161,7 @@ export default function LandingPage() {
           <span onClick={() => { navigate('/'); window.scrollTo({ top: 0, behavior: 'smooth' }) }} style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-0.02em', cursor: 'pointer' }}>Wealth<span style={{ color: AC }}>Pro</span></span>
           {!compact && (
             <nav style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 26, alignItems: 'center' }}>
+              <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="lp-navlink" style={{ background: 'none', border: 'none', fontFamily: 'inherit', color: 'var(--cyan)' }}>หน้าแรก</button>
               <button onClick={() => navigate('/features')} className="lp-navlink" style={{ background: 'none', border: 'none', fontFamily: 'inherit' }}>ฟีเจอร์</button>
               <button onClick={() => navigate('/about')} className="lp-navlink" style={{ background: 'none', border: 'none', fontFamily: 'inherit' }}>เกี่ยวกับเรา</button>
               <a href="#pricing" className="lp-navlink">ราคา</a>
