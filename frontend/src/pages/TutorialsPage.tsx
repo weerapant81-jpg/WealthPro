@@ -1,5 +1,8 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Play, X, GraduationCap, Clock } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { useIsCompact } from '../hooks/useViewport'
 
 /* ศูนย์เรียนรู้ — รวมคลิปสอนการใช้งาน WealthPro (YouTube unlisted)
  * ใช้ได้ทั้งสาธารณะ (จาก landing) และในแอป · จัดการรายการคลิปในโค้ด (MVP)
@@ -27,12 +30,15 @@ const thumb = (id: string) => `https://img.youtube.com/vi/${id}/hqdefault.jpg`
 const embed = (id: string) => `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`
 
 export default function TutorialsPage() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const compact = useIsCompact()
   const [cat, setCat] = useState<string>('ทั้งหมด')
   const [playing, setPlaying] = useState<Clip | null>(null)
   const list = cat === 'ทั้งหมด' ? CLIPS : CLIPS.filter(c => c.cat === cat)
   const ready = CLIPS.filter(c => c.videoId).length
 
-  return (
+  const content = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 1040 }}>
       {/* header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -121,6 +127,50 @@ export default function TutorialsPage() {
           </div>
         </div>
       )}
+    </div>
+  )
+
+  // ล็อกอินอยู่ = อยู่ในแอป (มี sidebar จาก Layout) → แสดงเนื้อหาอย่างเดียว
+  if (user) return content
+
+  // guest (จาก landing) → ครอบด้วยเมนูการตลาด + footer เหมือนหน้าอื่น
+  const wrap: React.CSSProperties = { maxWidth: 1200, margin: '0 auto', padding: compact ? '0 20px' : '0 40px' }
+  return (
+    <div style={{ background: 'var(--navy-900)', color: 'var(--text-primary)', minHeight: '100vh', fontFamily: "'Sarabun', sans-serif" }}>
+      <style>{`
+        .lp-navlink { color: var(--text-secondary); text-decoration: none; font-size: 14px; font-weight: 600; transition: color .15s; cursor: pointer; background: none; border: none; font-family: inherit; }
+        .lp-navlink:hover { color: var(--cyan); }
+        .lp-btn { transition: transform .12s ease, filter .15s ease; } .lp-btn:hover { filter: brightness(1.08); } .lp-btn:active { transform: scale(0.97); }
+      `}</style>
+      <header style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(19,19,21,0.82)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <div style={{ ...wrap, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
+          <span onClick={() => navigate('/')} style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-0.02em', cursor: 'pointer' }}>Wealth<span style={{ color: AC }}>Pro</span></span>
+          {!compact && (
+            <nav style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 26 }}>
+              <span onClick={() => navigate('/')} className="lp-navlink">หน้าแรก</span>
+              <span onClick={() => navigate('/features')} className="lp-navlink">ฟีเจอร์</span>
+              <span onClick={() => navigate('/about')} className="lp-navlink">เกี่ยวกับเรา</span>
+              <span onClick={() => navigate('/#pricing')} className="lp-navlink">ราคา</span>
+              <span className="lp-navlink" style={{ color: AC }}>วิดีโอสอนการใช้งาน</span>
+            </nav>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button onClick={() => navigate('/login')} className="lp-btn" style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>เข้าสู่ระบบ</button>
+            <button onClick={() => navigate('/login?mode=register')} className="lp-btn" style={{ background: AC, color: '#00201d', border: 'none', borderRadius: 10, padding: '9px 18px', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>ทดลองใช้ฟรี</button>
+          </div>
+        </div>
+      </header>
+      <div style={{ ...wrap, padding: compact ? '28px 20px 64px' : '36px 40px 72px' }}>{content}</div>
+      <footer style={{ borderTop: '1px solid rgba(255,255,255,0.07)', background: 'var(--navy-950)' }}>
+        <div style={{ ...wrap, padding: '32px 40px', display: 'flex', flexDirection: compact ? 'column' : 'row', justifyContent: 'space-between', alignItems: 'center', gap: 18 }}>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>Wealth<span style={{ color: AC }}>Pro</span></div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 22, justifyContent: 'center' }}>
+            <a href="/features" className="lp-navlink">ฟีเจอร์</a>
+            <a href="/privacy" className="lp-navlink">นโยบายความเป็นส่วนตัว</a>
+            <a href="/terms" className="lp-navlink">ข้อกำหนดการใช้บริการ</a>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

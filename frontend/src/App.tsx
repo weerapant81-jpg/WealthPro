@@ -66,6 +66,13 @@ function HomeRoute() {
   return <Layout><DashboardPage /></Layout>
 }
 
+// ศูนย์เรียนรู้ — ล็อกอิน = ในแอป (Layout+sidebar) · guest = หน้าจัดการเมนูเอง (marketing shell)
+function TutorialsRoute() {
+  const { user, loading } = useAuth()
+  if (loading) return <PageLoader />
+  return user ? <Layout><TutorialsPage /></Layout> : <TutorialsPage />
+}
+
 // หน้าเอกสาร (นโยบาย/ข้อกำหนด) — เข้าได้ทั้งสาธารณะ (จาก landing) และในแอป
 function DocRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -155,7 +162,7 @@ export default function App() {
               <Route path="/install" element={<InstallGuidePage />} />
               <Route path="/features" element={<FeaturesPage />} />
               <Route path="/about" element={<AboutPage />} />
-              <Route path="/tutorials" element={<DocRoute><TutorialsPage /></DocRoute>} />
+              <Route path="/tutorials" element={<TutorialsRoute />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />
               <Route path="/" element={<HomeRoute />} />
