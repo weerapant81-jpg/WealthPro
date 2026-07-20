@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { loginUser, registerUser, googleLogin, appleLogin, forgotPassword, resendVerify } from '../lib/auth'
 import { useAuth } from '../context/AuthContext'
 import { useClient } from '../context/ClientContext'
@@ -21,7 +21,9 @@ const AppleIcon = () => (
 )
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login')
+  const [sp] = useSearchParams()
+  // เปิดโหมดสมัครทันทีถ้ามาจากปุ่ม "ทดลองใช้ฟรี" บนหน้า landing (/login?mode=register)
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(sp.get('mode') === 'register' ? 'register' : 'login')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [phone, setPhone] = useState('')

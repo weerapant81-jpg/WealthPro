@@ -33,6 +33,10 @@ const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'))
 const UserGuidePage = lazy(() => import('./pages/UserGuidePage'))
 const GamePage = lazy(() => import('./pages/game/GamePage'))
+const LandingPage = lazy(() => import('./pages/LandingPage'))
+const InstallGuidePage = lazy(() => import('./pages/InstallGuidePage'))
+const FeaturesPage = lazy(() => import('./pages/FeaturesPage'))
+const AboutPage = lazy(() => import('./pages/AboutPage'))
 
 const qc = new QueryClient()
 
@@ -46,6 +50,29 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">กำลังโหลด...</div>
   if (!user) return <Navigate to="/login" replace />
   return <Layout>{children}</Layout>
+}
+
+// หน้าแรก "/" — ยังไม่ล็อกอิน = หน้า landing สาธารณะ · ล็อกอินแล้ว = แดชบอร์ด (พฤติกรรมเดิม)
+function HomeRoute() {
+  const { user, loading } = useAuth()
+  if (loading) return <PageLoader />
+  if (!user) return <LandingPage />
+  return <Layout><DashboardPage /></Layout>
+}
+
+// หน้าเอกสาร (นโยบาย/ข้อกำหนด) — เข้าได้ทั้งสาธารณะ (จาก landing) และในแอป
+function DocRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth()
+  if (loading) return <PageLoader />
+  if (user) return <Layout>{children}</Layout>
+  return (
+    <div style={{ background: 'var(--navy-900)', minHeight: '100vh', fontFamily: "'Sarabun', sans-serif" }}>
+      <div style={{ maxWidth: 920, margin: '0 auto', padding: '28px 20px 64px' }}>
+        <a href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: 14, fontWeight: 700, textDecoration: 'none', marginBottom: 20 }}>← กลับหน้าแรก</a>
+        {children}
+      </div>
+    </div>
+  )
 }
 
 // หน้าที่ผูกกับ "ลูกค้า" — FA (admin) ต้องเลือกลูกค้าก่อน ไม่งั้นเด้งไปหน้าเลือกลูกค้า (กัน effectiveUserId undefined → 500)
@@ -119,9 +146,12 @@ export default function App() {
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/game" element={<GamePage />} />
+              <Route path="/install" element={<InstallGuidePage />} />
+              <Route path="/features" element={<FeaturesPage />} />
+              <Route path="/about" element={<AboutPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />
-              <Route path="/" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+              <Route path="/" element={<HomeRoute />} />
               <Route path="/income" element={<ClientRoute><IncomePage /></ClientRoute>} />
               <Route path="/financial-plan" element={<ClientRoute><FinancialPlanPage /></ClientRoute>} />
               <Route path="/action-plan" element={<ClientRoute><ActionPlanPage /></ClientRoute>} />
@@ -141,8 +171,8 @@ export default function App() {
               <Route path="/investment" element={<PrivateRoute><InvestmentAssumptionPage /></PrivateRoute>} />
               <Route path="/clients" element={<AdminRoute><ClientsPage /></AdminRoute>} />
               <Route path="/audit-log" element={<AdminRoute><AuditLogPage /></AdminRoute>} />
-              <Route path="/privacy" element={<PrivateRoute><PrivacyPolicyPage /></PrivateRoute>} />
-              <Route path="/terms" element={<PrivateRoute><TermsOfServicePage /></PrivateRoute>} />
+              <Route path="/privacy" element={<DocRoute><PrivacyPolicyPage /></DocRoute>} />
+              <Route path="/terms" element={<DocRoute><TermsOfServicePage /></DocRoute>} />
               <Route path="/guide" element={<PrivateRoute><UserGuidePage /></PrivateRoute>} />
             </Routes>
             </Suspense>
