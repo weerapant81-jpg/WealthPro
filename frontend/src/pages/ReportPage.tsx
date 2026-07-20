@@ -1028,7 +1028,7 @@ export default function ReportPage() {
                 </div>
               )
               return (
-                <div style={{ border: '1px solid #cbd5e1', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
+                <div style={{ borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
                   <Row label="สินทรัพย์ & หนี้สิน">สินทรัพย์รวม <b>{fmt(totalA)}</b> บาท (สภาพคล่อง {fmt(liquidA)} · ลงทุน {fmt(investA)} · ส่วนตัว {fmt(personalA)}) · หนี้สินรวม <b style={{ color: REDR }}>{fmt(debtB)}</b> บาท · ความมั่งคั่งสุทธิ <b style={{ color: GREENR }}>{fmt(netW)}</b> บาท</Row>
                   <Row label="รายรับ & รายจ่าย">รายรับรวม <b>{fmt(incomeY)}</b> บาท/ปี · รายจ่ายรวม <b style={{ color: REDR }}>{fmt(expY)}</b> บาท/ปี · เงินออม <b>{fmt(saveY)}</b> บาท/ปี · กระแสเงินสดสุทธิ <b style={{ color: netCF >= 0 ? GREENR : REDR }}>{fmt(netCF)}</b> บาท/ปี</Row>
                   <Row label="อัตราส่วนการเงิน">เงินสำรองฉุกเฉิน <b>{emMonths.toFixed(1)}</b> เดือน · หนี้สินต่อสินทรัพย์ <b>{debtToAsset.toFixed(0)}%</b> · อัตราการออม <b>{savingsRate.toFixed(0)}%</b></Row>
@@ -1066,7 +1066,7 @@ export default function ReportPage() {
               if (rows.length === 0) return <div style={{ fontSize: 12.5, color: '#64748b', padding: '4px 0' }}>ยังไม่มีเป้าหมายที่บันทึกไว้ — กรอกที่หน้าเป้าหมายทางการเงิน</div>
               const total = rows.reduce((s, r) => s + r.amount, 0)
               return (
-                <div style={{ border: '1px solid #cbd5e1', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
+                <div style={{ borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
                   {rows.map((r, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderBottom: '1px solid #f1f5f9', fontSize: 12 }}>
                       <span style={{ width: 8, height: 8, borderRadius: 999, background: r.color, flexShrink: 0 }} />
@@ -1103,7 +1103,7 @@ export default function ReportPage() {
               if (eduR && eduR.childCount > 0)
                 rows.push(<Row key="e" label="ทุนการศึกษาบุตร">ค่าเล่าเรียนรวม {fmt(eduR.totalNominal)} · เตรียมวันนี้ (PV) {fmt(eduR.totalPV)} · ต้องออม <b>{fmt(eduR.monthlySaving)}</b> บาท/เดือน</Row>)
               if (rows.length === 0) return <div style={{ fontSize: 12.5, color: '#64748b', padding: '4px 0' }}>ยังไม่มีผลวิเคราะห์เพียงพอ — กรอกข้อมูลในหน้าวางแผนการเงิน</div>
-              return <div style={{ border: '1px solid #cbd5e1', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>{rows}</div>
+              return <div style={{ borderRadius: 8, overflow: 'hidden', background: '#fff' }}>{rows}</div>
             })()}
             <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748b', margin: '10px 0 4px' }}>ความเห็น/หมายเหตุเพิ่มเติม (ที่ปรึกษา)</div>
             <textarea value={secs['exs2_analysis']?.text ?? ''} onChange={e => setText('exs2_analysis', e.target.value)}
