@@ -567,8 +567,8 @@ function GoalBar({ rows, height = 210 }: { rows: { name: string; needed: number;
           <YAxis tickFormatter={v => fmtM(v)} tick={{ fontSize: 11, fill: MUTED }} width={44} axisLine={false} tickLine={false} />
           <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          <Bar dataKey="ต้องการ" fill="#f59e0b" radius={[5, 5, 0, 0]} maxBarSize={90} />
-          <Bar dataKey="มีอยู่" fill="#10b981" radius={[5, 5, 0, 0]} maxBarSize={90} />
+          <Bar isAnimationActive={false} dataKey="ต้องการ" fill="#f59e0b" radius={[5, 5, 0, 0]} maxBarSize={90} />
+          <Bar isAnimationActive={false} dataKey="มีอยู่" fill="#10b981" radius={[5, 5, 0, 0]} maxBarSize={90} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -593,7 +593,7 @@ function MiniPie({ data, height = 190, radius = [44, 74] }: { data: { name: stri
       <div style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={radius[0]} outerRadius={radius[1]} paddingAngle={1.5} stroke="#fff" strokeWidth={2} label={(e: any) => `${(e.percent * 100).toFixed(0)}%`} labelLine={false}>
+            <Pie isAnimationActive={false} data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={radius[0]} outerRadius={radius[1]} paddingAngle={1.5} stroke="#fff" strokeWidth={2} label={(e: any) => `${(e.percent * 100).toFixed(0)}%`} labelLine={false}>
               {data.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
             </Pie>
             <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} />
@@ -1475,7 +1475,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                           <PolarGrid stroke={HAIR} />
                           <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9.5, fill: SUB }} />
                           {/* เกณฑ์ = ขอบนอก 100% — พล็อตเฉพาะความคุ้มครองที่มี */}
-                          <Radar name="ความคุ้มครองที่มี" dataKey="actual" stroke={p.tint} strokeWidth={2} fill={p.tint} fillOpacity={0.28} />
+                          <Radar isAnimationActive={false} name="ความคุ้มครองที่มี" dataKey="actual" stroke={p.tint} strokeWidth={2} fill={p.tint} fillOpacity={0.28} />
                           <Legend wrapperStyle={{ fontSize: 10 }} />
                           <Tooltip />
                         </RadarChart>
@@ -1558,11 +1558,11 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                   <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   {/* แท่งซ้าย = เงินที่ต้องการ · แท่งขวา = เงินที่มี (ซ้อนย่อยตามแหล่งเงิน) — สี categorical + คั่น 2px */}
-                  <Bar dataKey="ต้องการ" fill="#f59e0b" radius={[4, 4, 0, 0]} name="เงินที่ต้องการ" maxBarSize={64} />
-                  <Bar dataKey="สินทรัพย์" stackId="have" fill="#10b981" stroke="#fff" strokeWidth={1} maxBarSize={64} />
-                  <Bar dataKey="ปกส" stackId="have" fill="#0d9488" stroke="#fff" strokeWidth={1} maxBarSize={64} />
-                  <Bar dataKey="PVD" stackId="have" fill="#8b5cf6" stroke="#fff" strokeWidth={1} maxBarSize={64} />
-                  <Bar dataKey="ชดเชย" stackId="have" fill="#f43f5e" stroke="#fff" strokeWidth={1} radius={[4, 4, 0, 0]} maxBarSize={64} />
+                  <Bar isAnimationActive={false} dataKey="ต้องการ" fill="#f59e0b" radius={[4, 4, 0, 0]} name="เงินที่ต้องการ" maxBarSize={64} />
+                  <Bar isAnimationActive={false} dataKey="สินทรัพย์" stackId="have" fill="#10b981" stroke="#fff" strokeWidth={1} maxBarSize={64} />
+                  <Bar isAnimationActive={false} dataKey="ปกส" stackId="have" fill="#0d9488" stroke="#fff" strokeWidth={1} maxBarSize={64} />
+                  <Bar isAnimationActive={false} dataKey="PVD" stackId="have" fill="#8b5cf6" stroke="#fff" strokeWidth={1} maxBarSize={64} />
+                  <Bar isAnimationActive={false} dataKey="ชดเชย" stackId="have" fill="#f43f5e" stroke="#fff" strokeWidth={1} radius={[4, 4, 0, 0]} maxBarSize={64} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1605,8 +1605,8 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                   {retChart.depSelf != null && <ReferenceLine x={retChart.depSelf} stroke={CY} strokeDasharray="2 3" label={{ value: `เงินหมด ${retChart.depSelf}`, position: 'insideTopLeft', fill: CY, fontSize: 10, fontWeight: 700 }} />}
                   {hasSpouse && retChart.depSpouse != null && <ReferenceLine x={retChart.depSpouse} stroke={VI} strokeDasharray="2 3" label={{ value: `เงินหมด ${retChart.depSpouse}`, position: 'insideTopRight', fill: VI, fontSize: 10, fontWeight: 700 }} />}
                   {/* เฉพาะกรณี "ไม่ออมเพิ่ม" — ตัดเส้นที่จุดเงินหมด */}
-                  <Area type="monotone" dataKey="selfNo" name={`${selfName} (ไม่ออมเพิ่ม)`} stroke={CY} strokeWidth={2.4} fill="url(#pdRetSelf)" dot={false} />
-                  {hasSpouse && <Line type="monotone" dataKey="spouseNo" name={`${spouseName} (ไม่ออมเพิ่ม)`} stroke={VI} strokeWidth={2.2} dot={false} />}
+                  <Area isAnimationActive={false} type="monotone" dataKey="selfNo" name={`${selfName} (ไม่ออมเพิ่ม)`} stroke={CY} strokeWidth={2.4} fill="url(#pdRetSelf)" dot={false} />
+                  {hasSpouse && <Line isAnimationActive={false} type="monotone" dataKey="spouseNo" name={`${spouseName} (ไม่ออมเพิ่ม)`} stroke={VI} strokeWidth={2.2} dot={false} />}
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -1765,9 +1765,9 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                         <Tooltip formatter={(v: any) => Array.isArray(v) ? `${fmt(v[0])} – ${fmt(v[1])}` : `${fmt(v)} บาท`} labelFormatter={(l: any) => `อายุ ${l} ปี`} />
                         <Legend wrapperStyle={{ fontSize: 9.5 }} />
                         <ReferenceLine x={rb.retAge} stroke={AM} strokeDasharray="4 3" />
-                        <Area dataKey="band" name="ช่วง 80% (พอร์ตใหม่)" stroke="none" fill={rb.sel.color} fillOpacity={0.13} />
-                        <Line dataKey="พอร์ตเดิม" stroke={AM} strokeWidth={1.8} strokeDasharray="6 4" dot={false} />
-                        <Line dataKey="พอร์ตใหม่" stroke={rb.sel.color} strokeWidth={2.2} dot={false} />
+                        <Area isAnimationActive={false} dataKey="band" name="ช่วง 80% (พอร์ตใหม่)" stroke="none" fill={rb.sel.color} fillOpacity={0.13} />
+                        <Line isAnimationActive={false} dataKey="พอร์ตเดิม" stroke={AM} strokeWidth={1.8} strokeDasharray="6 4" dot={false} />
+                        <Line isAnimationActive={false} dataKey="พอร์ตใหม่" stroke={rb.sel.color} strokeWidth={2.2} dot={false} />
                       </ComposedChart>
                     </ResponsiveContainer>
                   </div>
@@ -1791,7 +1791,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                   <YAxis tickFormatter={v => fmtM(v)} tick={{ fontSize: 10, fill: MUTED }} width={46} axisLine={false} tickLine={false} />
                   <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} labelFormatter={y => `ปี พ.ศ. ${y}`} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  {eduChart.types.map(t => <Line key={t.key} type="monotone" dataKey={t.key} name={`สถาบัน${t.label}`} stroke={t.color} strokeWidth={2.2} dot={false} connectNulls />)}
+                  {eduChart.types.map(t => <Line isAnimationActive={false} key={t.key} type="monotone" dataKey={t.key} name={`สถาบัน${t.label}`} stroke={t.color} strokeWidth={2.2} dot={false} connectNulls />)}
                   {/* เส้นประ + ป้ายมูลค่ากองทุน (เต็มจำนวน) ณ ปีสุดท้ายที่ออม */}
                   {(() => {
                     const lastSaveYear = eduChart.chartData.length ? eduChart.chartData[0].year + eduChart.savingYears - 1 : null
@@ -1889,8 +1889,8 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                         <YAxis tickFormatter={(v: any) => `${(v / 1e6).toFixed(0)}M`} tick={{ fontSize: 9, fill: MUTED }} width={30} />
                         <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} />
                         <Legend wrapperStyle={{ fontSize: 10 }} />
-                        <Bar dataKey="มีแล้ว" stackId="a" fill={GR} maxBarSize={44} />
-                        <Bar dataKey="ส่วนที่ขาด" stackId="a" fill={AM} maxBarSize={44} radius={[5, 5, 0, 0]} />
+                        <Bar isAnimationActive={false} dataKey="มีแล้ว" stackId="a" fill={GR} maxBarSize={44} />
+                        <Bar isAnimationActive={false} dataKey="ส่วนที่ขาด" stackId="a" fill={AM} maxBarSize={44} radius={[5, 5, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -1946,8 +1946,8 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
                         <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} labelFormatter={(l: any) => `อายุ ${l} ปี`} />
                         <Legend wrapperStyle={{ fontSize: 9.5 }} />
                         {R.retireAge != null && <ReferenceLine x={R.retireAge} stroke={AM} strokeDasharray="4 3" />}
-                        <Bar dataKey="ค่าใช้จ่าย" barSize={3} fill={`${AM}b0`} />
-                        <Line dataKey="มูลค่ารวม" stroke={p.tint} strokeWidth={2.2} dot={false} />
+                        <Bar isAnimationActive={false} dataKey="ค่าใช้จ่าย" barSize={3} fill={`${AM}b0`} />
+                        <Line isAnimationActive={false} dataKey="มูลค่ารวม" stroke={p.tint} strokeWidth={2.2} dot={false} />
                       </ComposedChart>
                     </ResponsiveContainer>
                   </div>

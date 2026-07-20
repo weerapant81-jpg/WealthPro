@@ -732,8 +732,8 @@ export default function ReportPage() {
                   <YAxis tickFormatter={(v: any) => `${(v / 1e6).toFixed(1)}M`} tick={{ fontSize: 9.5, fill: '#94a3b8' }} width={38} />
                   <Tooltip formatter={(v: any) => Array.isArray(v) ? `${fmt(v[0])} – ${fmt(v[1])}` : `${fmt(v)} บาท`} labelFormatter={(l: any) => `อายุ ${l} ปี`} />
                   <ReferenceLine x={retAge} stroke={AMBERR} strokeDasharray="4 3" label={{ value: `เกษียณ ${retAge}`, position: 'insideTopLeft', fontSize: 9.5, fill: AMBERR }} />
-                  <Area dataKey="band" stroke="none" fill={TEAL} fillOpacity={0.15} />
-                  <Line dataKey="ค่ากลาง" stroke={TEAL} strokeWidth={2} dot={false} />
+                  <Area isAnimationActive={false} dataKey="band" stroke="none" fill={TEAL} fillOpacity={0.15} />
+                  <Line isAnimationActive={false} dataKey="ค่ากลาง" stroke={TEAL} strokeWidth={2} dot={false} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -809,9 +809,9 @@ export default function ReportPage() {
                       <Tooltip formatter={(v: any) => Array.isArray(v) ? `${fmt(v[0])} – ${fmt(v[1])}` : `${fmt(v)} บาท`} labelFormatter={(l: any) => `อายุ ${l} ปี`} />
                       <Legend wrapperStyle={{ fontSize: 10.5 }} />
                       <ReferenceLine x={retAge} stroke={AMBERR} strokeDasharray="4 3" />
-                      <Area dataKey="band" name="ช่วง 80% (พอร์ตใหม่)" stroke="none" fill={selP.color} fillOpacity={0.13} />
-                      <Line dataKey="พอร์ตเดิม" stroke={AMBERR} strokeWidth={2} strokeDasharray="6 4" dot={false} />
-                      <Line dataKey="พอร์ตใหม่" stroke={selP.color} strokeWidth={2.5} dot={false} />
+                      <Area isAnimationActive={false} dataKey="band" name="ช่วง 80% (พอร์ตใหม่)" stroke="none" fill={selP.color} fillOpacity={0.13} />
+                      <Line isAnimationActive={false} dataKey="พอร์ตเดิม" stroke={AMBERR} strokeWidth={2} strokeDasharray="6 4" dot={false} />
+                      <Line isAnimationActive={false} dataKey="พอร์ตใหม่" stroke={selP.color} strokeWidth={2.5} dot={false} />
                     </ComposedChart>
                   </ResponsiveContainer>
                 </div>
@@ -1419,7 +1419,7 @@ export default function ReportPage() {
                   <div style={{ height: 130 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie data={alloc.rows} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={30} outerRadius={50} label={(e: any) => `${(e.percent * 100).toFixed(0)}%`} labelLine={false}>
+                        <Pie isAnimationActive={false} data={alloc.rows} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={30} outerRadius={50} label={(e: any) => `${(e.percent * 100).toFixed(0)}%`} labelLine={false}>
                           {alloc.rows.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                         </Pie>
                         <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} />
@@ -1677,7 +1677,7 @@ export default function ReportPage() {
                         <RadarChart data={p.cov.radarData} outerRadius="68%">
                           <PolarGrid stroke="#e2e8f0" />
                           <PolarAngleAxis dataKey="subject" tick={{ fontSize: 8.5, fill: '#64748b' }} />
-                          <Radar name="ความคุ้มครองที่มี" dataKey="actual" stroke={p.tint} strokeWidth={2} fill={p.tint} fillOpacity={0.25} />
+                          <Radar isAnimationActive={false} name="ความคุ้มครองที่มี" dataKey="actual" stroke={p.tint} strokeWidth={2} fill={p.tint} fillOpacity={0.25} />
                         </RadarChart>
                       </ResponsiveContainer>
                     ) : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 12, color: '#94a3b8' }}>ยังไม่มีกรมธรรม์</div>}
@@ -1880,9 +1880,9 @@ export default function ReportPage() {
                           <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} labelFormatter={(l: any) => `อายุ ${l} ปี`} />
                           <Legend wrapperStyle={{ fontSize: 10.5 }} />
                           <ReferenceLine x={R3.retireAge} stroke={p.tint} strokeDasharray="4 3" />
-                          <Bar dataKey="ค่าใช้จ่าย" barSize={4} fill="#f59e0bb0" />
-                          <Line dataKey="ไม่ออมเพิ่ม" name="มูลค่ารวม (กรณีไม่ออมเพิ่ม)" stroke={REDR} strokeWidth={1.8} strokeDasharray="6 4" dot={false} />
-                          <Line dataKey="มูลค่ารวม" name="มูลค่ารวม (ออมตามแผน)" stroke={p.tint} strokeWidth={2} dot={false} />
+                          <Bar isAnimationActive={false} dataKey="ค่าใช้จ่าย" barSize={4} fill="#f59e0bb0" />
+                          <Line isAnimationActive={false} dataKey="ไม่ออมเพิ่ม" name="มูลค่ารวม (กรณีไม่ออมเพิ่ม)" stroke={REDR} strokeWidth={1.8} strokeDasharray="6 4" dot={false} />
+                          <Line isAnimationActive={false} dataKey="มูลค่ารวม" name="มูลค่ารวม (ออมตามแผน)" stroke={p.tint} strokeWidth={2} dot={false} />
                         </ComposedChart>
                       </ResponsiveContainer>
                     </div>
@@ -1991,7 +1991,7 @@ export default function ReportPage() {
                   <div style={{ color: '#475569' }}>ผลตอบแทน {payload[0].payload.y}% · σ {payload[0].payload.x}%</div>
                 </div>
               ) : null} />
-              <Scatter data={frontier}>
+              <Scatter isAnimationActive={false} data={frontier}>
                 {frontier.map((pt, i2) => <Cell key={i2} fill={pt.color} stroke={pt.best ? '#0f172a' : 'none'} strokeWidth={pt.best ? 2 : 0} />)}
               </Scatter>
             </ScatterChart>
@@ -2225,7 +2225,6 @@ export default function ReportPage() {
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: '#94a3b8', textTransform: 'uppercase' }}>Confidential Financial Document</div>
-                  <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 2 }}>Ref: WP-{new Date().getFullYear()}-{(client?.firstName || 'CL').slice(0, 2).toUpperCase()}</div>
                 </div>
               </div>
               {/* title */}
