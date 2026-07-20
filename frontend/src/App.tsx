@@ -53,11 +53,16 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   return <Layout>{children}</Layout>
 }
 
-// หน้าแรก "/" — ยังไม่ล็อกอิน = หน้า landing สาธารณะ · ล็อกอินแล้ว = แดชบอร์ด (พฤติกรรมเดิม)
+// เปิดจากแอปที่ติดตั้งลงหน้าจอโฮม (PWA standalone) หรือไม่
+const isInstalledApp = () =>
+  typeof window !== 'undefined' &&
+  (window.matchMedia?.('(display-mode: standalone)').matches || (navigator as any).standalone === true)
+
+// หน้าแรก "/" — ล็อกอินแล้ว = แดชบอร์ด · ยังไม่ล็อกอิน: เปิดจากแอปติดตั้ง → ไป login เลย (ข้ามหน้าขาย) · เปิดจากเบราว์เซอร์ → หน้า landing
 function HomeRoute() {
   const { user, loading } = useAuth()
   if (loading) return <PageLoader />
-  if (!user) return <LandingPage />
+  if (!user) return isInstalledApp() ? <Navigate to="/login" replace /> : <LandingPage />
   return <Layout><DashboardPage /></Layout>
 }
 
