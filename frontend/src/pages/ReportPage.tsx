@@ -1064,7 +1064,56 @@ export default function ReportPage() {
               placeholder="พิมพ์ความเห็นของที่ปรึกษาเกี่ยวกับสถานะการเงินปัจจุบัน..." rows={3}
               style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: 8, padding: '8px 12px', fontFamily: 'inherit', fontSize: 12.5, color: '#1e293b', outline: 'none', resize: 'vertical', background: 'transparent' }} />
           </div>
-          <RowsBox k="exs2_goals" title="เป้าหมายของท่าน" defaults={EMPTY4} />
+          {/* เป้าหมายของท่าน — ดึงจากหน้าเป้าหมายทางการเงินอัตโนมัติ + ช่องคอมเมนต์ */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>เป้าหมายของท่าน</div>
+            {(() => {
+              const GG = [
+                { k: 'insurance', label: 'ความเสี่ยง & ประกัน', color: '#e11d48' },
+                { k: 'education', label: 'ทุนการศึกษาบุตร', color: '#d97706' },
+                { k: 'retirement', label: 'การเกษียณ', color: '#0891b2' },
+                { k: 'short', label: 'ระยะสั้น', color: '#059669' },
+                { k: 'medium', label: 'ระยะกลาง', color: '#0ea5e9' },
+                { k: 'long', label: 'ระยะยาว', color: '#7c3aed' },
+              ]
+              const fg = client?.financialGoals || {}
+              const selfNameG = `คุณ${client?.firstName || 'ลูกค้า'}`
+              const spouseNameG = client?.spouseProfile?.firstName ? `คุณ${client.spouseProfile.firstName}` : 'คู่สมรส'
+              const pick = (o: 'self' | 'spouse') => (fg.self || fg.spouse) ? fg[o] : (o === 'self' ? fg : null)
+              const collect = (g: any, owner: string) => {
+                const out: { area: string; color: string; name: string; when: string; amount: number; owner: string }[] = []
+                if (!g) return out
+                GG.forEach(grp => (g[grp.k] ?? []).forEach((r: any) => {
+                  if (!r?.name?.trim()) return
+                  const td = r.targetDate ? String(r.targetDate).trim() : ''
+                  out.push({ area: grp.label, color: grp.color, name: r.name, when: td ? (/^\d+$/.test(td) ? `ภายใน ${td} ปี` : td) : '', amount: toNum(r.targetAmount), owner })
+                }))
+                return out
+              }
+              const rows = [...collect(pick('self'), selfNameG), ...(hasSpouse ? collect(pick('spouse'), spouseNameG) : [])]
+              if (rows.length === 0) return <div style={{ fontSize: 12.5, color: '#64748b', padding: '4px 0' }}>ยังไม่มีเป้าหมายที่บันทึกไว้ — กรอกที่หน้าเป้าหมายทางการเงิน</div>
+              const total = rows.reduce((s, r) => s + r.amount, 0)
+              return (
+                <div style={{ border: '1px solid #cbd5e1', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
+                  {rows.map((r, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderBottom: '1px solid #f1f5f9', fontSize: 12 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: 999, background: r.color, flexShrink: 0 }} />
+                      <span style={{ flex: 1, minWidth: 0, color: '#0f172a' }}><b>{r.name}</b> <span style={{ color: '#94a3b8' }}>· {r.area}{r.when ? ` · ${r.when}` : ''}{hasSpouse ? ` · ${r.owner}` : ''}</span></span>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0f172a', flexShrink: 0 }}>{r.amount > 0 ? `${fmt(r.amount)} บาท` : '—'}</span>
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: '#f0fdfa', fontSize: 12.5 }}>
+                    <b style={{ color: '#0f172a' }}>รวมเป้าหมายทั้งหมด</b>
+                    <b style={{ fontFamily: 'monospace', color: TEAL }}>{fmt(total)} บาท</b>
+                  </div>
+                </div>
+              )
+            })()}
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748b', margin: '10px 0 4px' }}>ความเห็น/หมายเหตุเพิ่มเติม (ที่ปรึกษา)</div>
+            <textarea value={secs['exs2_goals']?.text ?? ''} onChange={e => setText('exs2_goals', e.target.value)}
+              placeholder="พิมพ์ความเห็นของที่ปรึกษาเกี่ยวกับเป้าหมายของลูกค้า..." rows={3}
+              style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: 8, padding: '8px 12px', fontFamily: 'inherit', fontSize: 12.5, color: '#1e293b', outline: 'none', resize: 'vertical', background: 'transparent' }} />
+          </div>
           <RowsBox k="exs2_analysis" title="สรุปผลการวิเคราะห์" defaults={EMPTY4} />
           <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>สรุปแผนดำเนินการ</div>
           {lines.length === 0
