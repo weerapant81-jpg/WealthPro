@@ -1,14 +1,17 @@
 import sgMail from '@sendgrid/mail'
 
 const API_KEY = process.env.SENDGRID_API_KEY
-const FROM = process.env.SENDGRID_FROM_EMAIL || 'no-reply@wealthpro.local'
+const FROM = process.env.SENDGRID_FROM_EMAIL || 'noreply@wealthpro.cloud'
+const FROM_NAME = process.env.SENDGRID_FROM_NAME || 'WealthPro'
+// ผู้รับกด reply → ไปเข้ากล่องจริง (info@) ไม่ใช่ noreply
+const REPLY_TO = process.env.SENDGRID_REPLY_TO || 'info@wealthpro.cloud'
 const enabled = !!API_KEY && API_KEY.startsWith('SG.')
 
 if (enabled) sgMail.setApiKey(API_KEY!)
 
 // log สถานะตอนบูต — ช่วยตรวจบน Render ว่าอีเมลจะส่งจริงหรือแค่ log
 console.log(enabled
-  ? `[mailer] SendGrid เปิดใช้งาน · from=${FROM}`
+  ? `[mailer] SendGrid เปิดใช้งาน · from=${FROM_NAME} <${FROM}> · reply-to=${REPLY_TO}`
   : '[mailer] SendGrid ปิด (ไม่มี SENDGRID_API_KEY ที่ขึ้นต้น SG.) — อีเมลจะถูก log ไม่ส่งจริง')
 
 /**
@@ -21,7 +24,7 @@ async function send(to: string, subject: string, html: string, text: string): Pr
     return
   }
   try {
-    await sgMail.send({ to, from: FROM, subject, html, text })
+    await sgMail.send({ to, from: { email: FROM, name: FROM_NAME }, replyTo: REPLY_TO, subject, html, text })
   } catch (e: any) {
     console.error('[mailer] ส่งเมลไม่สำเร็จ:', e?.response?.body?.errors ?? e.message)
     throw e
