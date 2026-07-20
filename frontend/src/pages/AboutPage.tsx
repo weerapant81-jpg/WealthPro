@@ -42,18 +42,16 @@ export default function AboutPage() {
 
       {/* Nav */}
       <header style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(19,19,21,0.82)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <div style={{ ...wrap, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
-            <span onClick={() => navigate('/')} style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-0.02em', cursor: 'pointer' }}>Wealth<span style={{ color: AC }}>Pro</span></span>
-            {!compact && (
-              <nav style={{ display: 'flex', gap: 22 }}>
-                <span onClick={() => navigate('/')} className="lp-navlink">หน้าแรก</span>
-                <span onClick={() => navigate('/features')} className="lp-navlink">ฟีเจอร์</span>
-                <span className="lp-navlink" style={{ color: AC }}>เกี่ยวกับเรา</span>
-                <span onClick={() => navigate('/#pricing')} className="lp-navlink">ราคา</span>
-              </nav>
-            )}
-          </div>
+        <div style={{ ...wrap, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
+          <span onClick={() => navigate('/')} style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-0.02em', cursor: 'pointer' }}>Wealth<span style={{ color: AC }}>Pro</span></span>
+          {!compact && (
+            <nav style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 26 }}>
+              <span onClick={() => navigate('/')} className="lp-navlink">หน้าแรก</span>
+              <span onClick={() => navigate('/features')} className="lp-navlink">ฟีเจอร์</span>
+              <span className="lp-navlink" style={{ color: AC }}>เกี่ยวกับเรา</span>
+              <span onClick={() => navigate('/#pricing')} className="lp-navlink">ราคา</span>
+            </nav>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button onClick={goLogin} className="lp-btn" style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>เข้าสู่ระบบ</button>
             <button onClick={goRegister} className="lp-btn" style={{ background: AC, color: '#00201d', border: 'none', borderRadius: 10, padding: '9px 18px', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>ทดลองใช้ฟรี</button>

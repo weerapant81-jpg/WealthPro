@@ -157,18 +157,16 @@ export default function LandingPage() {
 
       {/* ── Nav ── */}
       <header style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(19,19,21,0.82)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <div style={{ ...wrap, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
-            <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-0.02em' }}>Wealth<span style={{ color: AC }}>Pro</span></span>
-            {!compact && (
-              <nav style={{ display: 'flex', gap: 22, alignItems: 'center' }}>
-                <button onClick={() => navigate('/features')} className="lp-navlink" style={{ background: 'none', border: 'none', fontFamily: 'inherit' }}>ฟีเจอร์</button>
-                <button onClick={() => navigate('/about')} className="lp-navlink" style={{ background: 'none', border: 'none', fontFamily: 'inherit' }}>เกี่ยวกับเรา</button>
-                <a href="#pricing" className="lp-navlink">ราคา</a>
-                <a href="#faq" className="lp-navlink">คำถามที่พบบ่อย</a>
-              </nav>
-            )}
-          </div>
+        <div style={{ ...wrap, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
+          <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-0.02em' }}>Wealth<span style={{ color: AC }}>Pro</span></span>
+          {!compact && (
+            <nav style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 26, alignItems: 'center' }}>
+              <button onClick={() => navigate('/features')} className="lp-navlink" style={{ background: 'none', border: 'none', fontFamily: 'inherit' }}>ฟีเจอร์</button>
+              <button onClick={() => navigate('/about')} className="lp-navlink" style={{ background: 'none', border: 'none', fontFamily: 'inherit' }}>เกี่ยวกับเรา</button>
+              <a href="#pricing" className="lp-navlink">ราคา</a>
+              <a href="#faq" className="lp-navlink">คำถามที่พบบ่อย</a>
+            </nav>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button onClick={goLogin} className="lp-btn" style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>เข้าสู่ระบบ</button>
             <button onClick={goRegister} className="lp-btn" style={{ background: AC, color: '#00201d', border: 'none', borderRadius: 10, padding: '9px 18px', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>ทดลองใช้ฟรี</button>
