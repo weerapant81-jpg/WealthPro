@@ -73,6 +73,7 @@ export default function FeaturesPage() {
               <span className="lp-navlink" style={{ color: AC }}>ฟีเจอร์</span>
               <span onClick={() => navigate('/about')} className="lp-navlink">เกี่ยวกับเรา</span>
               <span onClick={() => navigate('/#pricing')} className="lp-navlink">ราคา</span>
+              <span onClick={() => navigate('/tutorials')} className="lp-navlink">วิดีโอสอนการใช้งาน</span>
             </nav>
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
