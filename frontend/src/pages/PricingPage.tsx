@@ -1,6 +1,10 @@
-import { Check, Crown, Sparkles, Lock } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { Check, Crown, Sparkles, Lock, Loader2, CreditCard } from 'lucide-react'
 import { PageHeader } from '../components/ui'
 import { usePlan } from '../hooks/usePlan'
+import { useAuth } from '../context/AuthContext'
+import { api } from '../lib/api'
 
 const AC = 'var(--cyan)'
 
@@ -28,17 +32,85 @@ const RANK = { free: 0, pro: 1, ai: 2 }
 
 export default function PricingPage() {
   const { plan } = usePlan()
+  const { setUser } = useAuth()
+  const [params, setParams] = useSearchParams()
+  const [busy, setBusy] = useState<string | null>(null)
+  const [msg, setMsg] = useState<{ type: 'ok' | 'info' | 'err'; text: string } | null>(null)
+
+  const paidUser = plan === 'pro' || plan === 'ai'
+
+  // กลับมาจาก Stripe Checkout — ดึงแพ็กเกจใหม่ (webhook อาจอัปเดตช้ากว่า redirect เล็กน้อย → poll สั้น ๆ)
+  useEffect(() => {
+    const status = params.get('status')
+    if (status === 'success') {
+      setMsg({ type: 'ok', text: 'ชำระเงินสำเร็จ! กำลังอัปเดตแพ็กเกจ…' })
+      let tries = 0
+      const poll = async () => {
+        try {
+          const { data } = await api.get('/auth/me')
+          setUser(data)
+          if (data?.plan && data.plan !== 'free') { setMsg({ type: 'ok', text: 'อัปเกรดแพ็กเกจเรียบร้อยแล้ว 🎉' }); return }
+        } catch { /* ignore */ }
+        if (++tries < 6) setTimeout(poll, 1500)
+        else setMsg({ type: 'ok', text: 'ชำระเงินสำเร็จ — หากแพ็กเกจยังไม่อัปเดต กรุณารีเฟรชอีกครั้งในสักครู่' })
+      }
+      poll()
+      params.delete('status'); setParams(params, { replace: true })
+    } else if (status === 'cancel') {
+      setMsg({ type: 'info', text: 'ยกเลิกการชำระเงินแล้ว — ยังไม่มีการเรียกเก็บเงิน' })
+      params.delete('status'); setParams(params, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function upgrade(target: 'pro' | 'ai') {
+    setBusy(target); setMsg(null)
+    try {
+      const { data } = await api.post('/billing/checkout', { plan: target })
+      window.location.href = data.url
+    } catch (e: any) {
+      setMsg({ type: 'err', text: e?.response?.data?.error || 'เริ่มการชำระเงินไม่สำเร็จ' })
+      setBusy(null)
+    }
+  }
+
+  async function openPortal() {
+    setBusy('portal'); setMsg(null)
+    try {
+      const { data } = await api.post('/billing/portal')
+      window.location.href = data.url
+    } catch (e: any) {
+      setMsg({ type: 'err', text: e?.response?.data?.error || 'เปิดหน้าจัดการการชำระเงินไม่สำเร็จ' })
+      setBusy(null)
+    }
+  }
+
+  const msgColor = msg?.type === 'ok' ? '#059669' : msg?.type === 'err' ? '#dc2626' : 'var(--text-secondary)'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 1040 }}>
       <PageHeader icon={Crown} title="แพ็กเกจการใช้งาน" subtitle="อัปเกรดเพื่อปลดล็อกทุกเมนูวางแผนและ AI Copilot" />
 
-      <div style={{ borderRadius: 14, border: '1px solid var(--cyan)', background: 'var(--cyan-dim)', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <Lock size={16} style={{ color: AC }} />
-        <span style={{ fontSize: 13.5, color: 'var(--text-primary)' }}>
+      {msg && (
+        <div style={{ borderRadius: 12, padding: '12px 16px', fontSize: 13.5, fontWeight: 600, color: msgColor,
+          background: msg.type === 'err' ? 'rgba(220,38,38,0.08)' : msg.type === 'ok' ? 'rgba(5,150,105,0.08)' : 'var(--card-bg)',
+          border: `1px solid ${msg.type === 'err' ? 'rgba(220,38,38,0.3)' : msg.type === 'ok' ? 'rgba(5,150,105,0.3)' : 'var(--card-border)'}` }}>
+          {msg.text}
+        </div>
+      )}
+
+      <div style={{ borderRadius: 14, border: '1px solid var(--cyan)', background: 'var(--cyan-dim)', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 13.5, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Lock size={16} style={{ color: AC }} />
           แพ็กเกจปัจจุบันของคุณคือ <b style={{ color: AC }}>{plan === 'ai' ? 'AI' : plan === 'pro' ? 'Pro' : 'Free'}</b>
           {plan === 'free' && ' — เมนูวางแผนถูกล็อกไว้ อัปเกรดเพื่อเปิดใช้งาน'}
         </span>
+        {paidUser && (
+          <button onClick={openPortal} disabled={busy === 'portal'}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 9, border: '1px solid var(--cyan)', background: 'transparent', color: AC, fontSize: 13, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}>
+            {busy === 'portal' ? <Loader2 size={14} className="spin" /> : <CreditCard size={14} />} จัดการการชำระเงิน
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: 16 }}>
@@ -62,6 +134,7 @@ export default function PricingPage() {
               <div style={{ marginBottom: 16 }}>
                 <span style={{ fontSize: 34, fontWeight: 800, color: t.popular ? AC : 'var(--text-primary)', fontFamily: 'monospace' }}>{t.price}</span>
                 <span style={{ fontSize: 13, color: 'var(--text-muted)' }}> {t.unit}</span>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginTop: 2 }}>{t.key === 'free' ? '' : 'ราคารวม VAT แล้ว'}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 9, flex: 1, marginBottom: 18 }}>
                 {t.feats.map((f, i) => (
@@ -73,14 +146,19 @@ export default function PricingPage() {
               {isCurrent
                 ? <div style={{ textAlign: 'center', padding: '10px', borderRadius: 10, border: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: 13, fontWeight: 700 }}>แพ็กเกจปัจจุบัน</div>
                 : t.key === 'free'
-                  ? <div style={{ textAlign: 'center', padding: '10px', borderRadius: 10, border: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: 13 }}>{isDowngrade ? 'รวมอยู่ในแพ็กเกจของคุณ' : '—'}</div>
-                  : <button
-                      onClick={() => { window.location.href = `mailto:info@wealthpro.cloud?subject=${encodeURIComponent('ขออัปเกรดแพ็กเกจ WealthPro — ' + t.name)}` }}
-                      style={{ padding: '11px', borderRadius: 10, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 800,
-                        background: t.popular ? AC : 'transparent', color: t.popular ? '#00201d' : 'var(--text-primary)',
-                        outline: t.popular ? 'none' : '1px solid var(--card-border)' }}>
-                      อัปเกรดเป็น {t.name}
-                    </button>}
+                  ? <div style={{ textAlign: 'center', padding: '10px', borderRadius: 10, border: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: 13 }}>{isDowngrade ? 'ปรับลดผ่าน "จัดการการชำระเงิน"' : '—'}</div>
+                  : paidUser
+                    ? <button onClick={openPortal} disabled={!!busy}
+                        style={{ padding: '11px', borderRadius: 10, border: '1px solid var(--card-border)', cursor: busy ? 'wait' : 'pointer', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 800, background: 'transparent', color: 'var(--text-primary)' }}>
+                        เปลี่ยนเป็น {t.name}
+                      </button>
+                    : <button onClick={() => upgrade(t.key as 'pro' | 'ai')} disabled={!!busy}
+                        style={{ padding: '11px', borderRadius: 10, border: 'none', cursor: busy ? 'wait' : 'pointer', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 800,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                          background: t.popular ? AC : 'transparent', color: t.popular ? '#00201d' : 'var(--text-primary)',
+                          outline: t.popular ? 'none' : '1px solid var(--card-border)', opacity: busy && busy !== t.key ? 0.6 : 1 }}>
+                        {busy === t.key && <Loader2 size={15} className="spin" />} อัปเกรดเป็น {t.name}
+                      </button>}
             </div>
           )
         })}
@@ -98,8 +176,10 @@ export default function PricingPage() {
       </div>
 
       <p style={{ fontSize: 11.5, color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.7 }}>
-        ระบบชำระเงินออนไลน์กำลังจะเปิดให้บริการเร็ว ๆ นี้ · ระหว่างนี้กรุณาติดต่อผู้ดูแลระบบเพื่ออัปเกรดแพ็กเกจ
+        ชำระเงินปลอดภัยด้วยบัตรเครดิต/เดบิตผ่าน Stripe · ตัดค่าบริการอัตโนมัติทุกเดือน · ยกเลิกได้ทุกเมื่อผ่าน "จัดการการชำระเงิน"
       </p>
+
+      <style>{`.spin{animation:spin 0.8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }

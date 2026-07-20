@@ -37,6 +37,7 @@ import { getInvestmentProfile, upsertInvestmentProfile } from '../controllers/in
 import { getMarketReturns, getAssetReturn } from '../controllers/marketreturns.controller'
 import { quoteSymbol, annualReturn } from '../controllers/settrade.controller'
 import { chatCopilot } from '../controllers/copilot.controller'
+import { createCheckout, createPortal } from '../controllers/billing.controller'
 import { listAuditLogs } from '../controllers/audit.controller'
 import { exportClient } from '../controllers/admin.controller'
 import { status2fa, setup2fa, enable2fa, disable2fa } from '../controllers/twofa.controller'
@@ -64,6 +65,10 @@ r.post('/auth/refresh', refresh)
 
 // AI Copilot
 r.post('/copilot/chat', authenticate, aiOnly, chatCopilot)
+
+// Billing (Stripe) — webhook แยกไปที่ index.ts (raw body)
+r.post('/billing/checkout', authenticate, createCheckout)
+r.post('/billing/portal', authenticate, createPortal)
 r.get('/auth/me', authenticate, me)
 // 2FA (TOTP) — บัญชี FA
 r.get('/auth/2fa/status', authenticate, status2fa)

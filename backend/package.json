@@ -31,7 +31,8 @@
     "jose": "^6.2.3",
     "jsonwebtoken": "^9.0.3",
     "otplib": "^12.0.1",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "stripe": "^22.3.2"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

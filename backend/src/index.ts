@@ -5,6 +5,7 @@ import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import routes from './routes'
+import { handleWebhook } from './controllers/billing.controller'
 import { audit } from './middleware/audit'
 import { seedAdviceRules } from './lib/seedAdviceRules'
 
@@ -18,6 +19,10 @@ app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false 
 const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
   .split(',').map(s => s.trim()).filter(Boolean)
 app.use(cors({ origin: (origin, cb) => cb(null, !origin || allowedOrigins.includes(origin)) }))
+
+// ⚠️ Stripe webhook ต้องใช้ raw body (verify signature) — ต้องมาก่อน express.json()
+app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), handleWebhook)
+
 app.use(express.json())
 
 app.get('/health', (_, res) => res.json({ ok: true }))   // ก่อน rate-limit → keep-alive ping ไม่กินโควตา
