@@ -31,6 +31,7 @@ const ForwardCashflowPage = lazy(() => import('./pages/ForwardCashflowPage'))
 const AuditLogPage = lazy(() => import('./pages/AuditLogPage'))
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'))
+const RefundPolicyPage = lazy(() => import('./pages/RefundPolicyPage'))
 const UserGuidePage = lazy(() => import('./pages/UserGuidePage'))
 const GamePage = lazy(() => import('./pages/game/GamePage'))
 const LandingPage = lazy(() => import('./pages/LandingPage'))
@@ -187,6 +188,7 @@ export default function App() {
               <Route path="/audit-log" element={<AdminRoute><AuditLogPage /></AdminRoute>} />
               <Route path="/privacy" element={<DocRoute><PrivacyPolicyPage /></DocRoute>} />
               <Route path="/terms" element={<DocRoute><TermsOfServicePage /></DocRoute>} />
+              <Route path="/refund" element={<DocRoute><RefundPolicyPage /></DocRoute>} />
               <Route path="/guide" element={<PrivateRoute><UserGuidePage /></PrivateRoute>} />
             </Routes>
             </Suspense>

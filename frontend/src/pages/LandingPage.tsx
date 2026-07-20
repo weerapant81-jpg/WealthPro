@@ -327,6 +327,7 @@ export default function LandingPage() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 22, justifyContent: 'center' }}>
             <a href="/privacy" className="lp-navlink">นโยบายความเป็นส่วนตัว</a>
             <a href="/terms" className="lp-navlink">ข้อกำหนดการใช้บริการ</a>
+            <a href="/refund" className="lp-navlink">นโยบายการคืนเงิน</a>
             <a href="/install" className="lp-navlink">ติดตั้งบน iPad</a>
             <button onClick={goLogin} className="lp-navlink" style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>เข้าสู่ระบบ</button>
           </div>
