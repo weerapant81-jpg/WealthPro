@@ -677,7 +677,7 @@ function CashFlowTab({ person }: { person: 'client' | 'spouse' }) {
           สรุปงบกระแสเงินสด
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 130px 130px', gap: 8, marginBottom: 4 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 150px 160px', gap: 8, marginBottom: 4 }}>
             <span style={{ fontSize: 11, color: 'var(--text-muted)' }}></span>
             <span style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>/ เดือน</span>
             <span style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>/ ปี</span>
@@ -689,24 +689,24 @@ function CashFlowTab({ person }: { person: 'client' | 'spouse' }) {
             { label: 'รายจ่ายเพื่อการออม/ลงทุนรวม',       value: totals.saving,   sign: '-', color: '#a78bfa', bold: false },
             { label: 'รายจ่ายรวม',                         value: totals.total,    sign: '-', color: '#fb7185', bold: true  },
           ].map(r => (
-            <div key={r.label} style={{ display: 'grid', gridTemplateColumns: '1fr 130px 130px', gap: 8,
+            <div key={r.label} style={{ display: 'grid', gridTemplateColumns: '1fr 150px 160px', gap: 8,
               fontSize: r.bold ? 14 : 13, paddingBottom: 8, borderBottom: '1px solid var(--card-border)',
               background: r.bold ? 'rgba(251,113,133,0.06)' : undefined, borderRadius: r.bold ? 6 : undefined,
               padding: r.bold ? '8px 10px' : undefined, margin: r.bold ? '4px -10px' : undefined }}>
               <span style={{ color: r.bold ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: r.bold ? 700 : 400 }}>{r.label}</span>
-              <span style={{ color: r.color, fontWeight: r.bold ? 700 : 500, textAlign: 'right' }}>{r.sign}{fmt(r.value)} ฿</span>
-              <span style={{ color: `${r.color}aa`, fontWeight: r.bold ? 700 : 500, textAlign: 'right' }}>{r.sign}{fmt(r.value * 12)} ฿</span>
+              <span style={{ color: r.color, fontWeight: r.bold ? 700 : 500, textAlign: 'right', whiteSpace: 'nowrap' }}>{r.sign}{fmt(r.value)} ฿</span>
+              <span style={{ color: `${r.color}aa`, fontWeight: r.bold ? 700 : 500, textAlign: 'right', whiteSpace: 'nowrap' }}>{r.sign}{fmt(r.value * 12)} ฿</span>
             </div>
           ))}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 130px 130px', gap: 8, alignItems: 'center', paddingTop: 4 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 150px 160px', gap: 8, alignItems: 'center', paddingTop: 4 }}>
             <div>
               <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>กระแสเงินสดสุทธิ</p>
               <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Net Cash Flow</p>
             </div>
-            <span style={{ fontSize: 18, fontWeight: 800, color: totals.net >= 0 ? '#10b981' : '#f43f5e', textAlign: 'right' }}>
+            <span style={{ fontSize: 18, fontWeight: 800, color: totals.net >= 0 ? '#10b981' : '#f43f5e', textAlign: 'right', whiteSpace: 'nowrap' }}>
               {totals.net >= 0 ? '+' : ''}{fmt(totals.net)} ฿
             </span>
-            <span style={{ fontSize: 18, fontWeight: 800, color: totals.net >= 0 ? '#10b981aa' : '#f43f5eaa', textAlign: 'right' }}>
+            <span style={{ fontSize: 18, fontWeight: 800, color: totals.net >= 0 ? '#10b981aa' : '#f43f5eaa', textAlign: 'right', whiteSpace: 'nowrap' }}>
               {totals.net >= 0 ? '+' : ''}{fmt(totals.net * 12)} ฿
             </span>
           </div>
