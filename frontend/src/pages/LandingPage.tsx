@@ -257,9 +257,9 @@ export default function LandingPage() {
       <section id="pricing" style={{ ...wrap, padding: compact ? '60px 20px' : '90px 40px' }}>
         <div style={{ textAlign: 'center', marginBottom: 48 }}>
           <h2 style={{ fontSize: compact ? 28 : 36, fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.02em' }}>แพ็กเกจที่เหมาะกับคุณ</h2>
-          <p style={{ fontSize: 16, color: 'var(--text-secondary)' }}>เริ่มใช้ฟรี — อัปเกรดเมื่อพร้อม · มีแพ็กเกจทีมสำหรับองค์กร (ระบบชำระเงินเปิดเร็ว ๆ นี้)</p>
+          <p style={{ fontSize: 16, color: 'var(--text-secondary)' }}>เริ่มใช้ฟรีได้ทันที — แพ็กเกจแบบชำระเงินจะเปิดให้บริการเร็ว ๆ นี้</p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: 20, maxWidth: 720, margin: '0 auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: 20, maxWidth: 380, margin: '0 auto' }}>
           <PriceCol name="Free" sub="สำหรับเริ่มต้นใช้งาน" price="฿0" unit="/เดือน"
             feats={['แดชบอร์ด + จัดการข้อมูลลูกค้า', 'ไม่จำกัดจำนวนลูกค้า', 'ประเมินความเสี่ยงเบื้องต้น']}
             cta="ทดลองใช้ฟรี" ctaAction={goRegister} />
@@ -271,9 +271,11 @@ export default function LandingPage() {
             feats={['ทุกฟีเจอร์ในแพ็กเกจ Pro', 'AI Copilot ผู้ช่วยวางแผน', 'วิเคราะห์เชิงลึกรายลูกค้า', 'อัปเดตฟีเจอร์ใหม่ก่อนใคร']}
             cta="เร็ว ๆ นี้" disabled />
           */}
+          {/* Enterprise — ซ่อนไว้ก่อน ค่อยเปิดเมื่อพร้อม
           <PriceCol name="Enterprise" sub="สำหรับทีม/องค์กร (รวม AI)" price="690–490" unit="฿/คน/เดือน" note="ยิ่งทีมใหญ่ ยิ่งถูกต่อคน"
             feats={['ทุกฟีเจอร์ + AI Copilot', '5–10 คน · 690 ฿/คน', '11–20 คน · 590 ฿/คน', 'มากกว่า 20 คน · 490 ฿/คน', 'ช่วยตั้งค่า/อบรมให้ทีม']}
             cta="ติดต่อสอบถาม" ctaAction={() => { window.location.href = 'mailto:info@wealthpro.cloud?subject=สอบถามแพ็กเกจ Enterprise WealthPro' }} />
+          */}
         </div>
       </section>
 
