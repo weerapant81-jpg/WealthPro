@@ -164,7 +164,7 @@ export default function LandingPage() {
               <button onClick={() => navigate('/features')} className="lp-navlink" style={{ background: 'none', border: 'none', fontFamily: 'inherit' }}>ฟีเจอร์</button>
               <button onClick={() => navigate('/about')} className="lp-navlink" style={{ background: 'none', border: 'none', fontFamily: 'inherit' }}>เกี่ยวกับเรา</button>
               <a href="#pricing" className="lp-navlink">ราคา</a>
-              <a href="#faq" className="lp-navlink">คำถามที่พบบ่อย</a>
+              <button onClick={() => navigate('/tutorials')} className="lp-navlink" style={{ background: 'none', border: 'none', fontFamily: 'inherit' }}>วิดีโอสอนการใช้งาน</button>
             </nav>
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -312,7 +312,6 @@ export default function LandingPage() {
             <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>© {new Date().getFullYear()} Ultimate Life Advisor Co., Ltd. · สงวนลิขสิทธิ์</div>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 22, justifyContent: 'center' }}>
-            <a href="/tutorials" className="lp-navlink">วิดีโอสอนการใช้งาน</a>
             <a href="/privacy" className="lp-navlink">นโยบายความเป็นส่วนตัว</a>
             <a href="/terms" className="lp-navlink">ข้อกำหนดการใช้บริการ</a>
             <a href="/install" className="lp-navlink">ติดตั้งบน iPad</a>
