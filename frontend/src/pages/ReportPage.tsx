@@ -1035,10 +1035,6 @@ export default function ReportPage() {
                 </div>
               )
             })()}
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748b', margin: '10px 0 4px' }}>ความเห็น/หมายเหตุเพิ่มเติม (ที่ปรึกษา)</div>
-            <textarea value={secs['exs2_status']?.text ?? ''} onChange={e => setText('exs2_status', e.target.value)}
-              placeholder="พิมพ์ความเห็นของที่ปรึกษาเกี่ยวกับสถานะการเงินปัจจุบัน..." rows={3}
-              style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: 8, padding: '8px 12px', fontFamily: 'inherit', fontSize: 12.5, color: '#1e293b', outline: 'none', resize: 'vertical', background: 'transparent' }} />
           </div>
           {/* เป้าหมายของท่าน — ดึงจากหน้าเป้าหมายทางการเงินอัตโนมัติ + ช่องคอมเมนต์ */}
           <div style={{ marginBottom: 18 }}>
@@ -1085,10 +1081,6 @@ export default function ReportPage() {
                 </div>
               )
             })()}
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748b', margin: '10px 0 4px' }}>ความเห็น/หมายเหตุเพิ่มเติม (ที่ปรึกษา)</div>
-            <textarea value={secs['exs2_goals']?.text ?? ''} onChange={e => setText('exs2_goals', e.target.value)}
-              placeholder="พิมพ์ความเห็นของที่ปรึกษาเกี่ยวกับเป้าหมายของลูกค้า..." rows={3}
-              style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: 8, padding: '8px 12px', fontFamily: 'inherit', fontSize: 12.5, color: '#1e293b', outline: 'none', resize: 'vertical', background: 'transparent' }} />
           </div>
           {/* สรุปผลการวิเคราะห์ — จากผลวิเคราะห์จริง (สุขภาพการเงิน/เกษียณ/ประกัน/การศึกษา) + ช่องคอมเมนต์ */}
           <div style={{ marginBottom: 18 }}>
