@@ -979,31 +979,7 @@ export default function ReportPage() {
       )
     }
     if (kind === 'execsum') {
-      // ── บทสรุปผู้บริหาร: 3 กล่อง bullet พิมพ์ได้+เพิ่มแถวได้ (ค่าเริ่มต้นเติมตัวเลขจริง) + สรุปแผนดำเนินการจากข้อมูล ──
-      const EMPTY4 = ['', '', '', '']
-      const RowsBox = ({ k, title, defaults }: { k: string; title: string; defaults: string[] }) => {
-        const rows = (secs[k]?.text ?? '') !== '' ? (secs[k]!.text).split('\n') : defaults
-        const save = (r: string[]) => setText(k, r.length ? r.join('\n') : ' ')
-        return (
-          <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>{title}</div>
-            <div style={{ border: '1px solid #cbd5e1', borderRadius: 8, overflow: 'hidden' }}>
-              {rows.map((r, i2) => (
-                <div key={i2} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: i2 < rows.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                  <span style={{ color: '#64748b', flexShrink: 0 }}>–</span>
-                  <input value={r} onChange={e => save(rows.map((x, j) => j === i2 ? e.target.value : x))}
-                    placeholder="พิมพ์ข้อความ"
-                    style={{ flex: 1, border: 'none', borderBottom: '1px dashed #cbd5e1', outline: 'none', background: 'transparent', fontFamily: 'inherit', fontSize: 12.5, color: '#1e293b', padding: '2px 0' }} />
-                  <button className="no-print" onClick={() => save(rows.filter((_, j) => j !== i2))} title="ลบแถว"
-                    style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: 13, padding: 0, flexShrink: 0 }}>✕</button>
-                </div>
-              ))}
-            </div>
-            <button className="no-print" onClick={() => save([...rows, ''])}
-              style={{ marginTop: 5, padding: '3px 12px', borderRadius: 7, border: '1px dashed #cbd5e1', background: 'transparent', color: '#64748b', fontSize: 11.5, cursor: 'pointer' }}>+ เพิ่มแถว</button>
-          </div>
-        )
-      }
+      // ── บทสรุปผู้บริหาร: สถานะการเงิน + เป้าหมาย + ผลวิเคราะห์ (สรุปอัตโนมัติจากข้อมูลจริง) + ช่องคอมเมนต์ ──
       // สรุปแผนดำเนินการ — ดึงจากแผนปฏิบัติการ (แหล่งเดียวกับหน้า action)
       const ownerTh = (o: string) => o === 'client' ? 'ลูกค้า' : o === 'advisor' ? 'ที่ปรึกษา' : o === 'spouse' ? 'คู่สมรส' : (o || '')
       const PR_LBL: Record<string, string> = { high: 'สูง', medium: 'กลาง', low: 'ต่ำ' }
@@ -1114,7 +1090,34 @@ export default function ReportPage() {
               placeholder="พิมพ์ความเห็นของที่ปรึกษาเกี่ยวกับเป้าหมายของลูกค้า..." rows={3}
               style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: 8, padding: '8px 12px', fontFamily: 'inherit', fontSize: 12.5, color: '#1e293b', outline: 'none', resize: 'vertical', background: 'transparent' }} />
           </div>
-          <RowsBox k="exs2_analysis" title="สรุปผลการวิเคราะห์" defaults={EMPTY4} />
+          {/* สรุปผลการวิเคราะห์ — จากผลวิเคราะห์จริง (สุขภาพการเงิน/เกษียณ/ประกัน/การศึกษา) + ช่องคอมเมนต์ */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>สรุปผลการวิเคราะห์</div>
+            {(() => {
+              const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
+                <div style={{ display: 'flex', gap: 10, padding: '8px 12px', borderBottom: '1px solid #f1f5f9', fontSize: 12, lineHeight: 1.6 }}>
+                  <span style={{ fontWeight: 800, color: '#0f172a', minWidth: 128, flexShrink: 0 }}>{label}</span>
+                  <span style={{ color: '#334155' }}>{children}</span>
+                </div>
+              )
+              const clr = (pct: number) => pct >= 100 ? GREENR : pct >= 60 ? AMBERR : REDR
+              const rows: React.ReactNode[] = []
+              if (ratios?.healthScore != null)
+                rows.push(<Row key="h" label="สุขภาพการเงินรวม"><b style={{ color: TEAL }}>{ratios.healthScore}/100</b>{ratios.healthLabel ? ` · ${ratios.healthLabel}` : ''}</Row>)
+              if (retR)
+                rows.push(<Row key="r" label="ความพร้อมเกษียณ">ความพร้อม <b style={{ color: clr(retR.readinessPct) }}>{retR.readinessPct}%</b> · ต้องการ {fmt(retR.needed)} · เตรียมแล้ว {fmt(retR.have)}{retR.gap > 0 ? <> · ยังขาด <b style={{ color: REDR }}>{fmt(retR.gap)}</b> บาท (ต้องออมเพิ่ม {fmt(retR.annualSavings)} บาท/ปี)</> : <> · <b style={{ color: GREENR }}>เพียงพอ</b></>}</Row>)
+              if (insR && insR.need > 0)
+                rows.push(<Row key="i" label="ความคุ้มครองประกัน">ควรมีทุน {fmt(insR.need)} · มีแล้ว {fmt(insR.have)}{insR.gap > 0 ? <> · ยังขาด <b style={{ color: REDR }}>{fmt(insR.gap)}</b> บาท</> : <> · <b style={{ color: GREENR }}>เพียงพอ</b></>}</Row>)
+              if (eduR && eduR.childCount > 0)
+                rows.push(<Row key="e" label="ทุนการศึกษาบุตร">ค่าเล่าเรียนรวม {fmt(eduR.totalNominal)} · เตรียมวันนี้ (PV) {fmt(eduR.totalPV)} · ต้องออม <b>{fmt(eduR.monthlySaving)}</b> บาท/เดือน</Row>)
+              if (rows.length === 0) return <div style={{ fontSize: 12.5, color: '#64748b', padding: '4px 0' }}>ยังไม่มีผลวิเคราะห์เพียงพอ — กรอกข้อมูลในหน้าวางแผนการเงิน</div>
+              return <div style={{ border: '1px solid #cbd5e1', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>{rows}</div>
+            })()}
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748b', margin: '10px 0 4px' }}>ความเห็น/หมายเหตุเพิ่มเติม (ที่ปรึกษา)</div>
+            <textarea value={secs['exs2_analysis']?.text ?? ''} onChange={e => setText('exs2_analysis', e.target.value)}
+              placeholder="พิมพ์บทสรุป/ข้อเสนอแนะภาพรวมจากการวิเคราะห์..." rows={3}
+              style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: 8, padding: '8px 12px', fontFamily: 'inherit', fontSize: 12.5, color: '#1e293b', outline: 'none', resize: 'vertical', background: 'transparent' }} />
+          </div>
           <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>สรุปแผนดำเนินการ</div>
           {lines.length === 0
             ? <div style={{ fontSize: 12, color: '#94a3b8' }}>ยังไม่มีรายการในแผนปฏิบัติการ</div>
