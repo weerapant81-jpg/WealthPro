@@ -994,12 +994,19 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   // เป้าหมายทางการเงินทั้งหมด: กรอกเอง (financialGoals) + เกษียณ + ทุนการศึกษาบุตร
   const goalItems = useMemo(() => {
     const items: { name: string; when: string; amount: number; cat: string; owner?: string }[] = []
-    const bands: ('short' | 'medium' | 'long')[] = ['short', 'medium', 'long']
-    const bandLabel: Record<string, string> = { short: 'ระยะสั้น (≤3 ปี)', medium: 'ระยะกลาง (3–7 ปี)', long: 'ระยะยาว (>7 ปี)' }
-    const pushGoals = (g: any, owner: string) => bands.forEach(b => (g?.[b] ?? []).forEach((r: any) => {
+    // กลุ่มเป้าหมายที่กรอกเอง: 3 ด้าน (ประกัน/การศึกษา/เกษียณ) + 3 ระยะเวลา
+    const groups: { k: string; fallback: string }[] = [
+      { k: 'insurance', fallback: 'ความเสี่ยง & ประกัน' },
+      { k: 'education', fallback: 'ทุนการศึกษาบุตร' },
+      { k: 'retirement', fallback: 'การเกษียณ' },
+      { k: 'short', fallback: 'ระยะสั้น (≤3 ปี)' },
+      { k: 'medium', fallback: 'ระยะกลาง (3–7 ปี)' },
+      { k: 'long', fallback: 'ระยะยาว (>7 ปี)' },
+    ]
+    const pushGoals = (g: any, owner: string) => groups.forEach(grp => (g?.[grp.k] ?? []).forEach((r: any) => {
       if (!r?.name?.trim()) return
       const td = r.targetDate ? String(r.targetDate).trim() : ''
-      const when = td ? (/^\d+$/.test(td) ? `ภายใน ${td} ปี` : td) : bandLabel[b]
+      const when = td ? (/^\d+$/.test(td) ? `ภายใน ${td} ปี` : td) : grp.fallback
       items.push({ name: r.name, when, amount: toNum(r.targetAmount), cat: 'manual', owner })
     }))
     const fg = client?.financialGoals || {}
