@@ -1,7 +1,7 @@
 ﻿import { Router } from 'express'
 import { register, login, googleAuth, appleAuth, refresh, me, verifyEmail, resendVerify, forgotPassword, resetPassword, getAdvisorProfile, saveAdvisorProfile } from '../controllers/auth.controller'
 import { getClientProfile, upsertClientProfile } from '../controllers/client.controller'
-import { listUsers, approveUser, rejectUser, archiveUser, unarchiveUser, listClients, getAdvisorSummary, getPlanReviews, createClient, updateClient, deleteClient } from '../controllers/admin.controller'
+import { listUsers, approveUser, rejectUser, archiveUser, unarchiveUser, listClients, getAdvisorSummary, getPlanReviews, createClient, updateClient, deleteClient, setUserPlan } from '../controllers/admin.controller'
 import {
   getAppointments, createAppointment, updateAppointment, deleteAppointment,
   getTasks, createTask, updateTask, deleteTask,
@@ -42,7 +42,11 @@ import { exportClient } from '../controllers/admin.controller'
 import { status2fa, setup2fa, enable2fa, disable2fa } from '../controllers/twofa.controller'
 import { getConsent, grantConsent, revokeConsent } from '../controllers/consent.controller'
 import { createGameLead, listGameLeads, updateGameLead } from '../controllers/gamelead.controller'
-import { authenticate, requireAdmin, requireSuperAdmin } from '../middleware/auth'
+import { authenticate, requireAdmin, requireSuperAdmin, requirePlan } from '../middleware/auth'
+
+// กั้นตามแพ็กเกจ
+const proOnly = requirePlan('pro')      // Pro ขึ้นไป
+const aiOnly = requirePlan('copilot')   // เฉพาะ AI
 
 const r = Router()
 
@@ -59,7 +63,7 @@ r.post('/auth/apple', appleAuth)
 r.post('/auth/refresh', refresh)
 
 // AI Copilot
-r.post('/copilot/chat', authenticate, chatCopilot)
+r.post('/copilot/chat', authenticate, aiOnly, chatCopilot)
 r.get('/auth/me', authenticate, me)
 // 2FA (TOTP) — บัญชี FA
 r.get('/auth/2fa/status', authenticate, status2fa)
@@ -78,6 +82,7 @@ r.get('/admin/users', authenticate, requireSuperAdmin, listUsers)
 r.put('/admin/users/:id/approve', authenticate, requireSuperAdmin, approveUser)
 r.put('/admin/users/:id/archive', authenticate, requireSuperAdmin, archiveUser)
 r.put('/admin/users/:id/unarchive', authenticate, requireSuperAdmin, unarchiveUser)
+r.patch('/admin/users/:id/plan', authenticate, requireSuperAdmin, setUserPlan)
 r.get('/clients', authenticate, requireAdmin, listClients)
 r.post('/clients', authenticate, requireAdmin, createClient)
 r.put('/clients/:id', authenticate, requireAdmin, updateClient)
@@ -141,42 +146,42 @@ r.put('/profile', authenticate, upsertProfile)
 r.get('/assumption-defaults', authenticate, requireAdmin, getAssumptionDefaults)
 r.put('/assumption-defaults', authenticate, requireSuperAdmin, setAssumptionDefaults)
 
-r.get('/retirement-plan', authenticate, getRetirementPlan)
-r.put('/retirement-plan', authenticate, saveRetirementPlan)
+r.get('/retirement-plan', authenticate, proOnly, getRetirementPlan)
+r.put('/retirement-plan', authenticate, proOnly, saveRetirementPlan)
 
-r.get('/pvd-plan', authenticate, getPvdPlan)
-r.put('/pvd-plan', authenticate, savePvdPlan)
+r.get('/pvd-plan', authenticate, proOnly, getPvdPlan)
+r.put('/pvd-plan', authenticate, proOnly, savePvdPlan)
 
-r.get('/sso-plan', authenticate, getSsoPlan)
-r.put('/sso-plan', authenticate, saveSsoPlan)
+r.get('/sso-plan', authenticate, proOnly, getSsoPlan)
+r.put('/sso-plan', authenticate, proOnly, saveSsoPlan)
 
-r.get('/severance-plan', authenticate, getSeverancePlan)
-r.put('/severance-plan', authenticate, saveSeverancePlan)
+r.get('/severance-plan', authenticate, proOnly, getSeverancePlan)
+r.put('/severance-plan', authenticate, proOnly, saveSeverancePlan)
 
-r.get('/cashflow-plan', authenticate, getCashflowPlan)
-r.put('/cashflow-plan', authenticate, saveCashflowPlan)
-r.get('/rebalance-plan', authenticate, getRebalancePlan)
-r.put('/rebalance-plan', authenticate, saveRebalancePlan)
-r.get('/estate-plan', authenticate, getEstatePlan)
-r.put('/estate-plan', authenticate, saveEstatePlan)
-r.get('/action-items', authenticate, listActionItems)
-r.post('/action-items', authenticate, createActionItem)
-r.patch('/action-items/:id', authenticate, updateActionItem)
-r.delete('/action-items/:id', authenticate, deleteActionItem)
-r.put('/plan-review-date', authenticate, setPlanReviewDate)
-r.put('/action-plan-advice', authenticate, setActionPlanAdvice)
+r.get('/cashflow-plan', authenticate, proOnly, getCashflowPlan)
+r.put('/cashflow-plan', authenticate, proOnly, saveCashflowPlan)
+r.get('/rebalance-plan', authenticate, proOnly, getRebalancePlan)
+r.put('/rebalance-plan', authenticate, proOnly, saveRebalancePlan)
+r.get('/estate-plan', authenticate, proOnly, getEstatePlan)
+r.put('/estate-plan', authenticate, proOnly, saveEstatePlan)
+r.get('/action-items', authenticate, proOnly, listActionItems)
+r.post('/action-items', authenticate, proOnly, createActionItem)
+r.patch('/action-items/:id', authenticate, proOnly, updateActionItem)
+r.delete('/action-items/:id', authenticate, proOnly, deleteActionItem)
+r.put('/plan-review-date', authenticate, proOnly, setPlanReviewDate)
+r.put('/action-plan-advice', authenticate, proOnly, setActionPlanAdvice)
 
-r.get('/insurance-plan', authenticate, getInsurancePlan)
-r.put('/insurance-plan', authenticate, saveInsurancePlan)
+r.get('/insurance-plan', authenticate, proOnly, getInsurancePlan)
+r.put('/insurance-plan', authenticate, proOnly, saveInsurancePlan)
 
-r.get('/education-plan', authenticate, getEducationPlan)
-r.put('/education-plan', authenticate, saveEducationPlan)
+r.get('/education-plan', authenticate, proOnly, getEducationPlan)
+r.put('/education-plan', authenticate, proOnly, saveEducationPlan)
 
-r.get('/tax-plan', authenticate, getTaxPlan)
-r.put('/tax-plan', authenticate, saveTaxPlan)
+r.get('/tax-plan', authenticate, proOnly, getTaxPlan)
+r.put('/tax-plan', authenticate, proOnly, saveTaxPlan)
 
-r.get('/report-plan', authenticate, getReportPlan)
-r.put('/report-plan', authenticate, saveReportPlan)
+r.get('/report-plan', authenticate, proOnly, getReportPlan)
+r.put('/report-plan', authenticate, proOnly, saveReportPlan)
 
 r.get('/projection', authenticate, getProjection)
 r.get('/financial-ratios', authenticate, getFinancialRatios)

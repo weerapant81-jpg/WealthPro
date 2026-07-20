@@ -32,6 +32,7 @@ const AuditLogPage = lazy(() => import('./pages/AuditLogPage'))
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'))
 const RefundPolicyPage = lazy(() => import('./pages/RefundPolicyPage'))
+const PricingPage = lazy(() => import('./pages/PricingPage'))
 const UserGuidePage = lazy(() => import('./pages/UserGuidePage'))
 const GamePage = lazy(() => import('./pages/game/GamePage'))
 const LandingPage = lazy(() => import('./pages/LandingPage'))
@@ -102,6 +103,20 @@ function ClientRoute({ children }: { children: React.ReactNode }) {
 // FA (ADMIN) และผู้ให้บริการ (SUPER_ADMIN) = "นักวางแผน" ที่มีสิทธิ์เต็ม
 export const isAdvisor = (role?: string) => role === 'ADMIN' || role === 'SUPER_ADMIN'
 
+// หน้าที่ผูกกับลูกค้า + ต้องมีแพ็กเกจ (Pro/AI) — Free ถูกเด้งไป /pricing
+function PlanRoute({ children, feature = 'pro' }: { children: React.ReactNode; feature?: 'pro' | 'ai' }) {
+  const { user, loading } = useAuth()
+  const { selectedClient } = useClient()
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">กำลังโหลด...</div>
+  if (!user) return <Navigate to="/login" replace />
+  const full = user.role === 'SUPER_ADMIN' || user.role === 'USER'
+  const plan = full ? 'ai' : (user.plan || 'free')
+  const ok = feature === 'ai' ? plan === 'ai' : (plan === 'pro' || plan === 'ai')
+  if (!ok) return <Navigate to="/pricing" replace />
+  if (isAdvisor(user.role) && !selectedClient) return <Navigate to="/clients" replace />
+  return <Layout>{children}</Layout>
+}
+
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">กำลังโหลด...</div>
@@ -168,27 +183,28 @@ export default function App() {
               <Route path="/verify-email" element={<VerifyEmailPage />} />
               <Route path="/" element={<HomeRoute />} />
               <Route path="/income" element={<ClientRoute><IncomePage /></ClientRoute>} />
-              <Route path="/financial-plan" element={<ClientRoute><FinancialPlanPage /></ClientRoute>} />
-              <Route path="/action-plan" element={<ClientRoute><ActionPlanPage /></ClientRoute>} />
-              <Route path="/goals" element={<ClientRoute><RetirementPlanPage /></ClientRoute>} />
-              <Route path="/education" element={<ClientRoute><EducationPlanPage /></ClientRoute>} />
-              <Route path="/insurance-plan" element={<ClientRoute><InsurancePlanPage /></ClientRoute>} />
-              <Route path="/projection" element={<ClientRoute><ProjectionPage /></ClientRoute>} />
+              <Route path="/financial-plan" element={<PlanRoute><FinancialPlanPage /></PlanRoute>} />
+              <Route path="/action-plan" element={<PlanRoute><ActionPlanPage /></PlanRoute>} />
+              <Route path="/goals" element={<PlanRoute><RetirementPlanPage /></PlanRoute>} />
+              <Route path="/education" element={<PlanRoute><EducationPlanPage /></PlanRoute>} />
+              <Route path="/insurance-plan" element={<PlanRoute><InsurancePlanPage /></PlanRoute>} />
+              <Route path="/projection" element={<PlanRoute><ProjectionPage /></PlanRoute>} />
               <Route path="/settings" element={<ClientRoute><SettingsPage /></ClientRoute>} />
               <Route path="/user-profile" element={<PrivateRoute><UserProfilePage /></PrivateRoute>} />
               <Route path="/calculator" element={<PrivateRoute><CalculatorPage /></PrivateRoute>} />
-              <Route path="/report" element={<ClientRoute><ReportPage /></ClientRoute>} />
+              <Route path="/report" element={<PlanRoute><ReportPage /></PlanRoute>} />
               <Route path="/client" element={<ClientRoute><ClientProfilePage /></ClientRoute>} />
               <Route path="/admin" element={<SuperAdminRoute><AdminPage /></SuperAdminRoute>} />
               <Route path="/risk" element={<ClientRoute><RiskAssessmentPage /></ClientRoute>} />
-              <Route path="/tax" element={<ClientRoute><TaxPlanningPage /></ClientRoute>} />
-              <Route path="/forward-cashflow" element={<ClientRoute><ForwardCashflowPage /></ClientRoute>} />
+              <Route path="/tax" element={<PlanRoute><TaxPlanningPage /></PlanRoute>} />
+              <Route path="/forward-cashflow" element={<PlanRoute><ForwardCashflowPage /></PlanRoute>} />
               <Route path="/investment" element={<PrivateRoute><InvestmentAssumptionPage /></PrivateRoute>} />
               <Route path="/clients" element={<AdminRoute><ClientsPage /></AdminRoute>} />
               <Route path="/audit-log" element={<AdminRoute><AuditLogPage /></AdminRoute>} />
               <Route path="/privacy" element={<DocRoute><PrivacyPolicyPage /></DocRoute>} />
               <Route path="/terms" element={<DocRoute><TermsOfServicePage /></DocRoute>} />
               <Route path="/refund" element={<DocRoute><RefundPolicyPage /></DocRoute>} />
+              <Route path="/pricing" element={<PrivateRoute><PricingPage /></PrivateRoute>} />
               <Route path="/guide" element={<PrivateRoute><UserGuidePage /></PrivateRoute>} />
             </Routes>
             </Suspense>

@@ -4,10 +4,11 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+import { usePlan } from '../hooks/usePlan'
 import { useClient } from '../context/ClientContext'
 import { logout } from '../lib/auth'
 import CopilotWidget from './CopilotWidget'
-import { LayoutDashboard, Target, Settings, LogOut, ClipboardList, ClipboardCheck, ShieldCheck, Calculator, Users, RefreshCw, Sun, Moon, UserCog, Menu, ChevronLeft, ChevronRight, ChevronDown, User, Shield, TrendingUp, Wallet, Activity, Briefcase, Scale, HeartPulse, GraduationCap, CalendarRange, ScrollText, Receipt, Search, ArrowRight, FileText, BookOpen
+import { LayoutDashboard, Target, Settings, LogOut, ClipboardList, ClipboardCheck, ShieldCheck, Calculator, Users, RefreshCw, Sun, Moon, UserCog, Menu, ChevronLeft, ChevronRight, ChevronDown, User, Shield, TrendingUp, Wallet, Activity, Briefcase, Scale, HeartPulse, GraduationCap, CalendarRange, ScrollText, Receipt, Search, ArrowRight, FileText, BookOpen, Lock
 } from 'lucide-react'
 
 // เมนูย่อยของ "ข้อมูลลูกค้า" (ขับแท็บด้วย ?tab=)
@@ -47,15 +48,16 @@ const menuItem: CSSProperties = {
 const nav = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/client', icon: ClipboardList, label: 'ข้อมูลลูกค้า' },
-  { to: '/financial-plan', icon: Target, label: 'วางแผนการเงิน' },
-  { to: '/action-plan', icon: ClipboardCheck, label: 'แผนปฏิบัติการ' },
-  { to: '/forward-cashflow', icon: CalendarRange, label: 'งบการเงินล่วงหน้า' },
+  { to: '/financial-plan', icon: Target, label: 'วางแผนการเงิน', feature: 'pro' as const },
+  { to: '/action-plan', icon: ClipboardCheck, label: 'แผนปฏิบัติการ', feature: 'pro' as const },
+  { to: '/forward-cashflow', icon: CalendarRange, label: 'งบการเงินล่วงหน้า', feature: 'pro' as const },
   { to: '/calculator', icon: Calculator, label: 'เครื่องคิดเลข' },
   { to: '/settings', icon: Settings, label: 'สมมติฐาน' },
 ]
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { user } = useAuth()
+  const { hasPro, hasAI } = usePlan()
   const { selectedClient, setSelectedClient } = useClient()
   const navigate = useNavigate()
   const location = useLocation()
@@ -192,7 +194,20 @@ export default function Layout({ children }: { children: ReactNode }) {
 
       {/* Nav */}
       <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, padding: asRail ? '10px 8px' : '12px 12px', overflowY: 'auto' }}>
-        {navLinks.map(({ to, icon: Icon, label }) => {
+        {navLinks.map(({ to, icon: Icon, label, feature }) => {
+          // เมนูที่ต้องมีแพ็กเกจ Pro แต่ผู้ใช้ยังไม่มี → แสดงกุญแจ คลิกไปหน้าแพ็กเกจ
+          const locked = (feature as string) === 'pro' && !hasPro
+          if (locked) {
+            return (
+              <button key={to} title={asRail ? `${label} (ต้องมีแพ็กเกจ Pro)` : undefined}
+                onClick={() => { navigate('/pricing'); setDrawerOpen(false) }}
+                style={{ ...linkStyle(false, asRail), width: '100%', border: 'none', cursor: 'pointer', opacity: 0.55, position: 'relative' }}>
+                <Icon size={18} />
+                {!asRail && <span style={{ flex: 1, textAlign: 'left' }}>{label}</span>}
+                <Lock size={asRail ? 11 : 14} style={asRail ? { position: 'absolute', top: 6, right: 6 } : undefined} />
+              </button>
+            )
+          }
           // เมนูที่มีเมนูย่อย (ข้อมูลลูกค้า / วางแผนการเงิน)
           if (EXPANDABLE[to]) return renderExpandable(asRail, to, Icon, label)
           return (
@@ -406,7 +421,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           {children}
         </main>
       </div>
-      <CopilotWidget />
+      {hasAI && <CopilotWidget />}
     </div>
   )
 }

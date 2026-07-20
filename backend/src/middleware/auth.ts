@@ -1,6 +1,7 @@
 ﻿import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { prisma } from '../lib/prisma'
+import { effectivePlan, hasFeature, Feature } from '../lib/plan'
 
 export interface AuthRequest extends Request {
   userId?: string
@@ -45,6 +46,26 @@ export async function requireAdmin(req: AuthRequest, res: Response, next: NextFu
     return
   }
   next()
+}
+
+/** กั้น route ตามแพ็กเกจของ FA ที่ล็อกอิน (SUPER_ADMIN/USER ผ่านเสมอ) — ตอบ 403 PLAN_REQUIRED */
+export function requirePlan(feature: Feature) {
+  return async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    if (!req.userId) {
+      res.status(401).json({ error: 'Unauthorized' })
+      return
+    }
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { role: true, plan: true, planExpiresAt: true },
+    })
+    const plan = effectivePlan(user)
+    if (!hasFeature(plan, feature)) {
+      res.status(403).json({ error: 'PLAN_REQUIRED', need: feature === 'copilot' ? 'ai' : 'pro' })
+      return
+    }
+    next()
+  }
 }
 
 export async function requireSuperAdmin(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {

@@ -16,6 +16,9 @@ interface AdminUser {
   isApproved: boolean
   archivedAt: string | null
   createdAt: string
+  plan?: string
+  planExpiresAt?: string | null
+  planOverride?: boolean
 }
 
 export default function AdminPage() {
@@ -47,6 +50,11 @@ export default function AdminPage() {
   })
   const unarchive = useMutation({
     mutationFn: (id: string) => api.put(`/admin/users/${id}/unarchive`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
+  })
+  // SUPER_ADMIN ตั้งแพ็กเกจให้ FA รายคน (ระหว่างยังไม่มีระบบชำระเงินอัตโนมัติ)
+  const setPlan = useMutation({
+    mutationFn: ({ id, plan }: { id: string; plan: string }) => api.patch(`/admin/users/${id}/plan`, { plan }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
   })
 
@@ -92,7 +100,7 @@ export default function AdminPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--card-border)' }}>
-                  {['ชื่อ', 'อีเมล', 'เบอร์โทร', 'วันเกิด', 'ยืนยันอีเมล', 'สถานะ', 'วันสมัคร', 'การจัดการ'].map(h => (
+                  {['ชื่อ', 'อีเมล', 'เบอร์โทร', 'วันเกิด', 'ยืนยันอีเมล', 'สถานะ', 'แพ็กเกจ', 'วันสมัคร', 'การจัดการ'].map(h => (
                     <th key={h} style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-muted)', fontWeight: 500 }}>{h}</th>
                   ))}
                 </tr>
@@ -115,6 +123,17 @@ export default function AdminPage() {
                       <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 4, background: u.isApproved ? 'rgba(14,165,233,0.1)' : 'rgba(245,158,11,0.1)', color: u.isApproved ? 'var(--cyan)' : '#f59e0b' }}>
                         {u.isApproved ? 'อนุมัติแล้ว' : 'รออนุมัติ'}
                       </span>
+                    </td>
+                    <td style={{ padding: '12px 12px' }}>
+                      <select value={u.plan || 'free'} onChange={e => setPlan.mutate({ id: u.id, plan: e.target.value })}
+                        title={u.planExpiresAt ? `หมดอายุ ${new Date(u.planExpiresAt).toLocaleDateString('th-TH')}` : 'ไม่หมดอายุ'}
+                        style={{ padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                          border: '1px solid var(--card-border)', background: 'var(--input-bg)',
+                          color: u.plan === 'ai' ? 'var(--cyan)' : u.plan === 'pro' ? '#f59e0b' : 'var(--text-muted)' }}>
+                        <option value="free">Free</option>
+                        <option value="pro">Pro</option>
+                        <option value="ai">AI</option>
+                      </select>
                     </td>
                     <td style={{ padding: '12px 12px', color: 'var(--text-muted)' }}>
                       {new Date(u.createdAt).toLocaleDateString('th-TH')}

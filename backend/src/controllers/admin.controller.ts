@@ -169,10 +169,31 @@ export async function listUsers(req: AuthRequest, res: Response): Promise<void> 
     select: {
       id: true, email: true, name: true, phone: true, birthDate: true,
       role: true, isEmailVerified: true, isApproved: true, archivedAt: true, createdAt: true,
+      plan: true, planExpiresAt: true, planOverride: true,
     },
     orderBy: { createdAt: 'desc' },
   })
   res.json(users)
+}
+
+// SUPER_ADMIN ตั้งแพ็กเกจให้ FA รายคน (บัญชี comp / แก้ปัญหาชำระเงิน) → planOverride=true กัน webhook ทับ
+export async function setUserPlan(req: AuthRequest, res: Response): Promise<void> {
+  const id = req.params.id as string
+  const { plan, planExpiresAt } = req.body as { plan?: string; planExpiresAt?: string | null }
+  if (!plan || !['free', 'pro', 'ai'].includes(plan)) {
+    res.status(400).json({ error: 'plan ต้องเป็น free | pro | ai' })
+    return
+  }
+  const user = await prisma.user.update({
+    where: { id },
+    data: {
+      plan,
+      planExpiresAt: planExpiresAt ? new Date(planExpiresAt) : null,
+      planOverride: true,
+    },
+    select: { id: true, email: true, name: true, plan: true, planExpiresAt: true, planOverride: true },
+  })
+  res.json(user)
 }
 
 // นำนักวางแผนออกจากรายการ (ลาออก/ไม่ชำระเงิน) — บล็อกล็อกอินแต่ยังเก็บข้อมูลไว้

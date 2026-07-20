@@ -7,6 +7,7 @@ import { createRemoteJWKSet, jwtVerify } from 'jose'
 import { prisma } from '../lib/prisma'
 import { sendVerifyEmail, sendResetPasswordEmail } from '../lib/mailer'
 import { verifyTwoFactor } from '../lib/twofa'
+import { effectivePlan } from '../lib/plan'
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173'
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID
@@ -316,9 +317,10 @@ export async function refresh(req: Request, res: Response): Promise<void> {
 export async function me(req: Request & { userId?: string }, res: Response): Promise<void> {
   const user = await prisma.user.findUnique({
     where: { id: req.userId },
-    select: { id: true, email: true, name: true, role: true, profile: true }
+    select: { id: true, email: true, name: true, role: true, profile: true, plan: true, planExpiresAt: true }
   })
-  res.json(user)
+  if (!user) { res.json(null); return }
+  res.json({ ...user, plan: effectivePlan(user), planExpiresAt: user.planExpiresAt })
 }
 
 // ── Advisor (own) profile — always the logged-in user, not a selected client ──

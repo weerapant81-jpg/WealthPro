@@ -30,6 +30,12 @@ model User {
   resetPasswordExpires DateTime?
   isApproved         Boolean   @default(false)
   archivedAt         DateTime? // นำนักวางแผนออกจากรายการ (ลาออก/ไม่ชำระเงิน) — บล็อกล็อกอินแต่ยังเก็บข้อมูลไว้
+  // ── Subscription / แพ็กเกจ (เฉพาะบัญชี FA) ──
+  plan                 String    @default("free") // free | pro | ai
+  planExpiresAt        DateTime? // หมดอายุ → ตกกลับ free (null = ไม่หมดอายุ เช่น SUPER_ADMIN ตั้งเอง)
+  planOverride         Boolean   @default(false)  // SUPER_ADMIN ตั้งเอง → webhook ไม่ทับ
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?
   advisorProfile     Json?
   createdById        String?   // FA (ADMIN/SUPER_ADMIN) ที่สร้างลูกค้ารายนี้
   // ── 2FA (TOTP) — เฉพาะบัญชี FA ──
