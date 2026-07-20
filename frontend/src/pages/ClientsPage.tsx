@@ -64,7 +64,7 @@ export default function ClientsPage() {
       resetForm()
       if (!wasEdit) selectClient(c, '/client')   // สร้างใหม่ → เลือก + ไปหน้ากรอกข้อมูลทันที
     },
-    onError: (e: any) => setErr(e?.response?.data?.error || e?.message || 'บันทึกไม่สำเร็จ'),
+    onError: (e: any) => setErr(e?.response?.data?.message || e?.response?.data?.error || e?.message || 'บันทึกไม่สำเร็จ'),
   })
 
   const del = useMutation({

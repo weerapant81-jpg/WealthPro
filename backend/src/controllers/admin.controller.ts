@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '../lib/prisma'
 import { AuthRequest } from '../middleware/auth'
 import { decryptField } from '../lib/crypto'
+import { effectivePlan, FREE_CLIENT_LIMIT } from '../lib/plan'
 
 // FA/Admin: สร้าง "ลูกค้า" (User role USER) — เป็น data record ที่ FA ดูแล ไม่ต้อง login เอง
 export async function createClient(req: AuthRequest, res: Response): Promise<void> {
@@ -18,6 +19,15 @@ export async function createClient(req: AuthRequest, res: Response): Promise<voi
   if (!phone || !String(phone).trim()) {
     res.status(400).json({ error: 'กรุณาระบุเบอร์โทรศัพท์' })
     return
+  }
+  // แพ็กเกจ Free จำกัดลูกค้าได้สูงสุด 5 คน (Pro/AI ไม่จำกัด · SUPER_ADMIN ไม่จำกัด)
+  const owner = await prisma.user.findUnique({ where: { id: req.userId }, select: { role: true, plan: true, planExpiresAt: true } })
+  if (effectivePlan(owner) === 'free') {
+    const count = await prisma.user.count({ where: { role: 'USER', createdById: req.userId } })
+    if (count >= FREE_CLIENT_LIMIT) {
+      res.status(403).json({ error: 'PLAN_LIMIT', message: `แพ็กเกจ Free เพิ่มลูกค้าได้สูงสุด ${FREE_CLIENT_LIMIT} คน — อัปเกรดเป็น Pro เพื่อเพิ่มลูกค้าได้ไม่จำกัด` })
+      return
+    }
   }
   const finalEmail = String(email).trim().toLowerCase()
   const existing = await prisma.user.findUnique({ where: { email: finalEmail } })

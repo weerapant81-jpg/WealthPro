@@ -261,7 +261,7 @@ export default function LandingPage() {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: 20, maxWidth: 380, margin: '0 auto' }}>
           <PriceCol name="Free" sub="สำหรับเริ่มต้นใช้งาน" price="฿0" unit="/เดือน"
-            feats={['แดชบอร์ด + จัดการข้อมูลลูกค้า', 'ไม่จำกัดจำนวนลูกค้า', 'ประเมินความเสี่ยงเบื้องต้น']}
+            feats={['แดชบอร์ด + จัดการข้อมูลลูกค้า', 'ลูกค้าสูงสุด 5 คน', 'ประเมินความเสี่ยงเบื้องต้น']}
             cta="ทดลองใช้ฟรี" ctaAction={goRegister} />
           {/* Pro / AI แพ็กเกจ — ซ่อนไว้ก่อน ค่อยเปิดเมื่อระบบชำระเงินพร้อม
           <PriceCol name="Pro" sub="ทุกเมนู (ไม่รวม AI)" price="฿590" unit="/เดือน" note="เปิดให้บริการเร็ว ๆ นี้"

@@ -11,6 +11,9 @@ export const PLANS: Record<Plan, { label: string; price: number }> = {
   ai:   { label: 'AI',   price: 890 },
 }
 
+/** จำนวนลูกค้าสูงสุดของแพ็กเกจ Free (Pro/AI = ไม่จำกัด) */
+export const FREE_CLIENT_LIMIT = 5
+
 /** ลำดับสิทธิ์ — ยิ่งสูงยิ่งครอบคลุม */
 const RANK: Record<Plan, number> = { free: 0, pro: 1, ai: 2 }
 
