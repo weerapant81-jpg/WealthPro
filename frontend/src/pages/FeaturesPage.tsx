@@ -88,7 +88,7 @@ export default function FeaturesPage() {
         <div style={{ ...wrap, padding: compact ? '52px 20px 60px' : '84px 40px 90px', position: 'relative', textAlign: 'center' }}>
           <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.14em', color: AC, marginBottom: 16 }}>ฟีเจอร์ทั้งหมด</div>
           <h1 style={{ fontSize: compact ? 32 : 44, fontWeight: 800, lineHeight: 1.2, letterSpacing: '-0.02em', margin: '0 auto 20px', maxWidth: 780 }}>
-            รายงานและสไลด์นำเสนอระดับพรีเมียม <span style={{ color: AC }}>จบงานได้ในคลิกเดียว</span>
+            รายงานและสไลด์นำเสนอระดับพรีเมียม <span style={{ color: AC }}>จบงานได้ในแอพเดียว</span>
           </h1>
           <p style={{ fontSize: 16.5, color: 'var(--text-secondary)', lineHeight: 1.75, maxWidth: 620, margin: '0 auto 32px' }}>
             สร้างรายงานฉบับเต็มและสไลด์นำเสนอกว่า 20 หน้าที่สวยงามเป็นมืออาชีพ พร้อมส่งมอบให้ลูกค้าทันที — ไม่ต้องเสียเวลาทำเองใน PowerPoint หรือ Excel
