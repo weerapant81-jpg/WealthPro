@@ -314,6 +314,7 @@ export default function LandingPage() {
             <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>© {new Date().getFullYear()} Ultimate Life Advisor Co., Ltd. · สงวนลิขสิทธิ์</div>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 22, justifyContent: 'center' }}>
+            <a href="/tutorials" className="lp-navlink">วิดีโอสอนการใช้งาน</a>
             <a href="/privacy" className="lp-navlink">นโยบายความเป็นส่วนตัว</a>
             <a href="/terms" className="lp-navlink">ข้อกำหนดการใช้บริการ</a>
             <a href="/install" className="lp-navlink">ติดตั้งบน iPad</a>

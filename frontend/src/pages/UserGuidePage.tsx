@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   BookOpen, ChevronDown, Users, ClipboardList, Target, Sparkles, FileText,
-  ShieldCheck, Calculator, Settings, Rocket,
+  ShieldCheck, Calculator, Settings, Rocket, PlayCircle,
 } from 'lucide-react'
 import { PageHeader } from '../components/ui'
 import { card } from '../styles/dark'
@@ -96,9 +97,14 @@ function Accordion({ g, open, onToggle }: { g: Group; open: boolean; onToggle: (
 
 export default function UserGuidePage() {
   const [open, setOpen] = useState<number | null>(0)
+  const navigate = useNavigate()
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 820 }}>
       <PageHeader icon={BookOpen} title="คู่มือการใช้งาน" subtitle="วิธีใช้ WealthPro ตั้งแต่เริ่มต้นจนออกรายงาน" />
+      <button onClick={() => navigate('/tutorials')}
+        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderRadius: 12, border: '1px solid var(--cyan)', background: 'var(--cyan-dim)', color: 'var(--cyan-light)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+        <PlayCircle size={20} /> ดูวิดีโอสอนการใช้งาน (ศูนย์เรียนรู้)
+      </button>
       {GROUPS.map((g, i) => (
         <Accordion key={i} g={g} open={open === i} onToggle={() => setOpen(open === i ? null : i)} />
       ))}

@@ -37,6 +37,7 @@ const LandingPage = lazy(() => import('./pages/LandingPage'))
 const InstallGuidePage = lazy(() => import('./pages/InstallGuidePage'))
 const FeaturesPage = lazy(() => import('./pages/FeaturesPage'))
 const AboutPage = lazy(() => import('./pages/AboutPage'))
+const TutorialsPage = lazy(() => import('./pages/TutorialsPage'))
 
 const qc = new QueryClient()
 
@@ -149,6 +150,7 @@ export default function App() {
               <Route path="/install" element={<InstallGuidePage />} />
               <Route path="/features" element={<FeaturesPage />} />
               <Route path="/about" element={<AboutPage />} />
+              <Route path="/tutorials" element={<DocRoute><TutorialsPage /></DocRoute>} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />
               <Route path="/" element={<HomeRoute />} />
