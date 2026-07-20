@@ -1031,7 +1031,39 @@ export default function ReportPage() {
           <p style={{ fontSize: 12.5, color: '#334155', lineHeight: 1.85, marginBottom: 16, textAlign: 'justify', textIndent: 28 }}>
             รายงานนี้ใช้แบบจำลองทางการเงินเพื่อแสดงภาพสถานะทางการเงินในปัจจุบันของท่าน รวมถึงแนวทางที่เป็นไปได้สำหรับอนาคต อย่างไรก็ตาม ภาวะเศรษฐกิจและตลาดในอนาคตไม่สามารถคาดการณ์ได้อย่างแน่นอนและอาจเปลี่ยนแปลงได้ สมมติฐานที่ใช้เป็นเพียงตัวแทนของสภาวะเศรษฐกิจและตลาดที่อาจเกิดขึ้น โดยมีวัตถุประสงค์เพื่อสนับสนุนการพิจารณาแนวทางที่เหมาะสมทั้งในปัจจุบันและอนาคต เพื่อให้ท่านสามารถบริหารและรักษาสถานะทางการเงินได้ภายใต้สภาวการณ์ที่เปลี่ยนแปลง
           </p>
-          <RowsBox k="exs2_status" title="สถานะทางการเงินในปัจจุบัน" defaults={EMPTY4} />
+          {/* สถานะทางการเงินในปัจจุบัน — สรุปอัตโนมัติจากข้อมูลจริง + ช่องคอมเมนต์ */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>สถานะทางการเงินในปัจจุบัน</div>
+            {(() => {
+              const smx: any = sm
+              const liquidA = toNum(smx.liquidAssets), investA = toNum(smx.investAssets), personalA = toNum(smx.personalTotal)
+              const totalA = toNum(smx.totalAssets), debtB = toNum(smx.totalDebtBalance), netW = toNum(smx.netWorth)
+              const incomeY = toNum(smx.totalAnnualIncome)
+              const expY = toNum(smx.totalMonthlyExp) * 12
+              const saveY = toNum(smx.annualSavings)
+              const netCF = incomeY - expY
+              const emMonths = toNum(smx.totalMonthlyExp) > 0 ? liquidA / toNum(smx.totalMonthlyExp) : 0
+              const savingsRate = toNum(smx.monthlyIncome) > 0 ? (saveY / (toNum(smx.monthlyIncome) * 12)) * 100 : 0
+              const debtToAsset = totalA > 0 ? (debtB / totalA) * 100 : 0
+              const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
+                <div style={{ display: 'flex', gap: 10, padding: '8px 12px', borderBottom: '1px solid #f1f5f9', fontSize: 12, lineHeight: 1.6 }}>
+                  <span style={{ fontWeight: 800, color: '#0f172a', minWidth: 118, flexShrink: 0 }}>{label}</span>
+                  <span style={{ color: '#334155' }}>{children}</span>
+                </div>
+              )
+              return (
+                <div style={{ border: '1px solid #cbd5e1', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
+                  <Row label="สินทรัพย์ & หนี้สิน">สินทรัพย์รวม <b>{fmt(totalA)}</b> บาท (สภาพคล่อง {fmt(liquidA)} · ลงทุน {fmt(investA)} · ส่วนตัว {fmt(personalA)}) · หนี้สินรวม <b style={{ color: REDR }}>{fmt(debtB)}</b> บาท · ความมั่งคั่งสุทธิ <b style={{ color: GREENR }}>{fmt(netW)}</b> บาท</Row>
+                  <Row label="รายรับ & รายจ่าย">รายรับรวม <b>{fmt(incomeY)}</b> บาท/ปี · รายจ่ายรวม <b style={{ color: REDR }}>{fmt(expY)}</b> บาท/ปี · เงินออม <b>{fmt(saveY)}</b> บาท/ปี · กระแสเงินสดสุทธิ <b style={{ color: netCF >= 0 ? GREENR : REDR }}>{fmt(netCF)}</b> บาท/ปี</Row>
+                  <Row label="อัตราส่วนการเงิน">เงินสำรองฉุกเฉิน <b>{emMonths.toFixed(1)}</b> เดือน · หนี้สินต่อสินทรัพย์ <b>{debtToAsset.toFixed(0)}%</b> · อัตราการออม <b>{savingsRate.toFixed(0)}%</b></Row>
+                </div>
+              )
+            })()}
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748b', margin: '10px 0 4px' }}>ความเห็น/หมายเหตุเพิ่มเติม (ที่ปรึกษา)</div>
+            <textarea value={secs['exs2_status']?.text ?? ''} onChange={e => setText('exs2_status', e.target.value)}
+              placeholder="พิมพ์ความเห็นของที่ปรึกษาเกี่ยวกับสถานะการเงินปัจจุบัน..." rows={3}
+              style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: 8, padding: '8px 12px', fontFamily: 'inherit', fontSize: 12.5, color: '#1e293b', outline: 'none', resize: 'vertical', background: 'transparent' }} />
+          </div>
           <RowsBox k="exs2_goals" title="เป้าหมายของท่าน" defaults={EMPTY4} />
           <RowsBox k="exs2_analysis" title="สรุปผลการวิเคราะห์" defaults={EMPTY4} />
           <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>สรุปแผนดำเนินการ</div>
