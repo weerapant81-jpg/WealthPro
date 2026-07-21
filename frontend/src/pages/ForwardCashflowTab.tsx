@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { calc, calcTax, defaultState, type TaxState } from '../lib/tax'
+import { annualIncome, isAnnualIncome, taxCodeOf } from '../lib/income'
 import { createPortal } from 'react-dom'
 import { Plus, Trash2, Check, Loader2, RefreshCw, X, Maximize2, FileText } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -102,26 +103,28 @@ function seedData(
 
   // รายได้จากการทำงาน — ทำงานปีสุดท้ายคืออายุ (เกษียณ − 1), พอถึงปีเกษียณรายได้ทำงาน = 0
   const workEnd = retireAge - 1
-  // เงินเดือน — ดึงทุกงานจากรายรับ (เช่น งานประจำ + ที่ปรึกษา); fallback = cp.salary
-  const salaryJobs = srcs.filter(s => s.label === 'เงินเดือน' && toNum(s.amount) > 0)
+  // เงินเดือน — แถวที่ auto (ดึงจากข้อมูลการทำงาน); fallback = cp.salary · backward-compat label 'เงินเดือน'
+  const isSalaryRow = (s: any) => (s.auto || s.label === 'เงินเดือน')
+  const salaryJobs = srcs.filter(s => isSalaryRow(s) && toNum(s.amount) > 0)
   if (salaryJobs.length) {
-    for (const s of salaryJobs) d.incomeWork.push({ id: uid(), label: s.source ? `เงินเดือน — ${s.source}` : 'เงินเดือน', base: toNum(s.amount) * 12, growth: raise || 5, startAge: currentAge, endAge: workEnd, auto: true })
+    for (const s of salaryJobs) d.incomeWork.push({ id: uid(), label: s.source ? `เงินเดือน — ${s.source}` : 'เงินเดือน', base: annualIncome(s), growth: raise || 5, startAge: currentAge, endAge: workEnd, auto: true })
   } else if (salaryM > 0) {
     d.incomeWork.push({ id: uid(), label: 'เงินเดือน', base: salaryM * 12, growth: raise || 5, startAge: currentAge, endAge: workEnd, auto: true })
   } else {
     d.incomeWork.push({ id: uid(), label: 'เงินเดือน', base: 600000, growth: 5, startAge: currentAge, endAge: workEnd })
   }
-  const bonus = srcs.find(s => s.label === 'โบนัส')
-  d.incomeWork.push({ id: uid(), label: 'โบนัส', base: bonus ? toNum(bonus.amount) : 0, growth: raise || 5, startAge: currentAge, endAge: workEnd, auto: !!bonus })
-  const extra = srcs.find(s => s.label === 'รายได้จากอาชีพเสริม')
-  if (extra && toNum(extra.amount) > 0) d.incomeWork.push({ id: uid(), label: 'รายได้จากอาชีพเสริม', base: toNum(extra.amount) * 12, growth: 5, startAge: currentAge, endAge: workEnd, auto: true })
+  // โบนัส = 40(1) แบบรายปี ที่ไม่ใช่แถวเงินเดือน (หรือ label 'โบนัส' เดิม)
+  const bonus = srcs.find(s => !isSalaryRow(s) && ((taxCodeOf(s.label) === '1' && isAnnualIncome(s)) || (s.label || '').includes('โบนัส')))
+  d.incomeWork.push({ id: uid(), label: 'โบนัส', base: bonus ? annualIncome(bonus) : 0, growth: raise || 5, startAge: currentAge, endAge: workEnd, auto: !!bonus })
+  // อาชีพเสริม/ธุรกิจ = 40(8)
+  const extra = srcs.find(s => taxCodeOf(s.label) === '8' || (s.label || '').includes('อาชีพเสริม'))
+  if (extra && toNum(extra.amount) > 0) d.incomeWork.push({ id: uid(), label: extra.source || 'รายได้จากธุรกิจ/อาชีพเสริม', base: annualIncome(extra), growth: 5, startAge: currentAge, endAge: workEnd, auto: true })
 
-  // รายได้จากทรัพย์สิน
-  const rent = srcs.find(s => s.label === 'รายได้จากค่าเช่า')
-  const divd = srcs.find(s => s.label === 'เงินปันผล')
-  const invs = srcs.find(s => s.label === 'รายได้จากการลงทุน')
-  d.incomeAsset.push({ id: uid(), label: 'รายได้จากค่าเช่า', base: rent ? toNum(rent.amount) * 12 : 0, growth: prof?.rentInflation ?? 4, startAge: currentAge, endAge: retireAge - 1, auto: !!rent })
-  d.incomeAsset.push({ id: uid(), label: 'เงินปันผล/ดอกเบี้ย', base: (divd ? toNum(divd.amount) * 12 : 0) + (invs ? toNum(invs.amount) * 12 : 0), growth: 0, startAge: currentAge, endAge: retireAge - 1, auto: !!(divd || invs) })
+  // รายได้จากทรัพย์สิน — ค่าเช่า 40(5) · เงินปันผล/ดอกเบี้ย 40(4)
+  const rent = srcs.find(s => taxCodeOf(s.label) === '5' || (s.label || '').includes('ค่าเช่า'))
+  const divInv = srcs.filter(s => taxCodeOf(s.label) === '4' || /เงินปันผล|รายได้จากการลงทุน/.test(s.label || ''))
+  d.incomeAsset.push({ id: uid(), label: 'รายได้จากค่าเช่า', base: rent ? annualIncome(rent) : 0, growth: prof?.rentInflation ?? 4, startAge: currentAge, endAge: retireAge - 1, auto: !!rent })
+  d.incomeAsset.push({ id: uid(), label: 'เงินปันผล/ดอกเบี้ย', base: divInv.reduce((sum, s) => sum + annualIncome(s), 0), growth: 0, startAge: currentAge, endAge: retireAge - 1, auto: divInv.length > 0 })
 
   // ค่าใช้จ่าย (จาก /expenses) — แยกตาม prefix
   const fx = (expenses ?? []).filter(e => String(e.category).startsWith('fixed_'))

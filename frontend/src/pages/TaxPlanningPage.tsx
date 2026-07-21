@@ -6,6 +6,7 @@ import { useIsCompact } from '../hooks/useViewport'
 import { calc, defaultState, BRACKETS, expenseFor, type TaxState, type ExpenseKey } from '../lib/tax'
 import { MoneyInput } from '../components/MoneyInput'
 import { hasSpouseInfo } from '../lib/spouse'
+import { annualIncome, taxCodeOf } from '../lib/income'
 
 /* ── helpers ── */
 const fmt = (n: number) => (isFinite(n) ? Math.round(n) : 0).toLocaleString('th-TH')
@@ -40,19 +41,22 @@ function mapIncomeSources(sources: any): Partial<TaxState> | null {
   if (!Array.isArray(sources)) return null
   const acc = { income40_1: 0, income40_2: 0, income40_3: 0, prof40_6: 0, income40_7: 0, rental: 0, dividend: 0, interest: 0, other40: 0 }
   for (const s of sources) {
-    const raw = parseFloat(String(s?.amount ?? '').replace(/,/g, '')) || 0
-    if (raw <= 0) continue
+    const annual = annualIncome(s)   // freq-aware (รายเดือน ×12 · รายปี ตามยอด · เผื่อ 'โบนัส' เดิม)
+    if (annual <= 0) continue
+    const code = taxCodeOf(s?.label)
     const txt = `${s?.label || ''} ${s?.source || ''}`
-    if (s?.label === 'โบนัส' || /โบนัส/.test(txt)) acc.income40_1 += raw                 // โบนัสเป็นรายปีอยู่แล้ว
-    else if (/เงินเดือน|ค่าจ้าง|salary/.test(txt)) acc.income40_1 += raw * 12             // รายเดือน → รายปี
-    else if (/ค่าเช่า|เช่า|rent/.test(txt)) acc.rental += raw * 12
-    else if (/ปันผล|dividend/.test(txt)) acc.dividend += raw * 12
-    else if (/ดอกเบี้ย|ลงทุน|interest|invest/.test(txt)) acc.interest += raw * 12
-    else if (/ลิขสิทธิ์|goodwill|สิทธิบัตร/.test(txt)) acc.income40_3 += raw * 12
-    else if (/คอมมิช|นายหน้า|commission/.test(txt)) acc.income40_2 += raw * 12
-    else if (/วิชาชีพ|แพทย์|ทนาย|วิศวก|สถาปนิก|บัญชี/.test(txt)) acc.prof40_6 += raw * 12
-    else if (/รับเหมา|contractor/.test(txt)) acc.income40_7 += raw * 12
-    else acc.other40 += raw * 12                                                          // อาชีพเสริม/อื่นๆ
+    // จัดหมวดจากรหัส 40(x) ที่ผู้ใช้เลือกก่อน · ถ้าไม่มีค่อย fallback ด้วยคำในข้อความ (ข้อมูลเก่า)
+    if (code === '1' || (!code && /เงินเดือน|ค่าจ้าง|โบนัส|salary/.test(txt))) acc.income40_1 += annual
+    else if (code === '2' || (!code && /คอมมิช|นายหน้า|เบี้ยประชุม|commission/.test(txt))) acc.income40_2 += annual
+    else if (code === '3' || (!code && /ลิขสิทธิ์|goodwill|สิทธิบัตร/.test(txt))) acc.income40_3 += annual
+    else if (code === '4' || (!code && /ปันผล|ดอกเบี้ย|ลงทุน|dividend|interest|invest/.test(txt))) {
+      if (/ดอกเบี้ย|interest/.test(txt)) acc.interest += annual
+      else acc.dividend += annual                                                          // 40(4) default = เงินปันผล
+    }
+    else if (code === '5' || (!code && /ค่าเช่า|เช่า|rent/.test(txt))) acc.rental += annual
+    else if (code === '6' || (!code && /วิชาชีพ|แพทย์|ทนาย|วิศวก|สถาปนิก|บัญชี/.test(txt))) acc.prof40_6 += annual
+    else if (code === '7' || (!code && /รับเหมา|contractor/.test(txt))) acc.income40_7 += annual
+    else acc.other40 += annual                                                             // 40(8)/อื่นๆ
   }
   return Object.values(acc).some(v => v > 0) ? acc : null
 }
@@ -135,6 +139,7 @@ export default function TaxPlanningPage() {
   }
 
   const [person, setPerson] = useState<'self' | 'spouse'>('self')
+  const [showAllInc, setShowAllInc] = useState(false)   // เงินได้พึงประเมิน: แสดงเฉพาะที่มีรายได้ / ทั้งหมด
   const [selfS, setSelfS] = useState<TaxState>(defaultState())
   const [spouseS, setSpouseS] = useState<TaxState>(defaultState())
   const s = person === 'self' ? selfS : spouseS
@@ -238,6 +243,8 @@ export default function TaxPlanningPage() {
   ]
   const totInc = incomeRows.reduce((a, r) => a + r.inc, 0)
   const totExp = incomeRows.reduce((a, r) => a + r.exp, 0)
+  // แสดงเฉพาะประเภทที่มีรายได้ (ดึงจากที่มาของรายได้) · กดปุ่มเพื่อเผยประเภทอื่นสำหรับกรอกเพิ่มเอง
+  const visibleIncomeRows = showAllInc ? incomeRows : incomeRows.filter(r => r.inc > 0)
 
   // ── สิทธิ์ลดหย่อนคงเหลือ (ยังทำเพิ่มได้อีกเท่าไหร่ตามเพดาน เพื่อลดภาษี) ──
   const net1 = c.ti - c.expD                          // เงินได้หลังหักค่าใช้จ่าย (ฐาน % ตาม lib/tax)
@@ -349,8 +356,8 @@ export default function TaxPlanningPage() {
                   <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textAlign: 'right' }}>ค่าใช้จ่าย</span>
                   <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textAlign: 'right' }}>เงินหลังค่าใช้จ่าย</span>
                 </div>
-                {/* rows */}
-                {incomeRows.map(r => (
+                {/* rows — แสดงเฉพาะประเภทที่มีรายได้ (ดึงจากที่มาของรายได้) */}
+                {visibleIncomeRows.map(r => (
                   <div key={r.sec + r.key} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px,1.4fr) 138px 112px 126px', gap: 8, alignItems: 'center', padding: '9px 2px', borderBottom: '1px solid var(--divider)' }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -376,6 +383,16 @@ export default function TaxPlanningPage() {
                     <div style={{ fontSize: 12.5, fontFamily: 'monospace', textAlign: 'right', fontWeight: 600, color: 'var(--text-primary)' }}>{fmt(r.inc - r.exp)}</div>
                   </div>
                 ))}
+                {visibleIncomeRows.length === 0 && (
+                  <div style={{ fontSize: 12.5, color: 'var(--text-muted)', padding: '12px 2px' }}>
+                    ยังไม่มีรายได้ — เพิ่มได้ที่หน้า “ข้อมูลลูกค้า → ที่มาของรายได้” หรือกด “แสดงทุกประเภท” เพื่อกรอกเอง
+                  </div>
+                )}
+                {/* toggle แสดงทุกประเภท/เฉพาะที่มีรายได้ */}
+                <button onClick={() => setShowAllInc(v => !v)}
+                  style={{ marginTop: 8, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--cyan-light)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', padding: '2px 0' }}>
+                  {showAllInc ? '− แสดงเฉพาะประเภทที่มีรายได้' : '+ แสดงทุกประเภทเงินได้ (เพื่อกรอกเพิ่มเอง)'}
+                </button>
                 {/* total */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(150px,1.4fr) 138px 112px 126px', gap: 8, alignItems: 'center', padding: '11px 2px 2px', marginTop: 4, borderTop: '2px solid var(--card-border)' }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>รวม</span>

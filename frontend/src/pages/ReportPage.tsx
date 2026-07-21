@@ -12,6 +12,7 @@ import { useInsuranceReadiness } from '../hooks/useInsuranceReadiness'
 import { useEducationReadiness } from '../hooks/useEducationReadiness'
 import { calc as calcTaxCalc, defaultState as defaultTaxState, expenseFor, BRACKETS, type TaxState } from '../lib/tax'
 import { hasSpouseInfo } from '../lib/spouse'
+import { monthlyIncome as incMonthly, annualIncome as incAnnual, isAnnualIncome as isAnnualInc } from '../lib/income'
 import { useInsuranceCoverage } from '../components/InsuranceCoverageSummary'
 import { PORTFOLIO_SETS, DEFAULT_ASSETS, DEFAULT_CORR, computePortfolio, applyMarketData, applyCorrelation } from '../lib/portfolioReturns'
 
@@ -1266,8 +1267,8 @@ export default function ReportPage() {
       const incomeList = (sources: any, fallbackSalary = 0) => {
         const arr = (Array.isArray(sources) ? sources : []).map((r: any) => {
           const amt = toNum(r?.amount)
-          const isBonus = (r?.label || '').includes('โบนัส')
-          return { label: r?.source ? `${r.label} · ${r.source}` : (r?.label || 'รายได้'), amount: amt, yearly: isBonus ? amt : amt * 12, isBonus }
+          const annual = incAnnual(r)
+          return { label: r?.source ? `${r.label} · ${r.source}` : (r?.label || 'รายได้'), amount: amt, yearly: annual, isBonus: isAnnualInc(r) }
         }).filter((r: any) => r.amount > 0)
         if (arr.length === 0 && fallbackSalary > 0) arr.push({ label: 'เงินเดือน', amount: fallbackSalary, yearly: fallbackSalary * 12, isBonus: false })
         return arr
@@ -1649,7 +1650,7 @@ export default function ReportPage() {
       // งบกระแสเงินสด — รายรับจาก incomeSources + รายจ่ายรายรายการจาก /expenses (ลูกค้า + แชร์ครึ่ง)
       const incRows = (((isSp ? client?.spouseIncomeSources : client?.incomeSources) ?? []) as any[])
         .filter(sc => toNum(sc.amount) > 0)
-        .map(sc => { const m = sc.label === 'โบนัส' ? toNum(sc.amount) / 12 : toNum(sc.amount); return { name: sc.label || 'รายรับ', note: sc.source, m, v: m * 12 } })
+        .map(sc => { const m = incMonthly(sc); return { name: sc.label || 'รายรับ', note: sc.source, m, v: m * 12 } })
       const expRows = (prefix: string) => (expensesQ ?? [])
         .filter((e: any) => String(e.category).startsWith(prefix) && (e.person === (isSp ? 'spouse' : 'client') || e.person === 'shared'))
         .map((e: any) => { const m0 = toMonthly2(toNum(e.amount), e.frequency); const m = e.person === 'shared' ? m0 / 2 : m0; return { name: e.name, note: e.person === 'shared' ? 'แชร์ร่วมกัน (ครึ่งหนึ่ง)' : undefined, m, v: m * 12 } })

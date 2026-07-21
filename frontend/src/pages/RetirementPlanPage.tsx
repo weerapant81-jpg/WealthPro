@@ -6,6 +6,7 @@ import {
   ReferenceLine, ResponsiveContainer, Area, ComposedChart, Bar,
 } from 'recharts'
 import { Calculator, Plus, Trash2, TrendingUp, Check, Loader2 } from 'lucide-react'
+import { annualIncome } from '../lib/income'
 import { ChartFrame, TableExcelButton } from '../components/exportable'
 import { MoneyInput } from '../components/MoneyInput'
 import { useIsCompact } from '../hooks/useViewport'
@@ -510,7 +511,7 @@ function PersonPanel({ data, onChange, color, isSelf }: {
     const srcs: any[] = isSelf ? (clientProfile.incomeSources ?? []) : (clientProfile.spouseIncomeSources ?? [])
     const toN = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
     let annual = srcs.filter((s: any) => toN(s.amount) > 0)
-      .reduce((sum: number, s: any) => sum + (s.label === 'โบนัส' ? toN(s.amount) : toN(s.amount) * 12), 0)
+      .reduce((sum: number, s: any) => sum + annualIncome(s), 0)
     if (annual <= 0) {
       const spJob = Array.isArray(clientProfile.spouseJobs) ? clientProfile.spouseJobs[0] : null
       annual = (isSelf ? toN(clientProfile.salary) : (toN(spJob?.salary) || toN(clientProfile.spouseIncome))) * 12

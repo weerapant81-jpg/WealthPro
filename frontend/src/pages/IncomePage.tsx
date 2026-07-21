@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import { Plus, Trash2, Pencil, Check, X, Wallet } from 'lucide-react'
 import { PageHeader } from '../components/ui'
 import { card, inp, sel, btn } from '../styles/dark'
+import { monthlyIncome as incMonthly, annualIncome as incAnnual } from '../lib/income'
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { ChartFrame } from '../components/exportable'
 import BalanceSheetTab from './BalanceSheetTab'
@@ -416,7 +417,7 @@ function CashFlowSidebar({ incomeSources, totals }: {
   totals: { income: number; fixed: number; variable: number; saving: number; net: number }
 }) {
   const incomeData = incomeSources.filter(s => s.amount && parseFloat(s.amount) > 0).map(s => {
-    const monthly = s.label === 'โบนัส' ? (parseFloat(s.amount) || 0) / 12 : (parseFloat(s.amount) || 0)
+    const monthly = incMonthly(s)
     return { name: s.label || 'รายได้', value: Math.round(monthly * 12 * 100) / 100 }
   })
 
@@ -437,7 +438,7 @@ function CashFlowSidebar({ incomeSources, totals }: {
 
 // ==================== CashFlow Tab ====================
 
-type IncomeSource = { label: string; source: string; amount: string }
+type IncomeSource = { label: string; source: string; amount: string; freq?: string; auto?: boolean }
 
 function ImportedIncomeRow({ label, source, monthly, annual, totalAnnualIncome }: {
   label: string; source?: string; monthly: number; annual: number; totalAnnualIncome: number
@@ -542,11 +543,8 @@ function CashFlowTab({ person }: { person: 'client' | 'spouse' }) {
     .filter(d => d.monthly > 0)
   const debtMonthly = debtRows.reduce((x, d) => x + d.monthly, 0)
 
-  // income from incomeSources: โบนัส is annual lump sum; others are monthly
-  const incomeMonthly = (src: IncomeSource) => {
-    const amt = parseFloat(src.amount) || 0
-    return src.label === 'โบนัส' ? amt / 12 : amt
-  }
+  // income from incomeSources: ใช้ helper กลาง (freq รายเดือน/รายปี · เผื่อ backward-compat 'โบนัส')
+  const incomeMonthly = (src: IncomeSource) => incMonthly(src)
 
   const totals = useMemo(() => {
     const income   = incomeSources.filter(s => s.amount).reduce((sum, s) => sum + incomeMonthly(s), 0)
@@ -572,7 +570,7 @@ function CashFlowTab({ person }: { person: 'client' | 'spouse' }) {
         )}
         {incomeSources.filter(s => s.amount && parseFloat(s.amount) > 0).map((s, i) => {
           const monthly = incomeMonthly(s)
-          const annual  = s.label === 'โบนัส' ? parseFloat(s.amount) || 0 : monthly * 12
+          const annual  = incAnnual(s)
           return (
             <ImportedIncomeRow
               key={i}

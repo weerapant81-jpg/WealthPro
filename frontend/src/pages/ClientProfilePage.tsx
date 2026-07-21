@@ -10,6 +10,7 @@ import { TableExcelButton } from '../components/exportable'
 import { WizardNav } from '../components/WizardNav'
 import { ThaiDateInput } from '../components/ThaiDateInput'
 import { fixThaiMojibake } from '../lib/fixThaiMojibake'
+import { INCOME_40_LABELS, INCOME_FREQS, migrateIncomeLabel, annualIncome, type IncomeSource as ISType } from '../lib/income'
 import { MoneyInputStr as CommaInput } from '../components/MoneyInput'
 import InsuranceTab from './InsuranceTab'
 import InvestmentProfileTab from './InvestmentProfileTab'
@@ -33,9 +34,8 @@ const EDUCATION_LEVELS = [
 type Child = { name: string; age: string; school: string }
 type Job = { occupation: string; jobTitle: string; company: string; workYears: string; salary: string; salaryIncreaseRate: string }
 const emptyJob = (): Job => ({ occupation: '', jobTitle: '', company: '', workYears: '', salary: '', salaryIncreaseRate: '' })
-type IncomeSource = { label: string; source: string; amount: string }
-const INCOME_SOURCE_LABELS = ['เงินเดือน', 'รายได้จากอาชีพเสริม', 'รายได้จากการลงทุน', 'รายได้จากค่าเช่า', 'เงินปันผล', 'โบนัส', 'อื่นๆ']
-const emptyIncomeSource = (): IncomeSource => ({ label: '', source: '', amount: '' })
+type IncomeSource = ISType
+const emptyIncomeSource = (): IncomeSource => ({ label: '', source: '', amount: '', freq: 'รายเดือน' })
 
 const defaultForm = {
   firstName: '', lastName: '', nickname: '', birthDate: '', nationalId: '',
@@ -301,16 +301,12 @@ export default function ClientProfilePage() {
   const [additionalJobs, setAdditionalJobs] = useState<Job[]>([])
   const [spouseJobs, setSpouseJobs] = useState<Job[]>([emptyJob()])
   const [incomeSources, setIncomeSources] = useState<IncomeSource[]>([
-    { label: 'เงินเดือน', source: '', amount: '' },
-    { label: 'รายได้จากอาชีพเสริม', source: '', amount: '' },
-    { label: 'รายได้จากการลงทุน', source: '', amount: '' },
-    { label: 'อื่นๆ', source: '', amount: '' },
+    { label: INCOME_40_LABELS[0], source: '', amount: '', freq: 'รายเดือน', auto: true },
+    { label: '', source: '', amount: '', freq: 'รายเดือน' },
   ])
   const [spouseIncomeSources, setSpouseIncomeSources] = useState<IncomeSource[]>([
-    { label: 'เงินเดือน', source: '', amount: '' },
-    { label: 'รายได้จากอาชีพเสริม', source: '', amount: '' },
-    { label: 'รายได้จากการลงทุน', source: '', amount: '' },
-    { label: 'อื่นๆ', source: '', amount: '' },
+    { label: INCOME_40_LABELS[0], source: '', amount: '', freq: 'รายเดือน', auto: true },
+    { label: '', source: '', amount: '', freq: 'รายเดือน' },
   ])
   // refs ให้ auto-save อ่านค่ารายได้ "ล่าสุด" ตอน debounce ยิง (กัน stale closure — effect ที่คำนวณ incomeSources จากเงินเดือนทำงานหลังเรียก triggerAutoSave)
   const incomeSourcesRef = useRef(incomeSources)
@@ -402,8 +398,16 @@ export default function ClientProfilePage() {
           ? [{ occupation: profile.spouseOccupation || '', jobTitle: '', company: '', workYears: '', salary: profile.spouseIncome ?? '', salaryIncreaseRate: '' }]
           : [emptyJob()]
       setSpouseJobs(sj)
-      if (profile.incomeSources?.length) setIncomeSources(profile.incomeSources)
-      if (profile.spouseIncomeSources?.length) setSpouseIncomeSources(profile.spouseIncomeSources)
+      // แปลง label เก่า → หมวด 40 + ทำ flag auto ให้แถวเงินเดือนเดิม (backward-compat)
+      const migrateRows = (rows: any[]): IncomeSource[] => rows.map(r => ({
+        label: migrateIncomeLabel(r.label),
+        source: r.source || '',
+        amount: r.amount ?? '',
+        freq: r.freq || (String(r.label || '').includes('โบนัส') ? 'รายปี' : 'รายเดือน'),
+        auto: r.auto ?? (r.label === 'เงินเดือน'),
+      }))
+      if (profile.incomeSources?.length) setIncomeSources(migrateRows(profile.incomeSources))
+      if (profile.spouseIncomeSources?.length) setSpouseIncomeSources(migrateRows(profile.spouseIncomeSources))
       const sp = (profile.spouseProfile && typeof profile.spouseProfile === 'object') ? profile.spouseProfile : {}
       const migratedName = (profile.spouseName || '').trim().split(/\s+/)
       const next = {
@@ -630,9 +634,9 @@ export default function ClientProfilePage() {
     const jobs = [{ occupation: form.occupation, jobTitle: form.jobTitle, company: form.company, salary: form.salary }, ...additionalJobs]
     const salaryRows: IncomeSource[] = jobs
       .filter(j => num(j.salary) > 0)
-      .map(j => ({ label: 'เงินเดือน', source: jobLabel(j), amount: String(num(j.salary)) }))
+      .map(j => ({ label: INCOME_40_LABELS[0], source: jobLabel(j), amount: String(num(j.salary)), freq: 'รายเดือน', auto: true }))
     setIncomeSources(s => {
-      const nonSalary = s.filter(r => r.label !== 'เงินเดือน')
+      const nonSalary = s.filter(r => !r.auto && r.label !== 'เงินเดือน')
       const next = [...salaryRows, ...nonSalary]
       // เทียบว่าเปลี่ยนจริงไหม กันลูป
       if (JSON.stringify(next) === JSON.stringify(s)) return s
@@ -644,9 +648,9 @@ export default function ClientProfilePage() {
   useEffect(() => {
     const salaryRows: IncomeSource[] = spouseJobs
       .filter(j => num(j.salary) > 0)
-      .map(j => ({ label: 'เงินเดือน', source: jobLabel(j), amount: String(num(j.salary)) }))
+      .map(j => ({ label: INCOME_40_LABELS[0], source: jobLabel(j), amount: String(num(j.salary)), freq: 'รายเดือน', auto: true }))
     setSpouseIncomeSources(s => {
-      const nonSalary = s.filter(r => r.label !== 'เงินเดือน')
+      const nonSalary = s.filter(r => !r.auto && r.label !== 'เงินเดือน')
       const next = [...salaryRows, ...nonSalary]
       if (JSON.stringify(next) === JSON.stringify(s)) return s
       return next
@@ -958,9 +962,10 @@ export default function ClientProfilePage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--card-border)' }}>
-                  <th style={{ padding: '6px 10px', textAlign: 'left', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>ที่มาของรายได้</th>
+                  <th style={{ padding: '6px 10px', textAlign: 'left', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>ประเภทเงินได้</th>
                   <th style={{ padding: '6px 10px', textAlign: 'left', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>แหล่งที่มา</th>
-                  <th style={{ padding: '6px 10px', textAlign: 'right', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>จำนวน (บาท/เดือน)</th>
+                  <th style={{ padding: '6px 10px', textAlign: 'center', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>ความถี่</th>
+                  <th style={{ padding: '6px 10px', textAlign: 'right', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>จำนวน (บาท)</th>
                   <th style={{ padding: '6px 10px', textAlign: 'right', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>รายได้ทั้งปี (บาท)</th>
                   <th style={{ width: 36 }} />
                 </tr>
@@ -970,15 +975,17 @@ export default function ClientProfilePage() {
                   <tr key={i} style={{ borderBottom: '1px solid var(--divider)' }}>
                     <td style={{ padding: '6px 8px' }}>
                       <select
-                        value={INCOME_SOURCE_LABELS.includes(row.label) ? row.label : 'อื่นๆ'}
+                        value={INCOME_40_LABELS.includes(row.label as any) ? row.label : migrateIncomeLabel(row.label)}
                         onChange={e => setIS(i, 'label', e.target.value)}
-                        style={{ ...sel, fontSize: 12, padding: '5px 8px', width: 200 }}
+                        disabled={row.auto}
+                        style={{ ...sel, fontSize: 12, padding: '5px 8px', width: 210, opacity: row.auto ? 0.7 : 1 }}
                       >
-                        {INCOME_SOURCE_LABELS.map(l => <option key={l} value={l}>{l}</option>)}
+                        <option value="">— เลือกประเภท —</option>
+                        {INCOME_40_LABELS.map(l => <option key={l} value={l}>{l}</option>)}
                       </select>
                     </td>
                     <td style={{ padding: '6px 8px' }}>
-                      {row.label === 'เงินเดือน'
+                      {row.auto
                         ? <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{row.source || '—'}</span>
                         : <input
                             value={row.source}
@@ -988,11 +995,17 @@ export default function ClientProfilePage() {
                           />
                       }
                     </td>
+                    <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+                      <select value={row.freq || 'รายเดือน'} onChange={e => setIS(i, 'freq', e.target.value)} disabled={row.auto}
+                        style={{ ...sel, fontSize: 12, padding: '5px 8px', width: 100, opacity: row.auto ? 0.7 : 1 }}>
+                        {INCOME_FREQS.map(f => <option key={f} value={f}>{f}</option>)}
+                      </select>
+                    </td>
                     <td style={{ padding: '6px 8px', textAlign: 'right' }}>
-                      {row.label === 'เงินเดือน' ? (
+                      {row.auto ? (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
                           <span style={{ fontSize: 10, color: 'var(--cyan)', background: 'var(--cyan-dim)', borderRadius: 4, padding: '2px 6px', whiteSpace: 'nowrap' }}>ดึงจากข้อมูลการทำงาน</span>
-                          <div style={{ ...inp, fontSize: 12, textAlign: 'right', width: 160, background: 'var(--divider)', color: 'var(--text-secondary)', cursor: 'default', userSelect: 'none' }}>
+                          <div style={{ ...inp, fontSize: 12, textAlign: 'right', width: 140, background: 'var(--divider)', color: 'var(--text-secondary)', cursor: 'default', userSelect: 'none' }}>
                             {row.amount !== '' ? Number(row.amount).toLocaleString('th-TH') : '—'}
                           </div>
                         </div>
@@ -1001,21 +1014,14 @@ export default function ClientProfilePage() {
                           value={row.amount}
                           onChange={v => setIS(i, 'amount', v)}
                           placeholder="0"
-                          style={{ ...inp, fontSize: 12, textAlign: 'right', width: 160 }}
+                          style={{ ...inp, fontSize: 12, textAlign: 'right', width: 140 }}
                         />
                       )}
                     </td>
                     <td style={{ padding: '6px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       {(() => {
-                        if (row.label === 'โบนัส') {
-                          const amt = parseFloat(row.amount) || 0
-                          return amt > 0
-                            ? <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(amt)}</span>
-                            : <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
-                        }
-                        const monthly = parseFloat(row.amount) || 0
-                        const yearly = monthly * 12
-                        return monthly > 0
+                        const yearly = annualIncome(row)
+                        return yearly > 0
                           ? <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(yearly)}</span>
                           : <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
                       })()}
@@ -1032,22 +1038,17 @@ export default function ClientProfilePage() {
               </tbody>
               <tfoot>
                 {(() => {
-                  const total = incomeSources.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
+                  const totalYearly = incomeSources.reduce((s, r) => s + annualIncome(r), 0)
+                  const totalMonthly = totalYearly / 12
                   return (
                     <tr style={{ borderTop: '2px solid var(--card-border)', background: 'var(--hover)' }}>
-                      <td style={{ padding: '10px 10px', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>รายได้รวม</td>
-                      <td />
+                      <td style={{ padding: '10px 10px', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>รายได้รวม (เฉลี่ย/เดือน)</td>
+                      <td /><td />
                       <td style={{ padding: '10px 10px', fontSize: 15, fontWeight: 700, color: '#10b981', textAlign: 'right' }}>
-                        {total > 0 ? new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(total) + ' บาท' : '—'}
+                        {totalMonthly > 0 ? new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(totalMonthly) + ' บาท' : '—'}
                       </td>
                       <td style={{ padding: '10px 10px', fontSize: 15, fontWeight: 700, color: '#10b981', textAlign: 'right' }}>
-                        {(() => {
-                          const totalYearly = incomeSources.reduce((s, r) => {
-                            const amt = parseFloat(r.amount) || 0
-                            return s + (r.label === 'โบนัส' ? amt : amt * 12)
-                          }, 0)
-                          return totalYearly > 0 ? new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(totalYearly) + ' บาท' : '—'
-                        })()}
+                        {totalYearly > 0 ? new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(totalYearly) + ' บาท' : '—'}
                       </td>
                       <td />
                     </tr>
@@ -1284,9 +1285,10 @@ export default function ClientProfilePage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--card-border)' }}>
-                  <th style={{ padding: '6px 10px', textAlign: 'left', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>ที่มาของรายได้</th>
+                  <th style={{ padding: '6px 10px', textAlign: 'left', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>ประเภทเงินได้</th>
                   <th style={{ padding: '6px 10px', textAlign: 'left', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>แหล่งที่มา</th>
-                  <th style={{ padding: '6px 10px', textAlign: 'right', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>จำนวน (บาท/เดือน)</th>
+                  <th style={{ padding: '6px 10px', textAlign: 'center', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>ความถี่</th>
+                  <th style={{ padding: '6px 10px', textAlign: 'right', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>จำนวน (บาท)</th>
                   <th style={{ padding: '6px 10px', textAlign: 'right', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>รายได้ทั้งปี (บาท)</th>
                   <th style={{ width: 36 }} />
                 </tr>
@@ -1295,32 +1297,37 @@ export default function ClientProfilePage() {
                 {spouseIncomeSources.map((row, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid var(--divider)' }}>
                     <td style={{ padding: '6px 8px' }}>
-                      <select value={INCOME_SOURCE_LABELS.includes(row.label) ? row.label : 'อื่นๆ'} onChange={e => setSpouseIS(i, 'label', e.target.value)} style={{ ...sel, fontSize: 12, padding: '5px 8px', width: 200 }}>
-                        {INCOME_SOURCE_LABELS.map(l => <option key={l} value={l}>{l}</option>)}
+                      <select value={INCOME_40_LABELS.includes(row.label as any) ? row.label : migrateIncomeLabel(row.label)} onChange={e => setSpouseIS(i, 'label', e.target.value)} disabled={row.auto} style={{ ...sel, fontSize: 12, padding: '5px 8px', width: 210, opacity: row.auto ? 0.7 : 1 }}>
+                        <option value="">— เลือกประเภท —</option>
+                        {INCOME_40_LABELS.map(l => <option key={l} value={l}>{l}</option>)}
                       </select>
                     </td>
                     <td style={{ padding: '6px 8px' }}>
-                      {row.label === 'เงินเดือน'
+                      {row.auto
                         ? <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{row.source || '—'}</span>
                         : <input value={row.source} onChange={e => setSpouseIS(i, 'source', e.target.value)} placeholder="ระบุแหล่งที่มา..." style={{ ...inp, fontSize: 12, width: '100%', boxSizing: 'border-box' }} />}
                     </td>
+                    <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+                      <select value={row.freq || 'รายเดือน'} onChange={e => setSpouseIS(i, 'freq', e.target.value)} disabled={row.auto} style={{ ...sel, fontSize: 12, padding: '5px 8px', width: 100, opacity: row.auto ? 0.7 : 1 }}>
+                        {INCOME_FREQS.map(f => <option key={f} value={f}>{f}</option>)}
+                      </select>
+                    </td>
                     <td style={{ padding: '6px 8px', textAlign: 'right' }}>
-                      {row.label === 'เงินเดือน' ? (
+                      {row.auto ? (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
                           <span style={{ fontSize: 10, color: 'var(--cyan)', background: 'var(--cyan-dim)', borderRadius: 4, padding: '2px 6px', whiteSpace: 'nowrap' }}>ดึงจากข้อมูลการทำงาน</span>
-                          <div style={{ ...inp, fontSize: 12, textAlign: 'right', width: 160, background: 'var(--divider)', color: 'var(--text-secondary)', cursor: 'default', userSelect: 'none' }}>
+                          <div style={{ ...inp, fontSize: 12, textAlign: 'right', width: 140, background: 'var(--divider)', color: 'var(--text-secondary)', cursor: 'default', userSelect: 'none' }}>
                             {row.amount !== '' ? Number(row.amount).toLocaleString('th-TH') : '—'}
                           </div>
                         </div>
                       ) : (
-                        <CommaInput value={row.amount} onChange={v => setSpouseIS(i, 'amount', v)} placeholder="0" style={{ ...inp, fontSize: 12, textAlign: 'right', width: 160 }} />
+                        <CommaInput value={row.amount} onChange={v => setSpouseIS(i, 'amount', v)} placeholder="0" style={{ ...inp, fontSize: 12, textAlign: 'right', width: 140 }} />
                       )}
                     </td>
                     <td style={{ padding: '6px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       {(() => {
-                        const amt = parseFloat(row.amount) || 0
-                        if (row.label === 'โบนัส') return amt > 0 ? <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(amt)}</span> : <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
-                        return amt > 0 ? <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(amt * 12)}</span> : <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
+                        const yearly = annualIncome(row)
+                        return yearly > 0 ? <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(yearly)}</span> : <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
                       })()}
                     </td>
                     <td style={{ padding: '6px 4px', textAlign: 'center' }}>
@@ -1333,13 +1340,13 @@ export default function ClientProfilePage() {
               </tbody>
               <tfoot>
                 {(() => {
-                  const total = spouseIncomeSources.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
-                  const totalYearly = spouseIncomeSources.reduce((s, r) => { const amt = parseFloat(r.amount) || 0; return s + (r.label === 'โบนัส' ? amt : amt * 12) }, 0)
+                  const totalYearly = spouseIncomeSources.reduce((s, r) => s + annualIncome(r), 0)
+                  const totalMonthly = totalYearly / 12
                   return (
                     <tr style={{ borderTop: '2px solid var(--card-border)', background: 'var(--hover)' }}>
-                      <td style={{ padding: '10px 10px', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>รายได้รวม</td>
-                      <td />
-                      <td style={{ padding: '10px 10px', fontSize: 15, fontWeight: 700, color: '#10b981', textAlign: 'right' }}>{total > 0 ? new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(total) + ' บาท' : '—'}</td>
+                      <td style={{ padding: '10px 10px', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>รายได้รวม (เฉลี่ย/เดือน)</td>
+                      <td /><td />
+                      <td style={{ padding: '10px 10px', fontSize: 15, fontWeight: 700, color: '#10b981', textAlign: 'right' }}>{totalMonthly > 0 ? new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(totalMonthly) + ' บาท' : '—'}</td>
                       <td style={{ padding: '10px 10px', fontSize: 15, fontWeight: 700, color: '#10b981', textAlign: 'right' }}>{totalYearly > 0 ? new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(totalYearly) + ' บาท' : '—'}</td>
                       <td />
                     </tr>

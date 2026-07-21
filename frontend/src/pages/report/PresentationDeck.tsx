@@ -7,6 +7,7 @@ import { useEducationReadiness } from '../../hooks/useEducationReadiness'
 import { useInsuranceCoverage } from '../../components/InsuranceCoverageSummary'
 import { buildEduChart, type ChildSetting } from '../EducationPlanPage'
 import { calc, calcTax, defaultState, type TaxState } from '../../lib/tax'
+import { annualIncome as incAnnual, isAnnualIncome as isAnnualInc } from '../../lib/income'
 import { lineAt, sumAt, buildTaxState, type CashflowData, type Line as CfLine } from '../ForwardCashflowTab'
 import { PORTFOLIO_SETS, DEFAULT_ASSETS, DEFAULT_CORR, computePortfolio, applyMarketData, applyCorrelation } from '../../lib/portfolioReturns'
 import {
@@ -731,9 +732,9 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
   const incomeList = (sources: any, fallbackSalary = 0): { label: string; amount: number; yearly: number; isBonus: boolean }[] => {
     const arr = (Array.isArray(sources) ? sources : []).map((r: any) => {
       const amt = toNum(r?.amount)
-      const isBonus = (r?.label || '').includes('โบนัส')
+      const isBonus = isAnnualInc(r)
       const label = r?.source ? `${r.label} · ${r.source}` : (r?.label || 'รายได้')
-      return { label, amount: amt, yearly: isBonus ? amt : amt * 12, isBonus }
+      return { label, amount: amt, yearly: incAnnual(r), isBonus }
     }).filter((r: any) => r.amount > 0)
     if (arr.length === 0 && fallbackSalary > 0) arr.push({ label: 'เงินเดือน', amount: fallbackSalary, yearly: fallbackSalary * 12, isBonus: false })
     return arr

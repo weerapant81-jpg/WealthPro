@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { computeInsurance, defaultPlan, type PersonPlan } from '../pages/InsurancePlanPage'
 import { calc as calcTaxPlan, defaultState as defaultTaxState } from '../lib/tax'
+import { monthlyIncome } from '../lib/income'
 
 const toNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
 
@@ -25,7 +26,7 @@ export function useInsuranceReadiness(person: 'client' | 'spouse') {
   const annualIncomeFrom = (src: any): number => {
     const arr = Array.isArray(src) ? src : []
     const monthly = arr.filter((s: any) => toNum(s.amount) > 0)
-      .reduce((sum: number, s: any) => sum + (s.label === 'โบนัส' ? toNum(s.amount) / 12 : toNum(s.amount)), 0)
+      .reduce((sum: number, s: any) => sum + monthlyIncome(s), 0)
     return monthly * 12
   }
   const autoIncome = key === 'self'

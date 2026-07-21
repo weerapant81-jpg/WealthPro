@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { Plus, Trash2, Check, Loader2, TrendingUp, ShieldCheck, HeartPulse } from 'lucide-react'
 import { calc as calcTaxPlan, defaultState as defaultTaxState } from '../lib/tax'
+import { monthlyIncome } from '../lib/income'
 import { useIsCompact } from '../hooks/useViewport'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, LabelList } from 'recharts'
 import { ChartFrame } from '../components/exportable'
@@ -646,7 +647,7 @@ export default function InsurancePlanPage({ person = 'self' }: { person?: 'self'
     const arr = Array.isArray(src) ? src : []
     const monthly = arr
       .filter((s: any) => toNum(s.amount) > 0)
-      .reduce((sum: number, s: any) => sum + (s.label === 'โบนัส' ? toNum(s.amount) / 12 : toNum(s.amount)), 0)
+      .reduce((sum: number, s: any) => sum + monthlyIncome(s), 0)
     return monthly * 12
   }
   const autoIncomeSelf = annualIncomeFrom(clientProfile?.incomeSources) || toNum(clientProfile?.salary) * 12
