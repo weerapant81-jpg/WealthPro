@@ -470,3 +470,17 @@ model Consent {
 }
 
 
+
+model TutorialVideo {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @default("")
+  category    String   @default("เริ่มต้นใช้งาน")
+  youtubeId   String                        // รหัสวิดีโอ YouTube (ส่วนท้าย URL)
+  duration    String   @default("")
+  order       Int      @default(0)          // ลำดับการแสดง (น้อย = ก่อน)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([order])
+}

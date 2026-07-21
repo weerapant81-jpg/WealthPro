@@ -38,6 +38,7 @@ import { getMarketReturns, getAssetReturn } from '../controllers/marketreturns.c
 import { quoteSymbol, annualReturn } from '../controllers/settrade.controller'
 import { chatCopilot } from '../controllers/copilot.controller'
 import { createCheckout, createPortal } from '../controllers/billing.controller'
+import { listTutorials, createTutorial, updateTutorial, deleteTutorial } from '../controllers/tutorial.controller'
 import { listAuditLogs } from '../controllers/audit.controller'
 import { exportClient } from '../controllers/admin.controller'
 import { status2fa, setup2fa, enable2fa, disable2fa } from '../controllers/twofa.controller'
@@ -55,6 +56,12 @@ const r = Router()
 r.post('/game/lead', createGameLead)
 r.get('/game/leads', authenticate, requireAdmin, listGameLeads)
 r.put('/game/leads/:id', authenticate, requireAdmin, updateGameLead)
+
+// วิดีโอสอนการใช้งาน — ดูได้ทุกคน (รวม guest) · จัดการเฉพาะ SUPER_ADMIN
+r.get('/tutorials', listTutorials)
+r.post('/tutorials', authenticate, requireSuperAdmin, createTutorial)
+r.patch('/tutorials/:id', authenticate, requireSuperAdmin, updateTutorial)
+r.delete('/tutorials/:id', authenticate, requireSuperAdmin, deleteTutorial)
 
 // Auth
 r.post('/auth/register', register)
