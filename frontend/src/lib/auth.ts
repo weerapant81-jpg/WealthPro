@@ -1,6 +1,6 @@
 import { api } from './api'
 
-export interface User { id: string; email: string; name: string; role: string; plan?: string; planExpiresAt?: string | null }
+export interface User { id: string; email: string; name: string; role: string; plan?: string; planExpiresAt?: string | null; promoActive?: boolean; promoFreeUntil?: string | null }
 
 export async function loginUser(email: string, password: string, token?: string): Promise<User | { twoFactorRequired: true }> {
   const { data } = await api.post('/auth/login', { email, password, token })

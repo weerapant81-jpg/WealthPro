@@ -7,7 +7,7 @@ import { createRemoteJWKSet, jwtVerify } from 'jose'
 import { prisma } from '../lib/prisma'
 import { sendVerifyEmail, sendResetPasswordEmail } from '../lib/mailer'
 import { verifyTwoFactor } from '../lib/twofa'
-import { effectivePlan } from '../lib/plan'
+import { effectivePlan, isPromoFreeActive, PROMO_FREE_UNTIL } from '../lib/plan'
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173'
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID
@@ -320,7 +320,14 @@ export async function me(req: Request & { userId?: string }, res: Response): Pro
     select: { id: true, email: true, name: true, role: true, profile: true, plan: true, planExpiresAt: true }
   })
   if (!user) { res.json(null); return }
-  res.json({ ...user, plan: effectivePlan(user), planExpiresAt: user.planExpiresAt })
+  const promoActive = user.role === 'ADMIN' && isPromoFreeActive()
+  res.json({
+    ...user,
+    plan: effectivePlan(user),
+    planExpiresAt: user.planExpiresAt,
+    promoActive,
+    promoFreeUntil: promoActive ? PROMO_FREE_UNTIL.toISOString() : null,
+  })
 }
 
 // ── Advisor (own) profile — always the logged-in user, not a selected client ──

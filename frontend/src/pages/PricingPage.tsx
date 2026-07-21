@@ -32,7 +32,11 @@ const RANK = { free: 0, pro: 1, ai: 2 }
 
 export default function PricingPage() {
   const { plan } = usePlan()
-  const { setUser } = useAuth()
+  const { user, setUser } = useAuth()
+  const promoActive = !!user?.promoActive
+  const promoUntilTh = user?.promoFreeUntil
+    ? new Date(user.promoFreeUntil).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+    : ''
   const [params, setParams] = useSearchParams()
   const [busy, setBusy] = useState<string | null>(null)
   const [msg, setMsg] = useState<{ type: 'ok' | 'info' | 'err'; text: string } | null>(null)
@@ -99,13 +103,22 @@ export default function PricingPage() {
         </div>
       )}
 
+      {promoActive && (
+        <div style={{ borderRadius: 14, border: '1px solid #059669', background: 'rgba(5,150,105,0.08)', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <Sparkles size={17} style={{ color: '#059669' }} />
+          <span style={{ fontSize: 13.5, color: 'var(--text-primary)' }}>
+            🎉 <b>ช่วงเปิดตัว</b> — เปิดให้ใช้งาน<b>ทุกเมนูฟรี</b>ถึงวันที่ <b style={{ color: '#059669' }}>{promoUntilTh || '31 สิงหาคม 2569'}</b> · หลังจากนั้นจะเริ่มระบบแพ็กเกจตามปกติ
+          </span>
+        </div>
+      )}
+
       <div style={{ borderRadius: 14, border: '1px solid var(--cyan)', background: 'var(--cyan-dim)', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'space-between' }}>
         <span style={{ fontSize: 13.5, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <Lock size={16} style={{ color: AC }} />
           แพ็กเกจปัจจุบันของคุณคือ <b style={{ color: AC }}>{plan === 'ai' ? 'AI' : plan === 'pro' ? 'Pro' : 'Free'}</b>
           {plan === 'free' && ' — เมนูวางแผนถูกล็อกไว้ อัปเกรดเพื่อเปิดใช้งาน'}
         </span>
-        {paidUser && (
+        {paidUser && !promoActive && (
           <button onClick={openPortal} disabled={busy === 'portal'}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 9, border: '1px solid var(--cyan)', background: 'transparent', color: AC, fontSize: 13, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}>
             {busy === 'portal' ? <Loader2 size={14} className="spin" /> : <CreditCard size={14} />} จัดการการชำระเงิน
@@ -143,7 +156,9 @@ export default function PricingPage() {
                   </div>
                 ))}
               </div>
-              {isCurrent
+              {promoActive
+                ? <div style={{ textAlign: 'center', padding: '10px', borderRadius: 10, border: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: 12.5 }}>{t.key === 'free' ? '—' : 'ใช้ได้ฟรีในช่วงเปิดตัว'}</div>
+                : isCurrent
                 ? <div style={{ textAlign: 'center', padding: '10px', borderRadius: 10, border: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: 13, fontWeight: 700 }}>แพ็กเกจปัจจุบัน</div>
                 : t.key === 'free'
                   ? <div style={{ textAlign: 'center', padding: '10px', borderRadius: 10, border: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: 13 }}>{isDowngrade ? 'ปรับลดผ่าน "จัดการการชำระเงิน"' : '—'}</div>
