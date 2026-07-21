@@ -27,6 +27,11 @@ export async function createCheckout(req: AuthRequest, res: Response): Promise<v
     await prisma.user.update({ where: { id: user.id }, data: { stripeCustomerId: customerId } })
   }
 
+  // VAT: ถ้าตั้ง STRIPE_TAX_RATE (txr_... แบบ inclusive 7%) → แนบเข้า subscription เพื่อให้ใบเสร็จแยกบรรทัด VAT
+  const taxRate = process.env.STRIPE_TAX_RATE
+  const subscription_data: any = { metadata: { userId: user.id } }
+  if (taxRate) subscription_data.default_tax_rates = [taxRate]
+
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
     customer: customerId,
@@ -34,7 +39,7 @@ export async function createCheckout(req: AuthRequest, res: Response): Promise<v
     success_url: `${frontendUrl()}/pricing?status=success`,
     cancel_url: `${frontendUrl()}/pricing?status=cancel`,
     metadata: { userId: user.id, plan },
-    subscription_data: { metadata: { userId: user.id } },
+    subscription_data,
     allow_promotion_codes: true,
   })
   res.json({ url: session.url })
