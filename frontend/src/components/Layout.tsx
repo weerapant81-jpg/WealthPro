@@ -8,7 +8,7 @@ import { usePlan } from '../hooks/usePlan'
 import { useClient } from '../context/ClientContext'
 import { logout } from '../lib/auth'
 import CopilotWidget from './CopilotWidget'
-import { LayoutDashboard, Target, Settings, LogOut, ClipboardList, ClipboardCheck, ShieldCheck, Calculator, Users, RefreshCw, Sun, Moon, UserCog, Menu, ChevronLeft, ChevronRight, ChevronDown, User, Shield, TrendingUp, Wallet, Activity, Briefcase, Scale, HeartPulse, GraduationCap, CalendarRange, ScrollText, Receipt, Search, ArrowRight, FileText, BookOpen, Lock
+import { LayoutDashboard, Target, Settings, LogOut, ClipboardList, ClipboardCheck, ShieldCheck, Calculator, Users, RefreshCw, Sun, Moon, UserCog, Menu, ChevronLeft, ChevronRight, ChevronDown, User, Shield, TrendingUp, Wallet, Activity, Briefcase, Scale, HeartPulse, GraduationCap, CalendarRange, ScrollText, Receipt, Search, ArrowRight, FileText, BookOpen, Lock, CreditCard
 } from 'lucide-react'
 
 // เมนูย่อยของ "ข้อมูลลูกค้า" (ขับแท็บด้วย ?tab=)
@@ -228,8 +228,13 @@ export default function Layout({ children }: { children: ReactNode }) {
         </button>
       )}
 
-      {/* ตั้งค่าผู้ใช้ — ล่างสุด */}
+      {/* แพ็กเกจ + ตั้งค่าผู้ใช้ — ล่างสุด */}
       <div style={{ borderTop: '1px solid var(--card-border)', padding: asRail ? '8px 8px 4px' : '8px 12px 4px' }}>
+        <NavLink to="/pricing" title={asRail ? 'แพ็กเกจการใช้งาน' : undefined}
+          onClick={() => setDrawerOpen(false)}
+          style={({ isActive }) => linkStyle(isActive, asRail)}>
+          <CreditCard size={18} />{!asRail && 'แพ็กเกจการใช้งาน'}
+        </NavLink>
         <NavLink to="/user-profile" title={asRail ? 'ตั้งค่าผู้ใช้' : undefined}
           onClick={() => setDrawerOpen(false)}
           style={({ isActive }) => linkStyle(isActive, asRail)}>
