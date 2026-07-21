@@ -183,7 +183,10 @@ export async function listUsers(req: AuthRequest, res: Response): Promise<void> 
     },
     orderBy: { createdAt: 'desc' },
   })
-  res.json(users)
+  // จำนวนลูกค้าต่อ FA (นับอย่างเดียว — SUPER_ADMIN ไม่เห็นรายละเอียดลูกค้าของ FA คนอื่น)
+  const counts = await prisma.user.groupBy({ by: ['createdById'], where: { role: 'USER', createdById: { in: users.map(u => u.id) } }, _count: { _all: true } })
+  const countMap = new Map(counts.map(c => [c.createdById, c._count._all]))
+  res.json(users.map(u => ({ ...u, clientCount: countMap.get(u.id) ?? 0 })))
 }
 
 // SUPER_ADMIN ตั้งแพ็กเกจให้ FA รายคน (บัญชี comp / แก้ปัญหาชำระเงิน) → planOverride=true กัน webhook ทับ

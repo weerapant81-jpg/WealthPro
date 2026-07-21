@@ -19,6 +19,7 @@ interface AdminUser {
   plan?: string
   planExpiresAt?: string | null
   planOverride?: boolean
+  clientCount?: number
 }
 
 export default function AdminPage() {
@@ -100,7 +101,7 @@ export default function AdminPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--card-border)' }}>
-                  {['ชื่อ', 'อีเมล', 'เบอร์โทร', 'วันเกิด', 'ยืนยันอีเมล', 'สถานะ', 'แพ็กเกจ', 'วันสมัคร', 'การจัดการ'].map(h => (
+                  {['ชื่อ', 'อีเมล', 'เบอร์โทร', 'วันเกิด', 'ยืนยันอีเมล', 'สถานะ', 'ลูกค้า', 'แพ็กเกจ', 'วันสมัคร', 'การจัดการ'].map(h => (
                     <th key={h} style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-muted)', fontWeight: 500 }}>{h}</th>
                   ))}
                 </tr>
@@ -123,6 +124,10 @@ export default function AdminPage() {
                       <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 4, background: u.isApproved ? 'rgba(14,165,233,0.1)' : 'rgba(245,158,11,0.1)', color: u.isApproved ? 'var(--cyan)' : '#f59e0b' }}>
                         {u.isApproved ? 'อนุมัติแล้ว' : 'รออนุมัติ'}
                       </span>
+                    </td>
+                    <td style={{ padding: '12px 12px', textAlign: 'center' }}>
+                      <span title="จำนวนลูกค้าที่ FA คนนี้ดูแล" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{u.clientCount ?? 0}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}> คน</span>
                     </td>
                     <td style={{ padding: '12px 12px' }}>
                       <select value={u.plan || 'free'} onChange={e => setPlan.mutate({ id: u.id, plan: e.target.value })}
