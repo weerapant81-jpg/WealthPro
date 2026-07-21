@@ -33,3 +33,7 @@ Thumbs.db
 # ── editor ──
 .vscode/
 .idea/
+
+# utility scripts เฉพาะกิจ (มีอีเมลส่วนตัว) — ไม่ push
+backend/src/scripts/clear-test-users.ts
+backend/src/scripts/reset-2fa.ts
