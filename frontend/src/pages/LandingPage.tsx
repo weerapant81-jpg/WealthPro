@@ -184,7 +184,7 @@ export default function LandingPage() {
               <span style={{ width: 7, height: 7, borderRadius: 999, background: AC }} />วางแผนการเงินแบบองค์รวม 6 ด้าน
             </div>
             <h1 style={{ fontSize: compact ? 34 : 46, fontWeight: 800, lineHeight: 1.2, letterSpacing: '-0.02em', margin: '0 0 20px' }}>
-              โปรแกรมวางแผนการเงินครบวงจร<br /><span style={{ color: AC }}>สำหรับนักวางแผนการเงินไทย</span>
+              โปรแกรมวางแผนการเงิน<span style={{ color: AC }}>ครบวงจร</span>
             </h1>
             <p style={{ fontSize: 16.5, color: 'var(--text-secondary)', lineHeight: 1.75, maxWidth: 520, margin: '0 0 32px' }}>
               วิเคราะห์ครบ 6 ด้านอย่างเป็นระบบ · ส่งมอบรายงานได้ 2 รูปแบบ (ฉบับเต็ม + สไลด์นำเสนอ) · พร้อม AI Copilot ช่วยวางแผน — ยกระดับการให้คำปรึกษาให้แม่นยำและมืออาชีพ
