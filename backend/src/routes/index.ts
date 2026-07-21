@@ -54,8 +54,9 @@ const r = Router()
 
 // เกมเศรษฐี (/game) — ฟอร์ม lead เป็น public (มี throttle ในตัว) · รายการ lead เฉพาะ FA
 r.post('/game/lead', createGameLead)
-r.get('/game/leads', authenticate, requireAdmin, listGameLeads)
-r.put('/game/leads/:id', authenticate, requireAdmin, updateGameLead)
+// lead จากเกม (public lead magnet) เป็นของแพลตฟอร์ม → เฉพาะผู้ให้บริการ (SUPER_ADMIN)
+r.get('/game/leads', authenticate, requireSuperAdmin, listGameLeads)
+r.put('/game/leads/:id', authenticate, requireSuperAdmin, updateGameLead)
 
 // วิดีโอสอนการใช้งาน — ดูได้ทุกคน (รวม guest) · จัดการเฉพาะ SUPER_ADMIN
 r.get('/tutorials', listTutorials)
