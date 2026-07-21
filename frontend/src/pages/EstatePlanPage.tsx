@@ -359,36 +359,51 @@ export default function EstatePlanPage({ person = 'self' }: { person?: Person })
             <Landmark size={20} style={{ color: '#ef4444' }} />
             <span style={{ fontSize: 13.5 }}>มรดก {fmt(estate)} บาท ตกทอดแก่แผ่นดิน — แนะนำให้จัดทำพินัยกรรมเพื่อกำหนดผู้รับ</span>
           </div>
-          : <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {allocs.map((a, i) => {
-              const pct = estate > 0 ? (a.heirShare / estate) * 100 : 0
-              const isSpouse = a.role.startsWith('คู่สมรส')
-              const total = isSpouse ? a.heirShare + spouseHalfSinsomrot : a.heirShare
-              return (
-                <div key={i} style={{ padding: '12px 15px', borderRadius: 11, background: 'var(--navy-900)', border: `1px solid ${a.color}33` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 9, height: 9, borderRadius: '50%', background: a.color, flexShrink: 0 }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{a.name}</div>
-                      <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{a.role}</div>
+          : <div style={{ overflowX: 'auto', padding: '6px 2px 10px' }}>
+            <style>{`
+              .et-tree{ --et-line:#64748b; display:inline-block; min-width:100%; text-align:center; }
+              .et-stem{ width:2px; height:22px; background:var(--et-line); margin:0 auto; }
+              .et-branches{ display:inline-flex; justify-content:center; }
+              .et-node{ position:relative; padding:22px 9px 0; }
+              .et-node::before,.et-node::after{ content:''; position:absolute; top:0; right:50%; width:50%; height:22px; border-top:2px solid var(--et-line); }
+              .et-node::after{ right:auto; left:50%; border-left:2px solid var(--et-line); }
+              .et-node:only-child::before,.et-node:only-child::after{ display:none; }
+              .et-node:first-child::before,.et-node:last-child::after{ border:0 none; }
+              .et-node:last-child::before{ border-right:2px solid var(--et-line); }
+            `}</style>
+            <div className="et-tree">
+              {/* กองมรดก (root) */}
+              <div style={{ display: 'inline-block', minWidth: 240, padding: '13px 22px', borderRadius: 12, background: 'linear-gradient(135deg,#0f3d56,#0e2438)', border: '1.5px solid var(--cyan)' }}>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)' }}>กองมรดกสุทธิ (นำมาแบ่ง)</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--cyan-light)' }}>{fmt(estate)} บาท</div>
+                {spouseHalfSinsomrot > 0 && <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.6)', marginTop: 3 }}>คู่สมรสรับ ½ สินสมรส {fmt(spouseHalfSinsomrot)} ก่อน (ไม่ถือเป็นมรดก)</div>}
+              </div>
+              <div className="et-stem" />
+              {/* ทายาท (children) */}
+              <div className="et-branches">
+                {allocs.map((a, i) => {
+                  const pct = estate > 0 ? (a.heirShare / estate) * 100 : 0
+                  const isSpouse = a.role.startsWith('คู่สมรส')
+                  const total = isSpouse ? a.heirShare + spouseHalfSinsomrot : a.heirShare
+                  return (
+                    <div className="et-node" key={i}>
+                      <div style={{ display: 'inline-block', width: 172, padding: '11px 13px', borderRadius: 11, background: 'var(--navy-900)', border: `1.5px solid ${a.color}`, textAlign: 'left' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: a.color, flexShrink: 0 }} />
+                          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{a.name}</div>
+                        </div>
+                        <div style={{ fontSize: 10.5, color: 'var(--text-muted)', lineHeight: 1.35, marginBottom: 7 }}>{a.role}</div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: a.color }}>{fmt(a.heirShare)}</div>
+                        <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{pct.toFixed(1)}% ของกองมรดก</div>
+                        {isSpouse && spouseHalfSinsomrot > 0 && (
+                          <div style={{ fontSize: 10.5, color: '#c084fc', marginTop: 6, borderTop: '1px dashed var(--card-border)', paddingTop: 6 }}>+ ½ สินสมรส {fmt(spouseHalfSinsomrot)}<br />รวมรับ <b>{fmt(total)}</b> บาท</div>
+                        )}
+                      </div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: a.color }}>{fmt(a.heirShare)}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{pct.toFixed(1)}% ของกองมรดก</div>
-                    </div>
-                  </div>
-                  {/* progress */}
-                  <div style={{ height: 5, borderRadius: 3, background: 'var(--navy-700)', marginTop: 9, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${Math.min(100, pct)}%`, background: a.color, borderRadius: 3 }} />
-                  </div>
-                  {isSpouse && spouseHalfSinsomrot > 0 && (
-                    <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 8 }}>
-                      + ½ สินสมรส {fmt(spouseHalfSinsomrot)} → <b style={{ color: '#c084fc' }}>คู่สมรสได้รับรวม {fmt(total)} บาท</b>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+                  )
+                })}
+              </div>
+            </div>
           </div>}
       </div>
 
