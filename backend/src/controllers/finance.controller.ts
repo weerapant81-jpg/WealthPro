@@ -8,18 +8,25 @@ const personWhere = (req: AuthRequest) => {
   return { in: [p, 'shared'] }
 }
 
+// กัน mass-assignment: ตัดฟิลด์ระบบทิ้งก่อนใช้เป็น data (โดยเฉพาะ userId — กันย้าย record ข้ามเจ้าของ)
+const stripSystem = (b: any) => {
+  if (!b || typeof b !== 'object') return {}
+  const { userId, id, createdAt, updatedAt, ...rest } = b
+  return rest
+}
+
 // ---- Income ----
 export async function getIncomes(req: AuthRequest, res: Response): Promise<void> {
   const data = await prisma.income.findMany({ where: { userId: req.effectiveUserId! } })
   res.json(data)
 }
 export async function createIncome(req: AuthRequest, res: Response): Promise<void> {
-  const data = await prisma.income.create({ data: { ...req.body, userId: req.effectiveUserId! } })
+  const data = await prisma.income.create({ data: { ...stripSystem(req.body), userId: req.effectiveUserId! } })
   res.status(201).json(data)
 }
 export async function updateIncome(req: AuthRequest, res: Response): Promise<void> {
   const id = String(req.params.id)
-  const data = await prisma.income.updateMany({ where: { id, userId: req.effectiveUserId! }, data: req.body })
+  const data = await prisma.income.updateMany({ where: { id, userId: req.effectiveUserId! }, data: stripSystem(req.body) })
   res.json(data)
 }
 export async function deleteIncome(req: AuthRequest, res: Response): Promise<void> {
@@ -33,11 +40,11 @@ export async function getExpenses(req: AuthRequest, res: Response): Promise<void
   res.json(data)
 }
 export async function createExpense(req: AuthRequest, res: Response): Promise<void> {
-  const data = await prisma.expense.create({ data: { ...req.body, userId: req.effectiveUserId! } })
+  const data = await prisma.expense.create({ data: { ...stripSystem(req.body), userId: req.effectiveUserId! } })
   res.status(201).json(data)
 }
 export async function updateExpense(req: AuthRequest, res: Response): Promise<void> {
-  await prisma.expense.updateMany({ where: { id: String(req.params.id), userId: req.effectiveUserId! }, data: req.body })
+  await prisma.expense.updateMany({ where: { id: String(req.params.id), userId: req.effectiveUserId! }, data: stripSystem(req.body) })
   res.json({ ok: true })
 }
 export async function deleteExpense(req: AuthRequest, res: Response): Promise<void> {
@@ -51,11 +58,11 @@ export async function getAssets(req: AuthRequest, res: Response): Promise<void> 
   res.json(data)
 }
 export async function createAsset(req: AuthRequest, res: Response): Promise<void> {
-  const data = await prisma.asset.create({ data: { ...req.body, userId: req.effectiveUserId! } })
+  const data = await prisma.asset.create({ data: { ...stripSystem(req.body), userId: req.effectiveUserId! } })
   res.status(201).json(data)
 }
 export async function updateAsset(req: AuthRequest, res: Response): Promise<void> {
-  await prisma.asset.updateMany({ where: { id: String(req.params.id), userId: req.effectiveUserId! }, data: req.body })
+  await prisma.asset.updateMany({ where: { id: String(req.params.id), userId: req.effectiveUserId! }, data: stripSystem(req.body) })
   res.json({ ok: true })
 }
 export async function deleteAsset(req: AuthRequest, res: Response): Promise<void> {
@@ -69,11 +76,11 @@ export async function getLiabilities(req: AuthRequest, res: Response): Promise<v
   res.json(data)
 }
 export async function createLiability(req: AuthRequest, res: Response): Promise<void> {
-  const data = await prisma.liability.create({ data: { ...req.body, userId: req.effectiveUserId! } })
+  const data = await prisma.liability.create({ data: { ...stripSystem(req.body), userId: req.effectiveUserId! } })
   res.status(201).json(data)
 }
 export async function updateLiability(req: AuthRequest, res: Response): Promise<void> {
-  await prisma.liability.updateMany({ where: { id: String(req.params.id), userId: req.effectiveUserId! }, data: req.body })
+  await prisma.liability.updateMany({ where: { id: String(req.params.id), userId: req.effectiveUserId! }, data: stripSystem(req.body) })
   res.json({ ok: true })
 }
 export async function deleteLiability(req: AuthRequest, res: Response): Promise<void> {
@@ -87,11 +94,11 @@ export async function getGoals(req: AuthRequest, res: Response): Promise<void> {
   res.json(data)
 }
 export async function createGoal(req: AuthRequest, res: Response): Promise<void> {
-  const data = await prisma.goal.create({ data: { ...req.body, userId: req.effectiveUserId! } })
+  const data = await prisma.goal.create({ data: { ...stripSystem(req.body), userId: req.effectiveUserId! } })
   res.status(201).json(data)
 }
 export async function updateGoal(req: AuthRequest, res: Response): Promise<void> {
-  await prisma.goal.updateMany({ where: { id: String(req.params.id), userId: req.effectiveUserId! }, data: req.body })
+  await prisma.goal.updateMany({ where: { id: String(req.params.id), userId: req.effectiveUserId! }, data: stripSystem(req.body) })
   res.json({ ok: true })
 }
 export async function deleteGoal(req: AuthRequest, res: Response): Promise<void> {
@@ -172,15 +179,22 @@ export async function createRider(req: AuthRequest, res: Response): Promise<void
   res.status(201).json(data)
 }
 export async function updateRider(req: AuthRequest, res: Response): Promise<void> {
+  const riderId = String(req.params.riderId)
+  // ตรวจว่า rider อยู่ในกรมธรรม์ของผู้ใช้นี้จริงก่อนแก้ (กัน IDOR)
+  const owns = await prisma.lifeInsuranceRider.findFirst({ where: { id: riderId, policy: { userId: req.effectiveUserId! } }, select: { id: true } })
+  if (!owns) { res.status(404).json({ error: 'Not found' }); return }
   const { planName, coverageAmount } = req.body
   await prisma.lifeInsuranceRider.update({
-    where: { id: String(req.params.riderId) },
+    where: { id: riderId },
     data: { planName: planName || null, coverageAmount: coverageAmount != null && coverageAmount !== '' ? Number(coverageAmount) : null }
   })
   res.json({ ok: true })
 }
 export async function deleteRider(req: AuthRequest, res: Response): Promise<void> {
-  await prisma.lifeInsuranceRider.delete({ where: { id: String(req.params.riderId) } })
+  const riderId = String(req.params.riderId)
+  const owns = await prisma.lifeInsuranceRider.findFirst({ where: { id: riderId, policy: { userId: req.effectiveUserId! } }, select: { id: true } })
+  if (!owns) { res.status(404).json({ error: 'Not found' }); return }
+  await prisma.lifeInsuranceRider.delete({ where: { id: riderId } })
   res.status(204).send()
 }
 
@@ -235,15 +249,21 @@ export async function createBeneficiary(req: AuthRequest, res: Response): Promis
   res.status(201).json(data)
 }
 export async function updateBeneficiary(req: AuthRequest, res: Response): Promise<void> {
+  const bid = String(req.params.beneficiaryId)
+  const owns = await prisma.lifeInsuranceBeneficiary.findFirst({ where: { id: bid, policy: { userId: req.effectiveUserId! } }, select: { id: true } })
+  if (!owns) { res.status(404).json({ error: 'Not found' }); return }
   const { name, relationship, sharePercent } = req.body
   await prisma.lifeInsuranceBeneficiary.update({
-    where: { id: String(req.params.beneficiaryId) },
+    where: { id: bid },
     data: { name, relationship: relationship || null, sharePercent: sharePercent != null && sharePercent !== '' ? Number(sharePercent) : null }
   })
   res.json({ ok: true })
 }
 export async function deleteBeneficiary(req: AuthRequest, res: Response): Promise<void> {
-  await prisma.lifeInsuranceBeneficiary.delete({ where: { id: String(req.params.beneficiaryId) } })
+  const bid = String(req.params.beneficiaryId)
+  const owns = await prisma.lifeInsuranceBeneficiary.findFirst({ where: { id: bid, policy: { userId: req.effectiveUserId! } }, select: { id: true } })
+  if (!owns) { res.status(404).json({ error: 'Not found' }); return }
+  await prisma.lifeInsuranceBeneficiary.delete({ where: { id: bid } })
   res.status(204).send()
 }
 

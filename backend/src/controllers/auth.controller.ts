@@ -340,6 +340,7 @@ export async function saveAdvisorProfile(req: Request & { userId?: string }, res
     const u = await prisma.user.update({ where: { id: req.userId }, data: { advisorProfile: req.body } })
     res.json(u.advisorProfile)
   } catch (e: any) {
-    res.status(500).json({ error: e.message })
+    console.error('[saveAdvisorProfile]', e)
+    res.status(500).json({ error: 'บันทึกโปรไฟล์ไม่สำเร็จ' })
   }
 }

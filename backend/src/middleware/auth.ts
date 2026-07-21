@@ -20,8 +20,18 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
 
     const clientId = req.headers['x-client-id'] as string | undefined
     if (clientId && clientId !== payload.userId) {
-      const user = await prisma.user.findUnique({ where: { id: payload.userId }, select: { role: true } })
-      req.effectiveUserId = isAdvisorRole(user?.role) ? clientId : payload.userId
+      const requester = await prisma.user.findUnique({ where: { id: payload.userId }, select: { role: true } })
+      if (isAdvisorRole(requester?.role)) {
+        // ⚠️ กัน IDOR ข้ามผู้ใช้: ยอมให้สวมเป็น "ลูกค้า" ได้เฉพาะ USER ที่ FA คนนี้เป็นผู้สร้างเท่านั้น
+        // ถ้าไม่ใช่เจ้าของ → ตกกลับมาที่ตัวเอง (ไม่ให้เข้าถึงข้อมูลของ FA คนอื่น)
+        const owns = await prisma.user.findFirst({
+          where: { id: clientId, role: 'USER', createdById: payload.userId },
+          select: { id: true },
+        })
+        req.effectiveUserId = owns ? clientId : payload.userId
+      } else {
+        req.effectiveUserId = payload.userId
+      }
     } else {
       req.effectiveUserId = payload.userId
     }

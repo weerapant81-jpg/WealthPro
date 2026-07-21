@@ -37,18 +37,22 @@ const authLimiter = rateLimit({ windowMs: 15 * 60_000, max: 20, standardHeaders:
 // กัน abuse AI Copilot (Claude API = ค่าเงินจริง)
 const copilotLimiter = rateLimit({ windowMs: 5 * 60_000, max: 40, standardHeaders: true, legacyHeaders: false,
   message: { error: 'ใช้ AI Copilot ถี่เกินไป กรุณารอสักครู่' } })
+// กัน brute-force รหัส TOTP/รหัสผ่านตอนเปิด/ปิด 2FA
+const twofaLimiter = rateLimit({ windowMs: 15 * 60_000, max: 20, standardHeaders: true, legacyHeaders: false,
+  message: { error: 'พยายามยืนยันตัวตนบ่อยเกินไป กรุณารอสักครู่' } })
 
 app.use('/api', apiLimiter)
 app.use(['/api/auth/login', '/api/auth/register', '/api/auth/google', '/api/auth/apple',
   '/api/auth/forgot-password', '/api/auth/reset-password'], authLimiter)
+app.use('/api/auth/2fa', twofaLimiter)
 app.use('/api/copilot', copilotLimiter)
 
 app.use('/api', audit, routes)   // audit ดักก่อน routes → บันทึกตอน response finish
 
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('[Error]', err)
+  console.error('[Error]', err)   // รายละเอียดจริง log ฝั่งเซิร์ฟเวอร์/Sentry เท่านั้น
   if (sentryEnabled) Sentry.captureException(err)
-  res.status(500).json({ error: err.message ?? 'Internal server error' })
+  res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในระบบ' })   // ไม่ส่ง err.message ดิบกลับ client (กันรั่วข้อมูลภายใน)
 })
 
 // จับ error ระดับ process ที่หลุดจาก middleware (กัน crash เงียบ)
