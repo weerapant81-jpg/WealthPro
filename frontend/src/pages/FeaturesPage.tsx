@@ -102,10 +102,10 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* 6 เสาหลัก CFP */}
+      {/* 6 เสาหลักการวางแผนการเงิน */}
       <section style={{ ...wrap, padding: compact ? '56px 20px' : '80px 40px' }}>
         <div style={{ textAlign: 'center', marginBottom: 44 }}>
-          <h2 style={{ fontSize: compact ? 26 : 32, fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.02em' }}>วางแผนครบ 6 ด้าน ตามมาตรฐาน CFP® ในที่เดียว</h2>
+          <h2 style={{ fontSize: compact ? 26 : 32, fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.02em' }}>วางแผนครบ 6 ด้าน ในที่เดียว</h2>
           <p style={{ fontSize: 15.5, color: 'var(--text-secondary)', maxWidth: 640, margin: '0 auto' }}>เชื่อมโยงข้อมูลทั้ง 6 ด้านเข้าด้วยกันอัตโนมัติ กรอกครั้งเดียว คำนวณให้ทั้งระบบ</p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${compact ? 140 : 160}px, 1fr))`, gap: 16 }}>

@@ -20,7 +20,7 @@ export default function AboutPage() {
   const stats = [
     { n: '15+', c: AC, t: 'ปีบนเส้นทางวิชาชีพ', d: 'เติบโตไปพร้อมกับอุตสาหกรรมการเงินไทย ด้วยความซื่อสัตย์และมั่นคง' },
     { n: '1,000+', c: 'var(--text-primary)', t: 'ครอบครัวที่ดูแล', d: 'ดูแลเป้าหมายชีวิตและแผนการเงินให้กับครอบครัวและองค์กรทั่วประเทศ' },
-    { n: '100%', c: '#a78bfa', t: 'ตามมาตรฐาน CFP®', d: 'ทุกขั้นตอนการให้คำปรึกษาเป็นไปตามจรรยาบรรณวิชาชีพนักวางแผนการเงิน' },
+    { n: '100%', c: '#a78bfa', t: 'ยึดจรรยาบรรณวิชาชีพ', d: 'ทุกขั้นตอนการให้คำปรึกษาเป็นไปตามจรรยาบรรณวิชาชีพนักวางแผนการเงิน' },
   ]
   const team = [
     { icon: UserRound, role: 'ทีมที่ปรึกษาการเงิน', sub: 'Professional Consultant', c: AC },
@@ -86,13 +86,13 @@ export default function AboutPage() {
             <div style={{ flex: compact ? 'none' : '0 0 42%', minHeight: compact ? 180 : 'auto', background: 'linear-gradient(150deg, #0f172a 0%, #134e4a 60%, #00cfc1 150%)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', padding: 24 }}>
               <Quote size={compact ? 60 : 96} color="rgba(255,255,255,0.14)" />
               <div style={{ position: 'absolute', bottom: 18, left: 22, right: 22 }}>
-                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.6)' }}>CFP® CERTIFIED FINANCIAL PLANNER</div>
+                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.6)' }}>FINANCIAL PLANNING PROFESSIONAL</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', marginTop: 4 }}>ผู้สร้าง WealthPro</div>
               </div>
             </div>
             <div style={{ flex: 1, padding: compact ? 26 : 40, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.85, margin: '0 0 24px' }}>
-                “ในฐานะนักวางแผนการเงิน เราพบว่าเครื่องมือที่มีอยู่มักไม่ตอบโจทย์การทำงานจริง เราจึงสร้าง WealthPro ขึ้นตามมาตรฐาน CFP® เพื่อให้เพื่อนที่ปรึกษาทำงานได้อย่างมืออาชีพและเข้าถึงใจลูกค้าอย่างแท้จริง”
+                “ในฐานะนักวางแผนการเงิน เราพบว่าเครื่องมือที่มีอยู่มักไม่ตอบโจทย์การทำงานจริง เราจึงสร้าง WealthPro ขึ้นบนหลักการวางแผนการเงินแบบองค์รวม 6 ด้าน เพื่อให้เพื่อนที่ปรึกษาทำงานได้อย่างมืออาชีพและเข้าถึงใจลูกค้าอย่างแท้จริง”
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ width: 40, height: 4, borderRadius: 2, background: AC }} />
@@ -103,7 +103,7 @@ export default function AboutPage() {
           {/* vision cards */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {[
-              { icon: Award, t: 'มาตรฐาน CFP®', d: 'สร้างบนโครงสร้างการวางแผนการเงิน 6 ด้านระดับสากล เพื่อความแม่นยำและถูกต้อง' },
+              { icon: Award, t: 'วางแผนแบบองค์รวม', d: 'สร้างบนโครงสร้างการวางแผนการเงิน 6 ด้านระดับสากล เพื่อความแม่นยำและถูกต้อง' },
               { icon: LineChart, t: 'ประสบการณ์จริง', d: 'ทุกฟีเจอร์ผ่านการใช้งานจริงกับลูกค้าจำนวนมาก ตลอด 15 ปีในภาคสนาม' },
             ].map(v => (
               <div key={v.t} className="lp-card" style={{ ...glass, padding: 26, flex: 1 }}>

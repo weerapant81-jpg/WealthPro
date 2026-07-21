@@ -129,7 +129,7 @@ export default function UserProfilePage() {
         <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 14 }}>
             <div><label style={lbl}>ชื่อ-นามสกุล</label><input style={inp} value={p.fullName} onChange={e => set('fullName', e.target.value)} placeholder="ชื่อที่จะแสดงในเอกสาร" /></div>
-            <div><label style={lbl}>ตำแหน่ง</label><input style={inp} value={p.position} onChange={e => set('position', e.target.value)} placeholder="เช่น นักวางแผนการเงิน CFP®" /></div>
+            <div><label style={lbl}>ตำแหน่ง</label><input style={inp} value={p.position} onChange={e => set('position', e.target.value)} placeholder="เช่น นักวางแผนการเงิน / ที่ปรึกษาการเงิน" /></div>
             <div><label style={lbl}>เบอร์โทรศัพท์</label><input style={inp} value={p.phone} onChange={e => set('phone', e.target.value)} placeholder="08x-xxx-xxxx" /></div>
             <div><label style={lbl}>อีเมล</label><input style={inp} value={p.email} onChange={e => set('email', e.target.value)} placeholder="email@example.com" /></div>
           </div>

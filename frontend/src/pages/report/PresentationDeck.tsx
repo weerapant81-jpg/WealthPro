@@ -22,7 +22,7 @@ import {
 } from 'recharts'
 
 /* ══════════════════════════════════════════════════════════════════════════
-   PresentationDeck — เด็คนำเสนอ CFP ฉบับครอบครัว (ลูกค้า + คู่สมรส คู่กัน)
+   PresentationDeck — เด็คนำเสนอแผนการเงิน ฉบับครอบครัว (ลูกค้า + คู่สมรส คู่กัน)
    สไลด์ A4 แนวนอน ธีมสว่าง · ดึงตัวเลข/กราฟจาก hook/endpoint เดิม (กัน drift)
    ══════════════════════════════════════════════════════════════════════════ */
 
@@ -62,7 +62,7 @@ export type CustomSlide = { id: string; bg?: string }
 // รายการสไลด์ทั้งหมด (เรียงตามลำดับจริง) — ใช้ทำเมนูเลือกหน้าในหน้ารายงาน
 export const DECK_SLIDES: { id: string; label: string }[] = [
   { id: 'cover', label: 'หน้าปก' },
-  { id: 'process', label: 'กระบวนการวางแผน CFP' },
+  { id: 'process', label: 'กระบวนการวางแผนการเงิน' },
   { id: 'family', label: 'ข้อมูลครอบครัว' },
   { id: 'work', label: 'ข้อมูลการทำงานและสวัสดิการ' },
   { id: 'goals', label: 'เป้าหมายการเงิน' },
@@ -1127,7 +1127,7 @@ export default function PresentationDeck({ title, pres, onComment, onToggleHide,
               <div style={{ position: 'absolute', right: -30, top: 40, width: 150, height: 150, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.08)' }} />
               <div style={{ position: 'relative', maxWidth: 660 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 4, color: 'rgba(255,255,255,0.6)' }}>HOLISTIC FINANCIAL PLANNING</div>
-                <div style={{ fontSize: 30, fontWeight: 800, color: '#fff', lineHeight: 1.28, marginTop: 12, letterSpacing: '-0.01em' }}>แผนการเงินแบบองค์รวม 6 ด้าน<br />ตามมาตรฐานวิชาชีพ CFP®</div>
+                <div style={{ fontSize: 30, fontWeight: 800, color: '#fff', lineHeight: 1.28, marginTop: 12, letterSpacing: '-0.01em' }}>แผนการเงินแบบองค์รวม 6 ด้าน</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
                   {['สภาพคล่อง', 'การลงทุน', 'ประกัน & ความเสี่ยง', 'เกษียณอายุ', 'ภาษี', 'มรดก'].map(t => (
                     <span key={t} style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(255,255,255,0.9)', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 999, padding: '5px 13px' }}>{t}</span>

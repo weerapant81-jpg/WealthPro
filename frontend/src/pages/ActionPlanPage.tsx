@@ -636,7 +636,7 @@ export default function ActionPlanPage() {
         </div>
       </div>
 
-      {/* 6 ด้าน CFP — bento grid */}
+      {/* 6 ด้าน — bento grid */}
       {isLoading ? <div style={{ ...card, color: 'var(--text-muted)', fontSize: 13 }}>กำลังโหลด...</div> : (() => {
         const KNOWN = new Set(PLAN_SECTIONS.flatMap(x => x.cats))
         const itemsFor = (sec: typeof PLAN_SECTIONS[number]) => items.filter(it => sec.cats.includes(it.category) || (sec.key === 'investment' && !KNOWN.has(it.category)))

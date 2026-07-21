@@ -181,13 +181,13 @@ export default function LandingPage() {
         <div style={{ ...wrap, padding: compact ? '48px 20px 60px' : '80px 40px 100px', display: 'grid', gridTemplateColumns: compact ? '1fr' : '1fr 1fr', gap: 48, alignItems: 'center', position: 'relative' }}>
           <div className="lp-fade">
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: 'var(--navy-800)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 999, fontSize: 11.5, fontWeight: 800, letterSpacing: '0.08em', color: AC, marginBottom: 22 }}>
-              <span style={{ width: 7, height: 7, borderRadius: 999, background: AC }} />มาตรฐานวิชาชีพ CFP®
+              <span style={{ width: 7, height: 7, borderRadius: 999, background: AC }} />วางแผนการเงินแบบองค์รวม 6 ด้าน
             </div>
             <h1 style={{ fontSize: compact ? 34 : 46, fontWeight: 800, lineHeight: 1.2, letterSpacing: '-0.02em', margin: '0 0 20px' }}>
               โปรแกรมวางแผนการเงินครบวงจร<br /><span style={{ color: AC }}>สำหรับนักวางแผนการเงินไทย</span>
             </h1>
             <p style={{ fontSize: 16.5, color: 'var(--text-secondary)', lineHeight: 1.75, maxWidth: 520, margin: '0 0 32px' }}>
-              วิเคราะห์ครบ 6 ด้านตามหลัก CFP · ส่งมอบรายงานได้ 2 รูปแบบ (ฉบับเต็ม + สไลด์นำเสนอ) · พร้อม AI Copilot ช่วยวางแผน — ยกระดับการให้คำปรึกษาให้แม่นยำและมืออาชีพ
+              วิเคราะห์ครบ 6 ด้านอย่างเป็นระบบ · ส่งมอบรายงานได้ 2 รูปแบบ (ฉบับเต็ม + สไลด์นำเสนอ) · พร้อม AI Copilot ช่วยวางแผน — ยกระดับการให้คำปรึกษาให้แม่นยำและมืออาชีพ
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
               <button onClick={goRegister} className="lp-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: AC, color: '#00201d', border: 'none', borderRadius: 12, padding: '15px 28px', fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -202,7 +202,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── แถบ 6 ด้าน CFP ── */}
+      {/* ── แถบ 6 ด้าน ── */}
       <section style={{ borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'var(--navy-950)' }}>
         <div style={{ ...wrap, padding: '28px 40px', display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'center' }}>
           <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', color: 'var(--text-muted)', textTransform: 'uppercase', marginRight: 8 }}>วางแผน 6 ด้าน</span>
@@ -217,7 +217,7 @@ export default function LandingPage() {
           <p style={{ fontSize: 16, color: 'var(--text-secondary)', maxWidth: 560, margin: '0 auto' }}>ครบทุกมิติของการวางแผนการเงิน พร้อมเทคโนโลยีที่ช่วยลดเวลาทำงานของคุณ</p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 20 }}>
-          <Feature icon={Landmark} title="วิเคราะห์ 6 ด้านตามหลัก CFP" desc="ครอบคลุมสภาพคล่อง การลงทุน ประกัน เกษียณ ภาษี และมรดก อย่างเป็นระบบตามมาตรฐานวิชาชีพ" />
+          <Feature icon={Landmark} title="วิเคราะห์ครบ 6 ด้าน" desc="ครอบคลุมสภาพคล่อง การลงทุน ประกัน เกษียณ ภาษี และมรดก อย่างเป็นระบบ" />
           <Feature icon={FileText} title="รายงาน & สไลด์นำเสนอ" desc="สร้างรายงาน PDF ระดับมืออาชีพและสไลด์นำเสนออัตโนมัติ พร้อมโปรไฟล์และแบรนด์ของคุณ" />
           <Feature icon={TrendingUp} title="งบการเงินล่วงหน้า + วางแผนภาษี" desc="จำลองกระแสเงินสดรายปีถึงอายุขัย พร้อมวางแผนภาษีเปรียบเทียบก่อน–หลังอย่างแม่นยำ" />
           <Feature icon={Bot} title="AI Copilot" desc="ผู้ช่วยอัจฉริยะวิเคราะห์เชิงลึกและให้คำแนะนำเฉพาะรายลูกค้า grounded บนข้อมูลจริง" highlight badge="AI" />
@@ -301,7 +301,7 @@ export default function LandingPage() {
       <section id="faq" style={{ ...wrap, padding: compact ? '60px 20px' : '90px 40px', maxWidth: 780 }}>
         <h2 style={{ fontSize: compact ? 28 : 36, fontWeight: 800, textAlign: 'center', margin: '0 0 44px', letterSpacing: '-0.02em' }}>คำถามที่พบบ่อย</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <Faq q="WealthPro อ้างอิงมาตรฐาน CFP หรือไม่?" a="ระบบพัฒนาโดยอ้างอิงหลักเกณฑ์การวางแผนการเงิน 6 ด้านตามมาตรฐานวิชาชีพ CFP® ทั้งการวิเคราะห์สภาพคล่อง การลงทุน ประกัน เกษียณ ภาษี และมรดก" />
+          <Faq q="WealthPro วิเคราะห์ครอบคลุมแค่ไหน?" a="ระบบพัฒนาโดยอ้างอิงหลักการวางแผนการเงินแบบองค์รวม 6 ด้าน ทั้งการวิเคราะห์สภาพคล่อง การลงทุน ประกัน เกษียณ ภาษี และมรดก" />
           <Faq q="ข้อมูลลูกค้าปลอดภัยแค่ไหน?" a="เข้ารหัสข้อมูลระดับสถาบันการเงิน (AES-256) รองรับ 2FA และ Audit log พร้อมจัดการข้อมูลตามข้อบังคับ PDPA อย่างเคร่งครัด — รวมถึงการขอเข้าถึง/ลบข้อมูลของลูกค้า" />
           <Faq q="ใช้บน iPad ได้ไหม?" a="ได้เต็มรูปแบบ WealthPro เป็น Progressive Web App ติดตั้งลงหน้าจอโฮม iPad ได้ เปิดเต็มจอเหมือนแอป เหมาะกับการนำเสนอกับลูกค้าแบบเจอหน้า" />
           <Faq q="เริ่มใช้งานอย่างไร?" a="สมัครด้วยอีเมล / Google / Apple → ยืนยันอีเมล → รอผู้ให้บริการอนุมัติบัญชี จากนั้นเริ่มสร้างลูกค้าและวางแผนได้ทันที" />
@@ -314,7 +314,7 @@ export default function LandingPage() {
         <div style={{ ...wrap, padding: compact ? '64px 20px' : '96px 40px', textAlign: 'center', position: 'relative' }}>
           <Sparkles size={30} color={AC} style={{ marginBottom: 18 }} />
           <h2 style={{ fontSize: compact ? 30 : 40, fontWeight: 800, margin: '0 0 16px', letterSpacing: '-0.02em' }}>เริ่มต้นวางแผนอย่างมืออาชีพวันนี้</h2>
-          <p style={{ fontSize: 16.5, color: 'var(--text-secondary)', maxWidth: 540, margin: '0 auto 32px', lineHeight: 1.7 }}>สมัครฟรี พร้อมเครื่องมือวางแผน 6 ด้านและรายงานมาตรฐาน CFP® ครบทุกมิติ</p>
+          <p style={{ fontSize: 16.5, color: 'var(--text-secondary)', maxWidth: 540, margin: '0 auto 32px', lineHeight: 1.7 }}>สมัครฟรี พร้อมเครื่องมือวางแผน 6 ด้านและรายงานระดับมืออาชีพครบทุกมิติ</p>
           <button onClick={goRegister} className="lp-btn" style={{ background: AC, color: '#00201d', border: 'none', borderRadius: 14, padding: '17px 44px', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 16px 40px -12px rgba(0,207,193,0.4)' }}>สมัครสมาชิกฟรี</button>
         </div>
       </section>
