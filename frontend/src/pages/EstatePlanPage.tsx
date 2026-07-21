@@ -180,8 +180,8 @@ export default function EstatePlanPage({ person = 'self' }: { person?: Person })
       const shares = nChild + (spouseIsHeir ? 1 : 0) + parentsAlive
       const each = shares > 0 ? estate / shares : 0
       if (spouseIsHeir) out.push({ name: survivingSpouseName, role: 'คู่สมรส (รับส่วนเท่าบุตร 1 คน)', heirShare: each, color: '#c084fc' })
-      if (inputs.fatherAlive) out.push({ name: parents?.fatherName || 'บิดา', role: 'บิดา (รับเสมือนทายาทชั้นบุตร · ม.1630 ว.2)', heirShare: each, color: '#f59e0b' })
       children.forEach((c, i) => out.push({ name: c.name || `บุตรคนที่ ${i + 1}`, role: c.age != null && c.age < 20 ? `บุตร (ผู้เยาว์ อายุ ${c.age})` : 'บุตร (ผู้สืบสันดาน)', heirShare: each, color: '#0ea5e9' }))
+      if (inputs.fatherAlive) out.push({ name: parents?.fatherName || 'บิดา', role: 'บิดา (รับเสมือนทายาทชั้นบุตร · ม.1630 ว.2)', heirShare: each, color: '#f59e0b' })
       if (inputs.motherAlive) out.push({ name: parents?.motherName || 'มารดา', role: 'มารดา (รับเสมือนทายาทชั้นบุตร · ม.1630 ว.2)', heirShare: each, color: '#f59e0b' })
       note = 'มีผู้สืบสันดาน (ลำดับ 1) — คู่สมรส และบิดามารดา (ม.1630 ว.2) ได้ส่วนแบ่งเท่าบุตร 1 คน แบ่งเท่าๆ กันทุกคน'
     } else if (parentsAlive > 0) {
