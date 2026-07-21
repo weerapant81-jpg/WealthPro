@@ -8,6 +8,7 @@ import routes from './routes'
 import { handleWebhook } from './controllers/billing.controller'
 import { audit } from './middleware/audit'
 import { seedAdviceRules } from './lib/seedAdviceRules'
+import { startAuditRetention } from './lib/auditRetention'
 
 const app = express()
 app.set('trust proxy', true)   // อ่าน client IP จริงหลัง proxy (Render/Vercel) — ต้องมาก่อน rate-limit เพื่อ key ตาม IP จริง
@@ -65,4 +66,5 @@ const PORT = process.env.PORT || 3001
 app.listen(PORT, async () => {
   console.log(`Backend running on http://localhost:${PORT}`)
   await seedAdviceRules()
+  startAuditRetention()   // ลบ audit log เก่ากว่า 2 ปีอัตโนมัติ (PDPA retention)
 })
