@@ -36,6 +36,9 @@ model User {
   planOverride         Boolean   @default(false)  // SUPER_ADMIN ตั้งเอง → webhook ไม่ทับ
   stripeCustomerId     String?   @unique
   stripeSubscriptionId String?
+  // ── โควตาต้นทุน AI Copilot ต่อเดือน (คุมงบ Claude API) ──
+  aiCostThb            Float     @default(0)   // ต้นทุนสะสมในรอบเดือนปัจจุบัน (บาท)
+  aiCostPeriod         String    @default("")  // รอบเดือน "YYYY-MM" ของยอดข้างต้น
   advisorProfile     Json?
   createdById        String?   // FA (ADMIN/SUPER_ADMIN) ที่สร้างลูกค้ารายนี้
   // ── 2FA (TOTP) — เฉพาะบัญชี FA ──

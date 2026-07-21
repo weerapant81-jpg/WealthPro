@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { prisma } from '../lib/prisma'
 import { AuthRequest } from '../middleware/auth'
 import { computeFinancialSummary } from './finance.controller'
+import { aiMonthlyCapThb, currentPeriod, costThbFromUsage } from '../lib/aiCost'
 
 const MODEL = 'claude-sonnet-5'
 
@@ -240,6 +241,17 @@ export async function chatCopilot(req: AuthRequest, res: Response): Promise<void
     return
   }
 
+  // ── เพดานโควตา AI รายเดือนต่อผู้ใช้ (คุมงบ Claude API) — SUPER_ADMIN ไม่จำกัด ──
+  const cap = aiMonthlyCapThb()
+  const period = currentPeriod()
+  const me = await prisma.user.findUnique({ where: { id: req.userId }, select: { role: true, aiCostThb: true, aiCostPeriod: true } })
+  const capped = !!me && me.role !== 'SUPER_ADMIN' && cap > 0
+  const spentThisMonth = me && me.aiCostPeriod === period ? me.aiCostThb : 0
+  if (capped && spentThisMonth >= cap) {
+    res.status(429).json({ error: `ใช้โควตา AI Copilot ประจำเดือนครบแล้ว (฿${cap}) — โควตาจะรีเซ็ตเดือนถัดไป` })
+    return
+  }
+
   let clientContext = 'ไม่สามารถโหลดข้อมูลลูกค้าได้'
   try { clientContext = await buildClientContext(req.effectiveUserId!) } catch { /* ใช้ค่า default */ }
 
@@ -272,8 +284,16 @@ export async function chatCopilot(req: AuthRequest, res: Response): Promise<void
     stream.on('text', (delta: string) => { res.write(delta) })
     const final = await stream.finalMessage()
     const u = final.usage
+    // สะสมต้นทุน AI เข้ารอบเดือนของผู้ใช้ (รีเซ็ตยอดเมื่อขึ้นเดือนใหม่)
+    if (capped) {
+      const cost = costThbFromUsage(u as any)
+      prisma.user.update({
+        where: { id: req.userId },
+        data: { aiCostThb: spentThisMonth + cost, aiCostPeriod: period },
+      }).catch(() => { /* ไม่ให้ error การบันทึกต้นทุนกระทบการตอบ */ })
+    }
     // log ไว้ดูว่า caching ทำงาน (cacheR > 0 ในเทิร์นที่ 2 เป็นต้นไป)
-    console.log(`[copilot] in=${u.input_tokens} cacheWrite=${u.cache_creation_input_tokens ?? 0} cacheRead=${u.cache_read_input_tokens ?? 0} out=${u.output_tokens}`)
+    console.log(`[copilot] in=${u.input_tokens} cacheWrite=${u.cache_creation_input_tokens ?? 0} cacheRead=${u.cache_read_input_tokens ?? 0} out=${u.output_tokens} cost≈฿${costThbFromUsage(u as any).toFixed(3)}`)
     res.end()
   } catch (e: any) {
     // ถ้ายังไม่ได้ส่ง header สถานะ (ไม่น่าเกิดเพราะ setHeader ไปแล้ว) — เขียนข้อความ error ต่อท้าย
