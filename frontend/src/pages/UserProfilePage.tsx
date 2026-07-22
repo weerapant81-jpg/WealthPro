@@ -49,8 +49,18 @@ export default function UserProfilePage() {
 
   useEffect(() => {
     if (loadedRef.current || !isFetched) return
-    if (saved && typeof saved === 'object') setP(prev => ({ ...prev, ...saved }))
-    else if (me) setP(prev => ({ ...prev, fullName: me.name || '', email: me.email || '' }))
+    // ดึงเบอร์โทร/อีเมล/ชื่อ จากบัญชี (ตอนสมัคร) มาเติมให้อัตโนมัติเมื่อโปรไฟล์ยังว่าง
+    const acct = { name: me?.name || '', email: me?.email || '', phone: me?.phone || '' }
+    if (saved && typeof saved === 'object') {
+      setP(prev => ({
+        ...prev, ...saved,
+        fullName: String(saved.fullName ?? '').trim() ? saved.fullName : acct.name,
+        email: String(saved.email ?? '').trim() ? saved.email : acct.email,
+        phone: String(saved.phone ?? '').trim() ? saved.phone : acct.phone,
+      }))
+    } else if (me) {
+      setP(prev => ({ ...prev, fullName: acct.name, email: acct.email, phone: acct.phone }))
+    }
     loadedRef.current = true
   }, [isFetched, saved, me])
 

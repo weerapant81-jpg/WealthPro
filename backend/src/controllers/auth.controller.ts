@@ -322,7 +322,7 @@ export async function refresh(req: Request, res: Response): Promise<void> {
 export async function me(req: Request & { userId?: string }, res: Response): Promise<void> {
   const user = await prisma.user.findUnique({
     where: { id: req.userId },
-    select: { id: true, email: true, name: true, role: true, profile: true, plan: true, planExpiresAt: true }
+    select: { id: true, email: true, name: true, phone: true, role: true, profile: true, plan: true, planExpiresAt: true }
   })
   if (!user) { res.json(null); return }
   const promoActive = user.role === 'ADMIN' && isPromoFreeActive()
