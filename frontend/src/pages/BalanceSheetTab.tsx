@@ -412,6 +412,15 @@ export default function BalanceSheetTab({ person = 'client' }: { person?: 'clien
   )
   const insuranceCashValue = cashValuePolicies.reduce((s, p) => s + (p.cashValue ?? 0), 0)
 
+  // ── กองทุนสวัสดิการ (ประกันสังคม / PVD) — ดึงจากหน้า "ข้อมูลลูกค้า" มานับเป็นสินทรัพย์เพื่อการลงทุน ──
+  const num = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
+  const welfareSrc = person === 'spouse' ? (clientProfile?.spouseProfile ?? {}) : (clientProfile ?? {})
+  const welfareItems = [
+    { name: 'กองทุนประกันสังคม', note: 'จากข้อมูลลูกค้า · สวัสดิการ', value: welfareSrc?.hasSocialSecurity ? num(welfareSrc?.socialSecurityValue) : 0 },
+    { name: 'กองทุนสำรองเลี้ยงชีพ (PVD)', note: 'จากข้อมูลลูกค้า · สวัสดิการ', value: welfareSrc?.hasPVD ? num(welfareSrc?.pvdCurrentValue) : 0 },
+  ].filter(w => w.value > 0)
+  const welfareTotal = welfareItems.reduce((s, w) => s + w.value, 0)
+
   // หนี้สินคงค้าง → ระยะสั้น (ครบกำหนด ≤ 1 ปี) / ระยะยาว (> 1 ปี)
   const isLongTerm = (l: { termYears: string }) => (parseFloat(l.termYears) || 0) > 1
   const profShortDebt = profileLiabilities.filter(l => !isLongTerm(l) && toNum(l.currentBalance) > 0)
@@ -422,6 +431,7 @@ export default function BalanceSheetTab({ person = 'client' }: { person?: 'clien
     const invest   = investmentAssets.reduce((s, a) => s + toNum(a.currentValue), 0)
       + manualInvest.reduce((s, a) => s + a.value, 0)
       + insuranceCashValue
+      + welfareTotal
     const personal = personalItems.reduce((s, a) => s + toNum(a.currentValue), 0)
     const totalAssets = liquid + invest + personal
 
@@ -432,7 +442,7 @@ export default function BalanceSheetTab({ person = 'client' }: { person?: 'clien
 
     return { liquid, invest, personal, totalAssets, shortTotal, longTotal, totalLiab,
       netWorth: totalAssets - totalLiab }
-  }, [savingsAccounts, investmentAssets, personalAssets, shortDebt, profShortDebt, profLongDebt, manualInvest, insuranceCashValue])
+  }, [savingsAccounts, investmentAssets, personalAssets, shortDebt, profShortDebt, profLongDebt, manualInvest, insuranceCashValue, welfareTotal])
 
   const addAssetFn = (cat: string, name: string, value: number, shared?: boolean) =>
     addAsset.mutate({ name, value, category: cat, returnRate: 0, person: shared ? 'shared' : person })
@@ -472,11 +482,15 @@ export default function BalanceSheetTab({ person = 'client' }: { person?: 'clien
 
         {/* สินทรัพย์เพื่อการลงทุน — นำเข้าจากสินทรัพย์การลงทุน */}
         <SectionCard title="สินทรัพย์เพื่อการลงทุน" sub="Investment Assets · นำเข้าจากสินทรัพย์การลงทุน + เพิ่มรายการอื่นๆ ได้" accent="#3b82f6" total={totals.invest}>
-          {investmentAssets.filter(a => toNum(a.currentValue) > 0).length === 0 && manualInvest.length === 0 && cashValuePolicies.length === 0 && (
+          {investmentAssets.filter(a => toNum(a.currentValue) > 0).length === 0 && manualInvest.length === 0 && cashValuePolicies.length === 0 && welfareItems.length === 0 && (
             <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, padding: '10px 0' }}>
               ยังไม่มีข้อมูล — กรอกในแท็บ "ข้อมูลสินทรัพย์-หนี้สิน → สินทรัพย์การลงทุน" หรือเพิ่มรายการด้านล่าง
             </p>
           )}
+          {/* กองทุนสวัสดิการ — ดึงจากหน้าข้อมูลลูกค้า */}
+          {welfareItems.map((w, i) => (
+            <ImportedRow key={`wf-${i}`} name={w.name} value={w.value} totalForPct={totals.totalAssets} accent="#3b82f6" note={w.note} />
+          ))}
           {cashValuePolicies.map((p, i) => (
             <ImportedRow key={`cv-${i}`}
               name={`มูลค่าเวนคืน — ${p.insuranceType || 'ประกันชีวิต'}${p.policyNumber ? ` (${p.policyNumber})` : ''}`}
@@ -584,6 +598,7 @@ export default function BalanceSheetTab({ person = 'client' }: { person?: 'clien
                 rows.push([cat, name, Math.round(val), base ? +((val / base) * 100).toFixed(2) : 0])
               savingsAccounts.filter(a => toNum(a.currentValue) > 0).forEach((a, i) =>
                 push('สินทรัพย์สภาพคล่อง', a.depositType || `บัญชีที่ ${i + 1}`, toNum(a.currentValue), totals.totalAssets))
+              welfareItems.forEach(w => push('สินทรัพย์เพื่อการลงทุน', w.name, w.value, totals.totalAssets))
               cashValuePolicies.forEach(p =>
                 push('สินทรัพย์เพื่อการลงทุน', `มูลค่าเวนคืน — ${p.insuranceType || 'ประกันชีวิต'}`, p.cashValue, totals.totalAssets))
               investmentAssets.filter(a => toNum(a.currentValue) > 0).forEach((a, i) =>
