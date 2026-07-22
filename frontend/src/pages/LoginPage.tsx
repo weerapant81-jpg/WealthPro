@@ -163,6 +163,15 @@ export default function LoginPage() {
         const msg = await forgotPassword(email)
         setInfo(msg)
       } else {
+        // บังคับกรอกให้ครบก่อนขอเข้าใช้งาน (ชื่อ · เบอร์โทร · อีเมล · รหัสผ่าน)
+        if (!firstName.trim() || !phone.trim() || !email.trim() || !password) {
+          setError('กรุณากรอก ชื่อ · เบอร์โทรศัพท์ · อีเมล · รหัสผ่าน ให้ครบก่อนขอเข้าใช้งาน')
+          setLoading(false); return
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+          setError('รูปแบบอีเมลไม่ถูกต้อง')
+          setLoading(false); return
+        }
         const fullName = `${firstName.trim()} ${lastName.trim()}`.trim()
         const result = await registerUser(fullName, email, password, phone.trim())
         if (result.pending || !result.access) {

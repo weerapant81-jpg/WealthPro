@@ -25,7 +25,7 @@ function generateTokens(userId: string) {
 export async function register(req: Request, res: Response): Promise<void> {
   const { email, password, name, phone, birthDate } = req.body
   if (!email || !password || !name || !String(phone ?? '').trim()) {
-    res.status(400).json({ error: 'email, password, name, phone are required' })
+    res.status(400).json({ error: 'กรุณากรอก ชื่อ · เบอร์โทรศัพท์ · อีเมล · รหัสผ่าน ให้ครบ' })
     return
   }
   const existing = await prisma.user.findUnique({ where: { email } })
