@@ -10,14 +10,15 @@ import { api } from '../lib/api'
  * รายการคลิปเก็บในฐานข้อมูล · SUPER_ADMIN เพิ่ม/แก้/ลบ ได้เองในหน้านี้
  * ใช้ได้ทั้งสาธารณะ (จาก landing) และในแอป */
 
-type Video = { id: string; title: string; description: string; category: string; provider?: string; youtubeId: string; duration?: string; order: number }
+type Video = { id: string; title: string; description: string; category: string; provider?: string; youtubeId: string; thumbnail?: string; duration?: string; order: number }
 
 const CATS = ['เริ่มต้นใช้งาน', 'จัดการลูกค้า', 'วางแผนการเงิน', 'รายงาน', 'ผู้ช่วย AI', 'ความปลอดภัย'] as const
 
 const AC = 'var(--cyan)'
 const prov = (v: Video) => v.provider || 'youtube'
-/** ภาพปก — YouTube มีภาพอัตโนมัติ · Vimeo/ไฟล์ตรง ใช้พื้นหลังแทน */
-const thumb = (v: Video) => prov(v) === 'youtube' ? `https://img.youtube.com/vi/${v.youtubeId}/hqdefault.jpg` : ''
+/** ภาพปก — ใช้ที่กรอกเองก่อน · ไม่มีก็ดึงอัตโนมัติ (YouTube) · ที่เหลือใช้พื้นหลังไล่สี */
+const thumb = (v: Video) => (v.thumbnail || '').trim()
+  || (prov(v) === 'youtube' ? `https://img.youtube.com/vi/${v.youtubeId}/hqdefault.jpg` : '')
 /** ลิงก์ฝังสำหรับ iframe (YouTube / Vimeo / Bunny) — ไฟล์ตรงใช้ <video> แทน */
 const embed = (v: Video) => {
   const p = prov(v)
@@ -34,8 +35,8 @@ const sourceUrl = (v: Video) => {
   return `https://youtu.be/${v.youtubeId}`
 }
 
-type FormState = { id?: string; title: string; description: string; category: string; youtube: string; duration: string; order: string }
-const emptyForm = (): FormState => ({ title: '', description: '', category: CATS[0], youtube: '', duration: '', order: '' })
+type FormState = { id?: string; title: string; description: string; category: string; youtube: string; thumbnail: string; duration: string; order: string }
+const emptyForm = (): FormState => ({ title: '', description: '', category: CATS[0], youtube: '', thumbnail: '', duration: '', order: '' })
 
 export default function TutorialsPage() {
   const { user } = useAuth()
@@ -68,7 +69,7 @@ export default function TutorialsPage() {
 
   const list = cat === 'ทั้งหมด' ? videos : videos.filter(v => v.category === cat)
 
-  const openEdit = (v: Video) => { setErr(''); setForm({ id: v.id, title: v.title, description: v.description, category: v.category, youtube: sourceUrl(v), duration: v.duration || '', order: String(v.order) }) }
+  const openEdit = (v: Video) => { setErr(''); setForm({ id: v.id, title: v.title, description: v.description, category: v.category, youtube: sourceUrl(v), thumbnail: v.thumbnail || '', duration: v.duration || '', order: String(v.order) }) }
 
   const content = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 1040 }}>
@@ -189,6 +190,12 @@ export default function TutorialsPage() {
                 <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.5 }}>
                   รองรับ <b>YouTube</b> · <b>Vimeo</b> · <b>Bunny Stream</b> (ใช้ Embed URL) · <b>ลิงก์ไฟล์ .mp4</b> — ระบบตรวจให้อัตโนมัติ<br />
                   <span style={{ color: '#f59e0b' }}>หมายเหตุ: ลิงก์ HLS (.m3u8) ยังไม่รองรับ — Bunny ให้ใช้ Embed URL แทน</span>
+                </div>
+              </Field>
+              <Field label="ภาพปก (URL) — ไม่บังคับ">
+                <input value={form.thumbnail} onChange={e => setForm({ ...form, thumbnail: e.target.value })} style={inp} placeholder="https://.../thumbnail.jpg" />
+                <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.5 }}>
+                  Bunny: ก๊อป <b>Thumbnail URL</b> มาวาง · YouTube เว้นว่างได้ (ดึงอัตโนมัติ)
                 </div>
               </Field>
               <Field label="คำอธิบาย">

@@ -27,6 +27,12 @@ function parseVideoSource(input: string): { provider: string; ref: string } | nu
   return null
 }
 
+/** ภาพปก: รับเฉพาะ URL http/https · อย่างอื่นถือว่าไม่ได้ตั้ง */
+function cleanThumb(v: any): string {
+  const s = String(v ?? '').trim()
+  return /^https?:\/\//i.test(s) ? s : ''
+}
+
 // GET /tutorials — สาธารณะ (หน้าเรียนรู้เปิดให้ guest ดูได้)
 export async function listTutorials(_req: Request, res: Response): Promise<void> {
   const videos = await prisma.tutorialVideo.findMany({ orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] })
@@ -35,7 +41,7 @@ export async function listTutorials(_req: Request, res: Response): Promise<void>
 
 // POST /tutorials — SUPER_ADMIN เพิ่มคลิป
 export async function createTutorial(req: AuthRequest, res: Response): Promise<void> {
-  const { title, description, category, youtube, duration, order } = req.body
+  const { title, description, category, youtube, duration, order, thumbnail } = req.body
   const src = parseVideoSource(youtube ?? req.body.youtubeId)
   if (!title || !String(title).trim()) { res.status(400).json({ error: 'กรุณาระบุชื่อหัวข้อ' }); return }
   if (!src) { res.status(400).json({ error: 'ลิงก์วิดีโอไม่ถูกต้อง — รองรับ YouTube, Vimeo, Bunny (Embed URL) หรือลิงก์ไฟล์ .mp4 · หมายเหตุ: ลิงก์ HLS (.m3u8) ยังไม่รองรับ ให้ใช้ Embed URL หรือ .mp4 แทน' }); return }
@@ -46,6 +52,7 @@ export async function createTutorial(req: AuthRequest, res: Response): Promise<v
       category: String(category ?? 'เริ่มต้นใช้งาน').trim(),
       provider: src.provider,
       youtubeId: src.ref,
+      thumbnail: cleanThumb(thumbnail),
       duration: String(duration ?? '').trim(),
       order: Number.isFinite(+order) ? +order : 0,
     },
@@ -62,6 +69,7 @@ export async function updateTutorial(req: AuthRequest, res: Response): Promise<v
   if (description !== undefined) data.description = String(description).trim()
   if (category !== undefined) data.category = String(category).trim()
   if (duration !== undefined) data.duration = String(duration).trim()
+  if (req.body.thumbnail !== undefined) data.thumbnail = cleanThumb(req.body.thumbnail)
   if (order !== undefined) data.order = Number.isFinite(+order) ? +order : 0
   if (youtube !== undefined || req.body.youtubeId !== undefined) {
     const src = parseVideoSource(youtube ?? req.body.youtubeId)
