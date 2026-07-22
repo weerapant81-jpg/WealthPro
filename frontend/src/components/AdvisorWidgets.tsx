@@ -391,13 +391,17 @@ export function NewsWidget() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxHeight: 420, overflowY: 'auto' }}>
           {news.map(n => (
             <div key={n.id} style={{ position: 'relative', padding: '18px 20px', background: 'var(--navy-900)', borderRadius: 14, border: `1px solid ${n.pinned ? 'var(--cyan)' : 'var(--card-border)'}`, boxShadow: n.pinned ? '0 0 0 1px var(--cyan-dim), var(--shadow)' : 'none' }}>
-              {/* badge */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--cyan)', background: 'var(--cyan-dim)', border: '1px solid var(--cyan)', borderRadius: 999, padding: '3px 11px' }}>
-                  {n.pinned ? <><Pin size={11} /> สำคัญ</> : 'WEALTHPRO INSIGHT'}
-                </span>
-                {isSuper && <button onClick={() => del.mutate(n.id)} title="ลบข่าว" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2 }}><Trash2 size={15} /></button>}
-              </div>
+              {/* badge — แสดงเฉพาะข่าวที่ปักหมุด (สำคัญ) · แถวนี้ซ่อนถ้าไม่มีอะไรต้องแสดง */}
+              {(n.pinned || isSuper) && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  {n.pinned
+                    ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--cyan)', background: 'var(--cyan-dim)', border: '1px solid var(--cyan)', borderRadius: 999, padding: '3px 11px' }}>
+                        <Pin size={11} /> สำคัญ
+                      </span>
+                    : <span />}
+                  {isSuper && <button onClick={() => del.mutate(n.id)} title="ลบข่าว" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2 }}><Trash2 size={15} /></button>}
+                </div>
+              )}
               {/* หัวข้อใหญ่ */}
               <h3 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.25, margin: '0 0 8px' }}>{n.title}</h3>
               {/* เนื้อหา */}
