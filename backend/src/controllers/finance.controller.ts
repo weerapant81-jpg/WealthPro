@@ -331,19 +331,19 @@ export async function computeFinancialSummary(userId: string, isSpouse: boolean)
   const netWorth         = totalAssets - totalDebtBalance
   // ภาระหนี้ตามหลัก CFP: จำนอง(บ้าน+คอนโด) + หนี้อื่น(รถ+บัตร/สินเชื่อ+การศึกษา)
   const HOUSING_CATS = ['fixed_house_loan', 'fixed_condo_loan']
-  const NON_MORTGAGE_CATS = ['fixed_car_loan', 'fixed_credit', 'fixed_edu_loan']
-  const DEBT_PAYMENT_CATS = [...HOUSING_CATS, ...NON_MORTGAGE_CATS]
+  // "หนี้ที่ไม่จดจำนอง" = บัตรเครดิต + สินเชื่อส่วนบุคคล + วงเงิน OD + หนี้การศึกษา (ไม่รวมผ่อนบ้าน/คอนโด และไม่รวมผ่อนรถ)
+  const NON_MORTGAGE_CATS = ['fixed_credit', 'fixed_edu_loan']
+  const DEBT_PAYMENT_CATS = [...HOUSING_CATS, 'fixed_car_loan', ...NON_MORTGAGE_CATS]
   // ค่าผ่อนหนี้ต่อเดือน — รวมจาก "ตารางหนี้สินคงค้าง" ด้วย (ให้ตรงกับงบกระแสเงินสด ที่ดึงจากแหล่งนี้)
-  const isHousingDebt = (t: any) => /บ้าน|คอนโด|ที่อยู่อาศัย|home|condo|mortgage/i.test(String(t ?? ''))
-  const profDebtPayAll     = profileLiabilities.reduce((s, l) => s + toNum(l.monthlyPayment), 0)
-  const profDebtPayHousing = profileLiabilities.filter(l => isHousingDebt(l.debtType)).reduce((s, l) => s + toNum(l.monthlyPayment), 0)
-  const profDebtPayOther   = profDebtPayAll - profDebtPayHousing
+  const isNonMortgageDebt = (t: any) => /บัตรเครดิต|สินเชื่อส่วนบุคคล|เบิกเกินบัญชี|\bOD\b|การศึกษา|กยศ/i.test(String(t ?? ''))
+  const profDebtPayAll      = profileLiabilities.reduce((s, l) => s + toNum(l.monthlyPayment), 0)
+  const profDebtPayNonMort  = profileLiabilities.filter(l => isNonMortgageDebt(l.debtType)).reduce((s, l) => s + toNum(l.monthlyPayment), 0)
   const totalMonthlyPayment = expenses
     .filter(e => DEBT_PAYMENT_CATS.includes(e.category))
     .reduce((s, e) => s + toMonthly(e.amount, e.frequency), 0) + profDebtPayAll
   const nonMortgageMonthlyPay   = expenses
     .filter(e => NON_MORTGAGE_CATS.includes(e.category))
-    .reduce((s, e) => s + toMonthly(e.amount, e.frequency), 0) + profDebtPayOther
+    .reduce((s, e) => s + toMonthly(e.amount, e.frequency), 0) + profDebtPayNonMort
 
   // รายได้ — ดึงจาก clientProfile.incomeSources (ตรงกับงบกระแสเงินสด CashFlowTab)
   // ความถี่ใหม่: freq 'รายปี' = ก้อนรายปี (หาร 12) · เผื่อข้อมูลเก่าที่ใช้ label 'โบนัส' · fallback ตาราง Income เดิม
