@@ -136,18 +136,75 @@ export default function FinancialGoalsTab({ person = 'client' }: { person?: 'cli
   const delRow = (section: keyof FinancialGoals, i: number) =>
     setAllGoals(a => ({ ...a, [key]: { ...a[key], [section]: a[key][section].filter((_, idx) => idx !== i) } }))
 
+  // ── อายุเกษียณ / อายุขัย — แก้ค่าเดียวกับหน้าสมมติฐาน & วางแผนเกษียณ (Profile) ไม่สร้างข้อมูลซ้ำ ──
+  const ageKey  = person === 'spouse' ? 'retirementAgeSpouse' : 'retirementAgeSelf'
+  const lifeKey = person === 'spouse' ? 'lifeExpectancySpouse' : 'lifeExpectancySelf'
+  const { data: prof } = useQuery<any>({ queryKey: ['profile'], queryFn: () => api.get('/profile').then(r => r.data), retry: false })
+  const [ages, setAges] = useState<{ ret: string; life: string }>({ ret: '', life: '' })
+  const agesLoaded = useRef(false)
+  useEffect(() => {
+    if (agesLoaded.current || prof === undefined) return
+    setAges({ ret: prof?.[ageKey] != null ? String(prof[ageKey]) : '', life: prof?.[lifeKey] != null ? String(prof[lifeKey]) : '' })
+    agesLoaded.current = true
+  }, [prof, ageKey, lifeKey])
+  // เปลี่ยนคน (ลูกค้า/คู่สมรส) → โหลดค่าของคนนั้นใหม่
+  useEffect(() => { agesLoaded.current = false }, [person])
+
+  const saveAges = useMutation({
+    mutationFn: (payload: any) => {
+      qc.setQueryData(['profile'], (old: any) => old ? { ...old, ...payload } : old)   // ให้หน้าสมมติฐาน/เกษียณเห็นทันที
+      return api.put('/profile', payload)
+    },
+    // รีเฟรชหน้าที่คำนวณจากอายุเกษียณ/อายุขัย (สมมติฐาน · วางแผนเกษียณ · พยากรณ์)
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['profile'] })
+      qc.invalidateQueries({ queryKey: ['projection'] })
+    },
+  })
+  const ageTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const setAge = (field: 'ret' | 'life', v: string) => {
+    const clean = v.replace(/[^\d]/g, '').slice(0, 3)
+    setAges(a => {
+      const next = { ...a, [field]: clean }
+      if (ageTimer.current) clearTimeout(ageTimer.current)
+      ageTimer.current = setTimeout(() => saveAges.mutate({
+        [ageKey]:  next.ret === '' ? '' : Number(next.ret),
+        [lifeKey]: next.life === '' ? '' : Number(next.life),
+      }), 700)
+      return next
+    })
+  }
+
   const renderSection = (sec: SectionDef) => {
     const cols = colsFor(sec.money)
     const rows = goals[sec.key]
     return (
       <div key={sec.key} style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 16, overflow: 'hidden' }}>
         {/* Section header */}
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--card-border)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <div style={{ width: 4, height: 32, borderRadius: 2, background: sec.color, flexShrink: 0 }} />
           <div>
             <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>{sec.label}</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{sec.sub}</div>
           </div>
+          {/* เฉพาะการ์ดเกษียณ — อายุเกษียณ/อายุขัย (ค่าเดียวกับหน้าสมมติฐาน) */}
+          {sec.key === 'retirement' && (
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+              {([
+                { f: 'ret'  as const, label: 'อายุที่ต้องการเกษียณ', ph: '60' },
+                { f: 'life' as const, label: 'อายุขัยที่คาดการณ์',   ph: '85' },
+              ]).map(x => (
+                <div key={x.f}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 3 }}>{x.label}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <input value={ages[x.f]} onChange={e => setAge(x.f, e.target.value)} placeholder={x.ph} inputMode="numeric"
+                      style={{ ...inp, width: 66, textAlign: 'center', fontWeight: 700, color: sec.color, borderColor: `${sec.color}66` }} />
+                    <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>ปี</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Table */}
