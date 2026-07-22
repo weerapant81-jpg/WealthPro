@@ -107,7 +107,7 @@ export default function AdvisorDashboard() {
       </div>
 
       {/* Row: ปฏิทิน | นัดหมายที่จะถึง | รายการงาน (สามคอลัมน์เท่ากันโดยธรรมชาติ) */}
-      <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : '2fr minmax(280px, 1fr)', gap: 16, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : '2fr minmax(280px, 1fr)', gap: 16, alignItems: 'stretch' }}>
         <AppointmentsWidget />
         <TasksWidget />
       </div>

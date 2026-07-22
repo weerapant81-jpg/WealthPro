@@ -137,7 +137,7 @@ export function AppointmentsWidget() {
           </div>
         </div>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, alignItems: 'stretch' }}>
         {/* ── การ์ด 1: ปฏิทิน ── */}
         <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <button onClick={() => { setYearCursor(y); setYearOpen(true) }} title="ดูทั้งปี"
