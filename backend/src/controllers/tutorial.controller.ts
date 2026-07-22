@@ -2,16 +2,24 @@ import { Request, Response } from 'express'
 import { prisma } from '../lib/prisma'
 import { AuthRequest } from '../middleware/auth'
 
-/** ดึง videoId จาก URL YouTube ทุกรูปแบบ หรือรับ id ตรง ๆ */
-function parseYoutubeId(input: string): string {
+/**
+ * ตรวจแหล่งวิดีโอจากลิงก์ที่วาง — รองรับ YouTube / Vimeo / ลิงก์ไฟล์วิดีโอตรง (mp4, HLS ฯลฯ)
+ * คืน { provider, ref } · ref = id ของ YouTube/Vimeo หรือ URL เต็ม (กรณี file)
+ */
+function parseVideoSource(input: string): { provider: string; ref: string } | null {
   const s = String(input || '').trim()
-  if (!s) return ''
-  // youtu.be/ID · youtube.com/watch?v=ID · /embed/ID · /shorts/ID
-  const m = s.match(/(?:youtu\.be\/|v=|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{6,})/)
-  if (m) return m[1]
-  // ถ้าไม่ใช่ URL แต่เป็น id ล้วน (ไม่มี / หรือ .) → ใช้เลย
-  if (/^[A-Za-z0-9_-]{6,}$/.test(s)) return s
-  return ''
+  if (!s) return null
+  // Vimeo: vimeo.com/123456789 · player.vimeo.com/video/123456789
+  const vm = s.match(/vimeo\.com\/(?:video\/)?(\d{6,})/i)
+  if (vm) return { provider: 'vimeo', ref: vm[1] }
+  // YouTube: youtu.be/ID · watch?v=ID · /embed/ID · /shorts/ID
+  const yt = s.match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{6,})/)
+  if (yt) return { provider: 'youtube', ref: yt[1] }
+  // ลิงก์วิดีโอตรง (โฮสต์เอง / Cloudflare Stream / Bunny ฯลฯ)
+  if (/^https?:\/\//i.test(s)) return { provider: 'file', ref: s }
+  // ใส่ id ล้วน → ถือเป็น YouTube (เข้ากันได้กับของเดิม)
+  if (/^[A-Za-z0-9_-]{6,}$/.test(s)) return { provider: 'youtube', ref: s }
+  return null
 }
 
 // GET /tutorials — สาธารณะ (หน้าเรียนรู้เปิดให้ guest ดูได้)
@@ -23,15 +31,16 @@ export async function listTutorials(_req: Request, res: Response): Promise<void>
 // POST /tutorials — SUPER_ADMIN เพิ่มคลิป
 export async function createTutorial(req: AuthRequest, res: Response): Promise<void> {
   const { title, description, category, youtube, duration, order } = req.body
-  const youtubeId = parseYoutubeId(youtube ?? req.body.youtubeId)
+  const src = parseVideoSource(youtube ?? req.body.youtubeId)
   if (!title || !String(title).trim()) { res.status(400).json({ error: 'กรุณาระบุชื่อหัวข้อ' }); return }
-  if (!youtubeId) { res.status(400).json({ error: 'ลิงก์ YouTube ไม่ถูกต้อง' }); return }
+  if (!src) { res.status(400).json({ error: 'ลิงก์วิดีโอไม่ถูกต้อง (รองรับ YouTube, Vimeo หรือลิงก์ไฟล์วิดีโอ)' }); return }
   const video = await prisma.tutorialVideo.create({
     data: {
       title: String(title).trim(),
       description: String(description ?? '').trim(),
       category: String(category ?? 'เริ่มต้นใช้งาน').trim(),
-      youtubeId,
+      provider: src.provider,
+      youtubeId: src.ref,
       duration: String(duration ?? '').trim(),
       order: Number.isFinite(+order) ? +order : 0,
     },
@@ -50,9 +59,10 @@ export async function updateTutorial(req: AuthRequest, res: Response): Promise<v
   if (duration !== undefined) data.duration = String(duration).trim()
   if (order !== undefined) data.order = Number.isFinite(+order) ? +order : 0
   if (youtube !== undefined || req.body.youtubeId !== undefined) {
-    const yid = parseYoutubeId(youtube ?? req.body.youtubeId)
-    if (!yid) { res.status(400).json({ error: 'ลิงก์ YouTube ไม่ถูกต้อง' }); return }
-    data.youtubeId = yid
+    const src = parseVideoSource(youtube ?? req.body.youtubeId)
+    if (!src) { res.status(400).json({ error: 'ลิงก์วิดีโอไม่ถูกต้อง (รองรับ YouTube, Vimeo หรือลิงก์ไฟล์วิดีโอ)' }); return }
+    data.provider = src.provider
+    data.youtubeId = src.ref
   }
   try {
     const video = await prisma.tutorialVideo.update({ where: { id }, data })

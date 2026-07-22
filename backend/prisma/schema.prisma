@@ -479,7 +479,8 @@ model TutorialVideo {
   title       String
   description String   @default("")
   category    String   @default("เริ่มต้นใช้งาน")
-  youtubeId   String                        // รหัสวิดีโอ YouTube (ส่วนท้าย URL)
+  provider    String   @default("youtube")  // youtube | vimeo | file (ลิงก์วิดีโอตรง)
+  youtubeId   String                        // ตัวอ้างอิงวิดีโอ: id ของ YouTube/Vimeo หรือ URL เต็ม (กรณี file)
   duration    String   @default("")
   order       Int      @default(0)          // ลำดับการแสดง (น้อย = ก่อน)
   createdAt   DateTime @default(now())

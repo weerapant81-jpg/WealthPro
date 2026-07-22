@@ -10,13 +10,22 @@ import { api } from '../lib/api'
  * รายการคลิปเก็บในฐานข้อมูล · SUPER_ADMIN เพิ่ม/แก้/ลบ ได้เองในหน้านี้
  * ใช้ได้ทั้งสาธารณะ (จาก landing) และในแอป */
 
-type Video = { id: string; title: string; description: string; category: string; youtubeId: string; duration?: string; order: number }
+type Video = { id: string; title: string; description: string; category: string; provider?: string; youtubeId: string; duration?: string; order: number }
 
 const CATS = ['เริ่มต้นใช้งาน', 'จัดการลูกค้า', 'วางแผนการเงิน', 'รายงาน', 'ผู้ช่วย AI', 'ความปลอดภัย'] as const
 
 const AC = 'var(--cyan)'
-const thumb = (id: string) => `https://img.youtube.com/vi/${id}/hqdefault.jpg`
-const embed = (id: string) => `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`
+const prov = (v: Video) => v.provider || 'youtube'
+/** ภาพปก — YouTube มีภาพอัตโนมัติ · Vimeo/ไฟล์ตรง ใช้พื้นหลังแทน */
+const thumb = (v: Video) => prov(v) === 'youtube' ? `https://img.youtube.com/vi/${v.youtubeId}/hqdefault.jpg` : ''
+/** ลิงก์ฝังสำหรับ iframe (YouTube / Vimeo) — ไฟล์ตรงใช้ <video> แทน */
+const embed = (v: Video) => prov(v) === 'vimeo'
+  ? `https://player.vimeo.com/video/${v.youtubeId}?autoplay=1`
+  : `https://www.youtube-nocookie.com/embed/${v.youtubeId}?autoplay=1&rel=0`
+/** ลิงก์เดิมสำหรับเติมในฟอร์มแก้ไข */
+const sourceUrl = (v: Video) => prov(v) === 'vimeo' ? `https://vimeo.com/${v.youtubeId}`
+  : prov(v) === 'file' ? v.youtubeId
+  : `https://youtu.be/${v.youtubeId}`
 
 type FormState = { id?: string; title: string; description: string; category: string; youtube: string; duration: string; order: string }
 const emptyForm = (): FormState => ({ title: '', description: '', category: CATS[0], youtube: '', duration: '', order: '' })
@@ -52,7 +61,7 @@ export default function TutorialsPage() {
 
   const list = cat === 'ทั้งหมด' ? videos : videos.filter(v => v.category === cat)
 
-  const openEdit = (v: Video) => { setErr(''); setForm({ id: v.id, title: v.title, description: v.description, category: v.category, youtube: `https://youtu.be/${v.youtubeId}`, duration: v.duration || '', order: String(v.order) }) }
+  const openEdit = (v: Video) => { setErr(''); setForm({ id: v.id, title: v.title, description: v.description, category: v.category, youtube: sourceUrl(v), duration: v.duration || '', order: String(v.order) }) }
 
   const content = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 1040 }}>
@@ -101,7 +110,9 @@ export default function TutorialsPage() {
             onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--card-border)')}>
             {/* thumbnail 16:9 */}
             <div onClick={() => setPlaying(v)} style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: 'var(--navy-950)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: 'pointer' }}>
-              <img src={thumb(v.youtubeId)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              {thumb(v)
+                ? <img src={thumb(v)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <div style={{ width: '100%', height: '100%', background: 'linear-gradient(140deg, #123a4a, var(--navy-950))' }} />}
               <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ width: 52, height: 52, borderRadius: '50%', background: AC, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(0,0,0,0.4)' }}>
                   <Play size={24} color="#00201d" fill="#00201d" style={{ marginLeft: 3 }} />
@@ -142,9 +153,12 @@ export default function TutorialsPage() {
               <button onClick={() => setPlaying(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', display: 'flex' }}><X size={22} /></button>
             </div>
             <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', borderRadius: 12, overflow: 'hidden', background: '#000' }}>
-              <iframe src={embed(playing.youtubeId)} title={playing.title}
-                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+              {prov(playing) === 'file'
+                ? <video src={playing.youtubeId} controls autoPlay playsInline
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', background: '#000' }} />
+                : <iframe src={embed(playing)} title={playing.title}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />}
             </div>
           </div>
         </div>
@@ -163,8 +177,11 @@ export default function TutorialsPage() {
               <Field label="ชื่อหัวข้อ *">
                 <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} style={inp} placeholder="เช่น สร้างลูกค้าใหม่และกรอกข้อมูล" />
               </Field>
-              <Field label="ลิงก์ YouTube *">
-                <input value={form.youtube} onChange={e => setForm({ ...form, youtube: e.target.value })} style={inp} placeholder="https://youtu.be/xxxxxxxx" />
+              <Field label="ลิงก์วิดีโอ *">
+                <input value={form.youtube} onChange={e => setForm({ ...form, youtube: e.target.value })} style={inp} placeholder="https://youtu.be/xxxx · https://vimeo.com/123456789 · https://.../video.mp4" />
+                <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.5 }}>
+                  รองรับ <b>YouTube</b> · <b>Vimeo</b> · <b>ลิงก์ไฟล์วิดีโอตรง</b> (mp4 — โฮสต์เอง / Cloudflare Stream / Bunny) ระบบตรวจให้อัตโนมัติ
+                </div>
               </Field>
               <Field label="คำอธิบาย">
                 <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} style={{ ...inp, minHeight: 60, resize: 'vertical' }} placeholder="อธิบายสั้น ๆ ว่าคลิปนี้สอนอะไร" />
