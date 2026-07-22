@@ -407,6 +407,13 @@ export default function Layout({ children }: { children: ReactNode }) {
                 </>
               )}
             </div>
+            {/* ศูนย์เรียนรู้ — เข้าถึงเร็วจากทุกหน้า */}
+            <button onClick={() => navigate('/tutorials')} title="ศูนย์เรียนรู้ · วิดีโอสอนการใช้งาน" aria-label="ศูนย์เรียนรู้"
+              style={{ ...iconBtn, color: currentPath === '/tutorials' ? 'var(--cyan)' : 'var(--text-muted)' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--cyan)')}
+              onMouseLeave={e => (e.currentTarget.style.color = currentPath === '/tutorials' ? 'var(--cyan)' : 'var(--text-muted)')}>
+              <GraduationCap size={17} />
+            </button>
             <button onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')} title={theme === 'light' ? 'โหมดมืด' : 'โหมดสว่าง'}
               style={iconBtn}
               onMouseEnter={e => (e.currentTarget.style.color = 'var(--cyan)')}
