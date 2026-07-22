@@ -33,8 +33,11 @@ app.get('/health', (_, res) => res.json({ ok: true }))   // ก่อน rate-li
 const apiLimiter = rateLimit({ windowMs: 60_000, max: 200, standardHeaders: true, legacyHeaders: false,
   message: { error: 'คำขอถี่เกินไป กรุณาลองใหม่ในอีกสักครู่' } })
 // เข้มกับ endpoint ที่เสี่ยง brute-force — นับเฉพาะครั้งที่ล้มเหลว (login/register สำเร็จไม่โดนหัก)
+// requestWasSuccessful: ถือว่า "สำเร็จ" (ไม่นับ) เมื่อ 2xx หรือมี header X-RL-Skip (กรณีรหัส 2FA ผิด — ผ่านรหัสผ่านแล้ว)
 const authLimiter = rateLimit({ windowMs: 15 * 60_000, max: 20, standardHeaders: true, legacyHeaders: false,
-  skipSuccessfulRequests: true, message: { error: 'พยายามเข้าสู่ระบบบ่อยเกินไป กรุณารอ 15 นาทีแล้วลองใหม่' } })
+  skipSuccessfulRequests: true,
+  requestWasSuccessful: (_req, res) => res.statusCode < 400 || res.getHeader('X-RL-Skip') === '1',
+  message: { error: 'พยายามเข้าสู่ระบบบ่อยเกินไป กรุณารอสักครู่ (~15 นาที) แล้วลองใหม่ · หากลืมรหัสผ่าน ให้กด “ลืมรหัสผ่าน”' } })
 // กัน abuse AI Copilot (Claude API = ค่าเงินจริง)
 const copilotLimiter = rateLimit({ windowMs: 5 * 60_000, max: 40, standardHeaders: true, legacyHeaders: false,
   message: { error: 'ใช้ AI Copilot ถี่เกินไป กรุณารอสักครู่' } })

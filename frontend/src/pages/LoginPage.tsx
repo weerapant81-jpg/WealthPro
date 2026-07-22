@@ -295,7 +295,10 @@ export default function LoginPage() {
                 <label style={capLabel}>รหัสยืนยันตัวตน (2FA)</label>
                 <input value={twoFaCode} onChange={e => setTwoFaCode(e.target.value.replace(/\s/g, ''))} placeholder="รหัส 6 หลักจากแอป หรือรหัสสำรอง" inputMode="numeric" autoFocus
                   style={{ ...field, marginTop: 6, letterSpacing: '0.2em', textAlign: 'center', fontSize: 18 }} />
-                <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 6 }}>เปิดแอป Authenticator แล้วกรอกรหัส 6 หลัก</p>
+                <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.6 }}>
+                  เปิดแอป Authenticator กรอกรหัส 6 หลัก (ให้ตรงบัญชีนี้ · เปิดตั้งเวลาอัตโนมัติในมือถือ)<br />
+                  <b>อุปกรณ์หาย/รหัสไม่ผ่าน?</b> ใช้ <b>รหัสสำรอง</b> 1 ชุดกรอกในช่องนี้แทนได้ · หรือติดต่อผู้ให้บริการเพื่อปิด 2FA
+                </p>
               </div>
             )}
 

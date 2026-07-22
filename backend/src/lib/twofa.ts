@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { prisma } from './prisma'
 
-authenticator.options = { window: 1 }  // ยอมรับรหัสก่อน/หลัง 1 ช่วง (กันเวลาเครื่องเหลื่อม)
+authenticator.options = { window: 2 }  // ยอมรับรหัสก่อน/หลัง 2 ช่วง (±60 วิ) — กันเวลาเครื่องเหลื่อม
 
 export const genSecret = () => authenticator.generateSecret()
 export const otpauthUrl = (email: string, secret: string) => authenticator.keyuri(email, 'WealthPro', secret)

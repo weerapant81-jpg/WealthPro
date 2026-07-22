@@ -171,7 +171,12 @@ export async function login(req: Request, res: Response): Promise<void> {
     const code = String(req.body.token ?? '').replace(/\s/g, '')
     if (!code) { res.json({ twoFactorRequired: true }); return }
     const ok = await verifyTwoFactor(user, code)
-    if (!ok) { res.status(401).json({ error: 'รหัสยืนยันตัวตน (2FA) ไม่ถูกต้อง', twoFactorRequired: true }); return }
+    if (!ok) {
+      // ผ่านรหัสผ่านแล้ว แค่รหัส 2FA ผิด → ไม่นับรวม brute-force รหัสผ่าน (กันพิมพ์พลาดไม่กี่ครั้งแล้วโดนล็อก 15 นาที)
+      res.setHeader('X-RL-Skip', '1')
+      res.status(401).json({ error: 'รหัสยืนยันตัวตน (2FA) ไม่ถูกต้อง — ตรวจรหัส 6 หลักในแอป Authenticator ให้ตรงบัญชีนี้ หรือใช้รหัสสำรอง', twoFactorRequired: true })
+      return
+    }
   }
   const tokens = generateTokens(user.id)
   res.json({ user: { id: user.id, email: user.email, name: user.name, role: user.role }, ...tokens })
