@@ -9,6 +9,11 @@ import { AuthRequest } from '../middleware/auth'
 function parseVideoSource(input: string): { provider: string; ref: string } | null {
   const s = String(input || '').trim()
   if (!s) return null
+  // Bunny Stream: iframe.mediadelivery.net/embed/{libraryId}/{videoId} (หรือ /play/) → เก็บเป็น "lib/vid"
+  const bn = s.match(/mediadelivery\.net\/(?:embed|play)\/(\d+)\/([A-Za-z0-9-]{8,})/i)
+  if (bn) return { provider: 'bunny', ref: `${bn[1]}/${bn[2]}` }
+  // HLS ยังเล่นไม่ได้บน <video> ปกติ (Chrome) → ให้ใช้ embed หรือ mp4 แทน
+  if (/\.m3u8(\?|$)/i.test(s)) return null
   // Vimeo: vimeo.com/123456789 · player.vimeo.com/video/123456789
   const vm = s.match(/vimeo\.com\/(?:video\/)?(\d{6,})/i)
   if (vm) return { provider: 'vimeo', ref: vm[1] }
@@ -33,7 +38,7 @@ export async function createTutorial(req: AuthRequest, res: Response): Promise<v
   const { title, description, category, youtube, duration, order } = req.body
   const src = parseVideoSource(youtube ?? req.body.youtubeId)
   if (!title || !String(title).trim()) { res.status(400).json({ error: 'กรุณาระบุชื่อหัวข้อ' }); return }
-  if (!src) { res.status(400).json({ error: 'ลิงก์วิดีโอไม่ถูกต้อง (รองรับ YouTube, Vimeo หรือลิงก์ไฟล์วิดีโอ)' }); return }
+  if (!src) { res.status(400).json({ error: 'ลิงก์วิดีโอไม่ถูกต้อง — รองรับ YouTube, Vimeo, Bunny (Embed URL) หรือลิงก์ไฟล์ .mp4 · หมายเหตุ: ลิงก์ HLS (.m3u8) ยังไม่รองรับ ให้ใช้ Embed URL หรือ .mp4 แทน' }); return }
   const video = await prisma.tutorialVideo.create({
     data: {
       title: String(title).trim(),
@@ -60,7 +65,7 @@ export async function updateTutorial(req: AuthRequest, res: Response): Promise<v
   if (order !== undefined) data.order = Number.isFinite(+order) ? +order : 0
   if (youtube !== undefined || req.body.youtubeId !== undefined) {
     const src = parseVideoSource(youtube ?? req.body.youtubeId)
-    if (!src) { res.status(400).json({ error: 'ลิงก์วิดีโอไม่ถูกต้อง (รองรับ YouTube, Vimeo หรือลิงก์ไฟล์วิดีโอ)' }); return }
+    if (!src) { res.status(400).json({ error: 'ลิงก์วิดีโอไม่ถูกต้อง — รองรับ YouTube, Vimeo, Bunny (Embed URL) หรือลิงก์ไฟล์ .mp4 · หมายเหตุ: ลิงก์ HLS (.m3u8) ยังไม่รองรับ ให้ใช้ Embed URL หรือ .mp4 แทน' }); return }
     data.provider = src.provider
     data.youtubeId = src.ref
   }

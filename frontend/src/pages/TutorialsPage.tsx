@@ -18,14 +18,21 @@ const AC = 'var(--cyan)'
 const prov = (v: Video) => v.provider || 'youtube'
 /** ภาพปก — YouTube มีภาพอัตโนมัติ · Vimeo/ไฟล์ตรง ใช้พื้นหลังแทน */
 const thumb = (v: Video) => prov(v) === 'youtube' ? `https://img.youtube.com/vi/${v.youtubeId}/hqdefault.jpg` : ''
-/** ลิงก์ฝังสำหรับ iframe (YouTube / Vimeo) — ไฟล์ตรงใช้ <video> แทน */
-const embed = (v: Video) => prov(v) === 'vimeo'
-  ? `https://player.vimeo.com/video/${v.youtubeId}?autoplay=1`
-  : `https://www.youtube-nocookie.com/embed/${v.youtubeId}?autoplay=1&rel=0`
+/** ลิงก์ฝังสำหรับ iframe (YouTube / Vimeo / Bunny) — ไฟล์ตรงใช้ <video> แทน */
+const embed = (v: Video) => {
+  const p = prov(v)
+  if (p === 'bunny') return `https://iframe.mediadelivery.net/embed/${v.youtubeId}?autoplay=true`
+  if (p === 'vimeo') return `https://player.vimeo.com/video/${v.youtubeId}?autoplay=1`
+  return `https://www.youtube-nocookie.com/embed/${v.youtubeId}?autoplay=1&rel=0`
+}
 /** ลิงก์เดิมสำหรับเติมในฟอร์มแก้ไข */
-const sourceUrl = (v: Video) => prov(v) === 'vimeo' ? `https://vimeo.com/${v.youtubeId}`
-  : prov(v) === 'file' ? v.youtubeId
-  : `https://youtu.be/${v.youtubeId}`
+const sourceUrl = (v: Video) => {
+  const p = prov(v)
+  if (p === 'bunny') return `https://iframe.mediadelivery.net/embed/${v.youtubeId}`
+  if (p === 'vimeo') return `https://vimeo.com/${v.youtubeId}`
+  if (p === 'file') return v.youtubeId
+  return `https://youtu.be/${v.youtubeId}`
+}
 
 type FormState = { id?: string; title: string; description: string; category: string; youtube: string; duration: string; order: string }
 const emptyForm = (): FormState => ({ title: '', description: '', category: CATS[0], youtube: '', duration: '', order: '' })
@@ -180,7 +187,8 @@ export default function TutorialsPage() {
               <Field label="ลิงก์วิดีโอ *">
                 <input value={form.youtube} onChange={e => setForm({ ...form, youtube: e.target.value })} style={inp} placeholder="https://youtu.be/xxxx · https://vimeo.com/123456789 · https://.../video.mp4" />
                 <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.5 }}>
-                  รองรับ <b>YouTube</b> · <b>Vimeo</b> · <b>ลิงก์ไฟล์วิดีโอตรง</b> (mp4 — โฮสต์เอง / Cloudflare Stream / Bunny) ระบบตรวจให้อัตโนมัติ
+                  รองรับ <b>YouTube</b> · <b>Vimeo</b> · <b>Bunny Stream</b> (ใช้ Embed URL) · <b>ลิงก์ไฟล์ .mp4</b> — ระบบตรวจให้อัตโนมัติ<br />
+                  <span style={{ color: '#f59e0b' }}>หมายเหตุ: ลิงก์ HLS (.m3u8) ยังไม่รองรับ — Bunny ให้ใช้ Embed URL แทน</span>
                 </div>
               </Field>
               <Field label="คำอธิบาย">
