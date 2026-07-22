@@ -293,9 +293,26 @@ export async function computeFinancialSummary(userId: string, isSpouse: boolean)
   const personalAssets   = (invSrc?.personalAssets   ?? []) as any[]
   const manualInvest     = assets.filter(a => a.category.startsWith('invest_'))
 
+  // สวัสดิการ + ชื่อผู้ถือกรมธรรม์ (ใช้ทั้งฝั่งสินทรัพย์และรายจ่าย) — ต้องนิยามก่อนคำนวณสินทรัพย์
+  const welfare: any = isSpouse ? ((clientProfile as any)?.spouseProfile ?? {}) : (clientProfile ?? {})
+  const norm = (s: any) => String(s ?? '').replace(/\s+/g, '').toLowerCase()
+  const nameMatch = (a: any, b: any) => { const x = norm(a), y = norm(b); return !!x && !!y && (x === y || x.includes(y) || y.includes(x)) }
+  const personName = isSpouse
+    ? (`${(welfare?.firstName ?? '')} ${(welfare?.lastName ?? '')}`.trim() || String((clientProfile as any)?.spouseName ?? ''))
+    : `${(clientProfile as any)?.firstName ?? ''} ${(clientProfile as any)?.lastName ?? ''}`.trim()
+
+  // ให้ตรงกับงบดุล: สินทรัพย์เพื่อการลงทุน = พอร์ตลงทุน + รายการที่เพิ่มเอง + มูลค่าเวนคืนประกัน + กองทุนสวัสดิการ (ปกส./PVD)
+  const insuranceCashValue = lifePolicies
+    .filter(p => (p.cashValue ?? 0) > 0 && nameMatch(p.insuredPerson, personName))
+    .reduce((s, p) => s + (p.cashValue ?? 0), 0)
+  const welfareFunds = (welfare?.hasSocialSecurity ? toNum(welfare?.socialSecurityValue) : 0)
+    + (welfare?.hasPVD ? toNum(welfare?.pvdCurrentValue) : 0)
+
   const liquidAssets  = savingsAccounts.reduce((s: number, a: any)  => s + toNum(a.currentValue), 0)
   const investAssets  = investmentAssets.reduce((s: number, a: any) => s + toNum(a.currentValue), 0)
     + manualInvest.reduce((s, a) => s + a.value, 0)
+    + insuranceCashValue
+    + welfareFunds
   const personalTotal = personalAssets.reduce((s: number, a: any)   => s + toNum(a.currentValue), 0)
   const totalAssets   = liquidAssets + investAssets + personalTotal
 
@@ -316,46 +333,46 @@ export async function computeFinancialSummary(userId: string, isSpouse: boolean)
   const HOUSING_CATS = ['fixed_house_loan', 'fixed_condo_loan']
   const NON_MORTGAGE_CATS = ['fixed_car_loan', 'fixed_credit', 'fixed_edu_loan']
   const DEBT_PAYMENT_CATS = [...HOUSING_CATS, ...NON_MORTGAGE_CATS]
+  // ค่าผ่อนหนี้ต่อเดือน — รวมจาก "ตารางหนี้สินคงค้าง" ด้วย (ให้ตรงกับงบกระแสเงินสด ที่ดึงจากแหล่งนี้)
+  const isHousingDebt = (t: any) => /บ้าน|คอนโด|ที่อยู่อาศัย|home|condo|mortgage/i.test(String(t ?? ''))
+  const profDebtPayAll     = profileLiabilities.reduce((s, l) => s + toNum(l.monthlyPayment), 0)
+  const profDebtPayHousing = profileLiabilities.filter(l => isHousingDebt(l.debtType)).reduce((s, l) => s + toNum(l.monthlyPayment), 0)
+  const profDebtPayOther   = profDebtPayAll - profDebtPayHousing
   const totalMonthlyPayment = expenses
     .filter(e => DEBT_PAYMENT_CATS.includes(e.category))
-    .reduce((s, e) => s + toMonthly(e.amount, e.frequency), 0)
+    .reduce((s, e) => s + toMonthly(e.amount, e.frequency), 0) + profDebtPayAll
   const nonMortgageMonthlyPay   = expenses
     .filter(e => NON_MORTGAGE_CATS.includes(e.category))
-    .reduce((s, e) => s + toMonthly(e.amount, e.frequency), 0)
+    .reduce((s, e) => s + toMonthly(e.amount, e.frequency), 0) + profDebtPayOther
 
   // รายได้ — ดึงจาก clientProfile.incomeSources (ตรงกับงบกระแสเงินสด CashFlowTab)
-  // โบนัส = ก้อนรายปี (หาร 12) · อื่นๆ = ต่อเดือน · fallback ตาราง Income เดิมถ้ายังไม่มี incomeSources
+  // ความถี่ใหม่: freq 'รายปี' = ก้อนรายปี (หาร 12) · เผื่อข้อมูลเก่าที่ใช้ label 'โบนัส' · fallback ตาราง Income เดิม
   const incomeSources = (isSpouse ? (clientProfile as any)?.spouseIncomeSources : (clientProfile as any)?.incomeSources) ?? [] as any[]
+  const isAnnualInc = (s: any) => s?.freq === 'รายปี' || (!s?.freq && String(s?.label ?? '').includes('โบนัส'))
   const incMonthly = (src: any) => {
     const amt = toNum(src.amount)
-    return src.label === 'โบนัส' ? amt / 12 : amt
+    return isAnnualInc(src) ? amt / 12 : amt
   }
   const monthlyIncomeSources = (incomeSources as any[]).filter(s => toNum(s.amount) > 0).reduce((s, src) => s + incMonthly(src), 0)
   const incomeTableAnnual = incomes.reduce((s, i) => s + toAnnual(i.amount, i.frequency), 0)
   const totalAnnualIncome = monthlyIncomeSources > 0 ? monthlyIncomeSources * 12 : (isSpouse ? 0 : incomeTableAnnual)
   const monthlyIncome = totalAnnualIncome / 12
 
-  // SS + PVD auto-deductions — สวัสดิการของคนที่เลือก (spouse ใช้ spouseProfile)
-  const welfare: any = isSpouse ? ((clientProfile as any)?.spouseProfile ?? {}) : (clientProfile ?? {})
-  const salarySource = (incomeSources as any[]).find(s => s.label === 'เงินเดือน')
+  // SS + PVD auto-deductions — เงินเดือน = แถวที่ auto (ดึงจากข้อมูลการทำงาน) · เผื่อ label 'เงินเดือน' เดิม
+  const salarySource = (incomeSources as any[]).find(s => s?.auto || s?.label === 'เงินเดือน')
   const monthlySalary = salarySource ? toNum(salarySource.amount) : (isSpouse ? 0 : (clientProfile?.salary ?? 0))
   const ssMonthly  = welfare?.hasSocialSecurity  ? Math.min(Number(monthlySalary), 17500) * 0.05 : 0
   const pvdMonthly = welfare?.hasPVD ? Number(monthlySalary) * (Number(welfare.pvdEmployeeRate ?? 0) / 100) : 0
 
   // เบี้ยประกันชีวิต (auto) — ดึงจากกรมธรรม์ จับคู่ผู้เอาประกันกับ client/spouse ตามชื่อ (ให้ตรงกับงบกระแสเงินสด)
-  const norm = (s: any) => String(s ?? '').replace(/\s+/g, '').toLowerCase()
-  const nameMatch = (a: any, b: any) => { const x = norm(a), y = norm(b); return !!x && !!y && (x === y || x.includes(y) || y.includes(x)) }
-  const personName = isSpouse
-    ? (`${(welfare?.firstName ?? '')} ${(welfare?.lastName ?? '')}`.trim() || String((clientProfile as any)?.spouseName ?? ''))
-    : `${(clientProfile as any)?.firstName ?? ''} ${(clientProfile as any)?.lastName ?? ''}`.trim()
   const lifePremiumMonthly = lifePolicies
     .filter(p => (p.premium ?? 0) > 0 && nameMatch(p.insuredPerson, personName))
     .reduce((s, p) => s + (p.premium ?? 0), 0) / 12
 
-  // Expenses (auto: SS + PVD + เบี้ยประกันชีวิต จัดเป็นค่าใช้จ่ายคงที่ ไม่ใช่การออม)
+  // Expenses (auto: SS + PVD + เบี้ยประกันชีวิต + ค่าผ่อนหนี้ = ค่าใช้จ่ายคงที่ · ให้ตรงกับงบกระแสเงินสด)
   const savingExpenses       = expenses.filter(e => e.category.startsWith('saving_'))
   const nonSavingExpenses    = expenses.filter(e => !e.category.startsWith('saving_'))
-  const autoFixed            = ssMonthly + pvdMonthly + lifePremiumMonthly
+  const autoFixed            = ssMonthly + pvdMonthly + lifePremiumMonthly + profDebtPayAll
   const monthlyNonSaving     = nonSavingExpenses.reduce((s, e) => s + toMonthly(e.amount, e.frequency), 0) + autoFixed
   const totalMonthlyExp      = expenses.reduce((s, e) => s + toMonthly(e.amount, e.frequency), 0) + autoFixed
   const annualSavings        = savingExpenses.reduce((s, e) => s + toAnnual(e.amount, e.frequency), 0)
