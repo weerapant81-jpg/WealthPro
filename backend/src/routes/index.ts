@@ -36,6 +36,7 @@ import { getMarketData, refreshMarketData } from '../controllers/marketdata.cont
 import { getInvestmentProfile, upsertInvestmentProfile } from '../controllers/investmentprofile.controller'
 import { getMarketReturns, getAssetReturn } from '../controllers/marketreturns.controller'
 import { quoteSymbol, annualReturn } from '../controllers/settrade.controller'
+import { getThaiInflationRef } from '../lib/inflation'
 import { chatCopilot } from '../controllers/copilot.controller'
 import { createCheckout, createPortal } from '../controllers/billing.controller'
 import { listTutorials, createTutorial, updateTutorial, deleteTutorial } from '../controllers/tutorial.controller'
@@ -156,6 +157,12 @@ r.delete('/goals/:id', authenticate, deleteGoal)
 
 r.get('/profile', authenticate, getProfile)
 r.put('/profile', authenticate, upsertProfile)
+// อัตราเงินเฟ้ออ้างอิง (World Bank) — ข้อมูลสาธารณะ ไม่ผูกกับลูกค้า ใช้ประกอบการตั้งสมมติฐาน
+r.get('/reference/inflation', authenticate, async (_req, res) => {
+  const data = await getThaiInflationRef()
+  if (!data) return res.status(503).json({ error: 'INFLATION_REF_UNAVAILABLE' })
+  res.json(data)
+})
 r.get('/assumption-defaults', authenticate, requireAdmin, getAssumptionDefaults)
 r.put('/assumption-defaults', authenticate, requireSuperAdmin, setAssumptionDefaults)
 

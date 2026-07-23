@@ -12,6 +12,50 @@ import InvestmentAssumptionPage from './InvestmentAssumptionPage'
 
 const CURRENT_YEAR = new Date().getFullYear() + 543  // พ.ศ.
 
+/* ── อัตราเงินเฟ้ออ้างอิง (World Bank) — แสดงให้ดูประกอบ ไม่เขียนทับค่าที่ตั้งไว้เอง ── */
+type InflationRef = {
+  source: string; sourceUrl: string; lastUpdated: string | null
+  latest: { year: number; value: number } | null
+  averages: { years: number; from: number; to: number; value: number }[]
+}
+
+function InflationReference({ current, onUse }: { current: number; onUse: (v: number) => void }) {
+  const { data } = useQuery<InflationRef>({
+    queryKey: ['reference-inflation'],
+    queryFn: () => api.get('/reference/inflation').then(r => r.data),
+    staleTime: 24 * 60 * 60 * 1000,
+    retry: false,
+  })
+  if (!data?.averages?.length) return null   // ดึงไม่ได้ → ไม่แสดงอะไรเลย ไม่รบกวนการใช้งาน
+  const chip = (label: string, value: number, hint?: string) => (
+    <button key={label} type="button" onClick={() => onUse(value)} title={`${hint ?? label} — คลิกเพื่อใช้ค่านี้`}
+      disabled={Math.abs(current - value) < 0.005}
+      style={{
+        padding: '3px 9px', borderRadius: 999, fontSize: 11.5, cursor: 'pointer',
+        border: '1px solid var(--card-border)', background: 'var(--grid)', color: 'var(--text-primary)',
+        opacity: Math.abs(current - value) < 0.005 ? 0.45 : 1, fontFamily: 'inherit',
+      }}>
+      {label} <b style={{ fontFamily: 'monospace' }}>{value.toFixed(2)}%</b>
+    </button>
+  )
+  return (
+    <div style={{ marginTop: 4, padding: '9px 11px', borderRadius: 9, background: 'var(--grid)', border: '1px solid var(--card-border)' }}>
+      <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginBottom: 7 }}>
+        เงินเฟ้อทั่วไปของไทยจริง (CPI) — คลิกเพื่อนำค่าไปใช้
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {data.averages.map(a => chip(`เฉลี่ย ${a.years} ปี`, a.value, `พ.ศ. ${a.from + 543}–${a.to + 543}`))}
+        {data.latest && chip(`ปี ${data.latest.year + 543}`, data.latest.value, 'ปีล่าสุด')}
+      </div>
+      <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginTop: 7, lineHeight: 1.6 }}>
+        แนะนำใช้ค่าเฉลี่ยระยะยาวในการวางแผน — ตัวเลขปีเดียวแกว่งมากและเคยติดลบ
+        <br />
+        ที่มา: World Bank{data.lastUpdated ? ` · ข้อมูล ณ ${data.lastUpdated}` : ''}
+      </div>
+    </div>
+  )
+}
+
 const inp: React.CSSProperties = {
   padding: '9px 12px', borderRadius: 8, border: '1px solid var(--card-border)',
   background: 'var(--input-bg, var(--grid))', color: 'var(--text-primary)',
@@ -338,6 +382,7 @@ export default function SettingsPage() {
             <Row label="ทั่วไป">
               <NumInput value={form.inflationRate} onChange={v => set('inflationRate', v)} unit="%/ปี" step={0.1} />
             </Row>
+            <InflationReference current={form.inflationRate} onUse={v => set('inflationRate', v)} />
             <Row label="การศึกษา">
               <NumInput value={form.educationInflation} onChange={v => set('educationInflation', v)} unit="%/ปี" step={0.1} />
             </Row>
