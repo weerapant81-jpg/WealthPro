@@ -83,14 +83,7 @@ function SavingRatesCard() {
             display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12,
             padding: '8px 0', borderBottom: '1px solid var(--card-border)',
           }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{r.label}</div>
-              {(r.detail || r.note) && (
-                <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginTop: 2, lineHeight: 1.5 }}>
-                  {r.detail || r.note}
-                </div>
-              )}
-            </div>
+            <div style={{ fontSize: 13, color: 'var(--text-primary)', minWidth: 0 }}>{r.label}</div>
             <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'monospace', whiteSpace: 'nowrap', color: r.value === null ? 'var(--text-secondary)' : 'var(--text-primary)' }}>
               {r.value === null ? '—' : `${r.value.toFixed(2)}%`}
             </div>
