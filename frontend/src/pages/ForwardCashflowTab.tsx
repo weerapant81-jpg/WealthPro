@@ -16,6 +16,49 @@ const fmt0 = (n: number) => (isFinite(n) ? Math.round(n) : 0).toLocaleString('th
 const toMonthly = (amount: number, freq: string) => freq === 'QUARTERLY' ? amount / 3 : freq === 'ANNUALLY' ? amount / 12 : amount
 const uid = () => Math.random().toString(36).slice(2, 9)
 
+/**
+ * ช่องกรอกที่ "พิมพ์ก่อน ส่งค่าทีหลัง"
+ *
+ * ตารางนี้คำนวณภาษีใหม่ทุกปีตลอดช่วงอายุ (~50 ปี) ทุกครั้งที่ข้อมูลเปลี่ยน
+ * ถ้าส่งค่าขึ้นไปทุกตัวอักษร การพิมพ์ "1,500,000" จะสั่งคำนวณใหม่ 7 รอบ
+ * ตัวนี้เก็บสิ่งที่พิมพ์ไว้ในตัวเองก่อน แล้วค่อยส่งขึ้นไปเมื่อหยุดพิมพ์ (หรือออกจากช่อง)
+ * → ตัวเลขตามมือทันทีทุกตัว และคำนวณใหม่ครั้งเดียวต่อการแก้ 1 ค่า
+ *
+ * sanitize คืน null = ไม่รับค่านั้น (คงข้อความเดิมไว้) · format ใช้ตอนแสดงผล
+ */
+function LazyInput({ value, onCommit, sanitize, format, delay = 350, ...rest }: {
+  value: string
+  onCommit: (v: string) => void
+  sanitize?: (raw: string) => string | null
+  format?: (v: string) => string
+  delay?: number
+} & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) {
+  const [text, setText] = useState(value)
+  const focusedRef = useRef(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // ค่าจากข้างนอกเปลี่ยน (เช่น กดดึงข้อมูลใหม่) — รับมาแสดงเฉพาะตอนที่ผู้ใช้ไม่ได้พิมพ์อยู่
+  useEffect(() => { if (!focusedRef.current) setText(value) }, [value])
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
+
+  const push = (v: string) => { if (timer.current) clearTimeout(timer.current); onCommit(v) }
+
+  return (
+    <input {...rest}
+      value={format ? format(text) : text}
+      onFocus={e => { focusedRef.current = true; rest.onFocus?.(e) }}
+      onChange={e => {
+        const raw = sanitize ? sanitize(e.target.value) : e.target.value
+        if (raw === null) return          // ค่าที่ไม่รับ เช่น พิมพ์ตัวอักษรในช่องตัวเลข
+        setText(raw)
+        if (timer.current) clearTimeout(timer.current)
+        timer.current = setTimeout(() => onCommit(raw), delay)
+      }}
+      onBlur={e => { focusedRef.current = false; push(text); rest.onBlur?.(e) }}
+      onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }} />
+  )
+}
+
 export type Line = { id: string; label: string; base: number; growth: number; startAge: number; endAge: number; auto?: boolean; ov?: Record<string, number> }
 export type CashflowData = {
   incomeWork: Line[]
@@ -412,7 +455,7 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
     <tr key={line.id}>
       <td style={{ ...tdLabel, paddingLeft: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <input value={line.label} onChange={e => updateLine(secKey, line.id, { label: e.target.value })} placeholder="รายการ"
+          <LazyInput value={line.label} onCommit={v => updateLine(secKey, line.id, { label: v })} placeholder="รายการ"
             style={{ flex: 1, minWidth: 120, padding: '2px 4px', background: 'transparent', border: '1px solid transparent', borderRadius: 4, color: 'var(--text-secondary)', fontSize: 11.5, outline: 'none' }}
             onFocus={e => (e.currentTarget.style.borderColor = 'var(--card-border)')} onBlur={e => (e.currentTarget.style.borderColor = 'transparent')} />
           <span title="โต%/ปี"><input type="number" step={0.5} value={line.growth} onChange={e => updateLine(secKey, line.id, { growth: Number(e.target.value) })} style={{ width: 42, padding: '2px 3px', textAlign: 'right', background: 'transparent', border: '1px solid var(--card-border)', borderRadius: 4, color: 'var(--text-muted)', fontSize: 10, outline: 'none' }} /></span>
@@ -426,8 +469,11 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
         </div>
       </td>
       {rows.map((r, idx) => idx === 0
-        ? <td key={r.age} style={{ ...td, padding: '2px 4px' }}><input value={line.base ? line.base.toLocaleString('en-US') : ''} inputMode="numeric"
-            onChange={e => { const raw = e.target.value.replace(/,/g, ''); if (raw === '' || /^\d+$/.test(raw)) updateLine(secKey, line.id, { base: Number(raw || 0) }) }} style={cellInp} /></td>
+        ? <td key={r.age} style={{ ...td, padding: '2px 4px' }}><LazyInput
+            value={line.base ? String(line.base) : ''} inputMode="numeric" style={cellInp}
+            sanitize={v => { const raw = v.replace(/,/g, ''); return raw === '' || /^\d+$/.test(raw) ? raw : null }}
+            format={v => (v ? Number(v).toLocaleString('en-US') : '')}
+            onCommit={v => updateLine(secKey, line.id, { base: Number(v || 0) })} /></td>
         : <td key={r.age} style={{ ...td, color: lineAt(line, r.age, retireAge) > 0 ? color : 'var(--text-muted)' }}>{(() => { const v = lineAt(line, r.age, retireAge); return v > 0 ? fmt0(v) : '–' })()}</td>)}
     </tr>
   )
