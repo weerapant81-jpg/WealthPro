@@ -29,7 +29,9 @@ function MonthGrid({ year, month, byDay, reviewByDay, sel, todayKey, onPick, sma
   const df = small ? 11 : 16
   const dot = small ? 3 : 4
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 2, textAlign: 'center' }}>
+    // จำกัดความกว้าง: ช่องวันเป็นสี่เหลี่ยมจัตุรัส (aspectRatio 1) ถ้าปล่อยกว้างตามการ์ด ปฏิทินจะสูงผิดส่วน
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 2, textAlign: 'center',
+      width: '100%', maxWidth: small ? undefined : 340, margin: small ? undefined : '0 auto' }}>
       {TH_DOW.map(d => <div key={d} style={{ fontSize: small ? 9.5 : 14, color: 'var(--text-muted)', fontWeight: 700, padding: '2px 0' }}>{d}</div>)}
       {cells.map((day, i) => {
         if (day == null) return <div key={i} />
