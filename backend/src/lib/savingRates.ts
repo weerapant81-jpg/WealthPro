@@ -119,7 +119,6 @@ async function fetchPolicyRate(): Promise<{ asOf: string | null; value: number }
   return v !== null ? { asOf: thaiDate(String(r?.announcement_date ?? '').replace(/\//g, '-')), value: v } : null
 }
 
-const NO_SOURCE = 'ยังไม่มีสิทธิ์เข้าถึงชุดข้อมูลนี้จาก API ของ ธปท.'
 
 /** ดึงอัตราดอกเบี้ยการออมอ้างอิงทั้งหมด — คืน null ถ้าไม่มี key หรือดึงไม่ได้เลย */
 export async function getSavingRatesRef(): Promise<SavingRatesRef | null> {
@@ -154,8 +153,7 @@ export async function getSavingRatesRef(): Promise<SavingRatesRef | null> {
       detail: mm ? 'กู้ยืมระหว่างธนาคารข้ามคืน (O/N) ถ่วงน้ำหนัก' : '',
       ...(mm ? {} : { note: 'ดึงข้อมูลไม่สำเร็จ' }),
     },
-    { key: 'bondShort', label: 'พันธบัตรระยะสั้น', value: null, detail: '', note: NO_SOURCE },
-    { key: 'bondLong',  label: 'พันธบัตรระยะยาว', value: null, detail: '', note: NO_SOURCE },
+    // พันธบัตรระยะสั้น/ระยะยาว — ตัดออก เพราะไม่มีชุดข้อมูลนี้ใน API ของ ธปท. ที่เข้าถึงได้
     {
       key: 'policy', label: 'อัตราดอกเบี้ยนโยบาย (กนง.)', value: pol?.value ?? null,
       detail: pol?.asOf ? `ประกาศ ${pol.asOf}` : '',

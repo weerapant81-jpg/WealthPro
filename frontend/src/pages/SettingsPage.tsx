@@ -417,9 +417,6 @@ export default function SettingsPage() {
             <Row label="หลังเกษียณ">
               <NumInput value={form.postRetirementReturn} onChange={v => set('postRetirementReturn', v)} unit="%/ปี" step={0.1} />
             </Row>
-            <Row label="อัตราภาษีเงินได้">
-              <NumInput value={form.taxRate} onChange={v => set('taxRate', v)} unit="%" step={0.1} />
-            </Row>
           </Section>
 
           {/* อัตราดอกเบี้ย */}
