@@ -322,6 +322,17 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
     if (Object.keys(cur).length) ov[String(age)] = cur; else delete ov[String(age)]
     return { ...p, taxOv: ov }
   })
+  // ล้างค่าที่กรอกเองทั้งแถว — ใช้เมื่อมีค่าเก่าค้างอยู่หลายปีจนดูไม่ออกว่าปีไหนพิมพ์เอง
+  // (ปีที่พิมพ์เองจะชนะค่าที่คำนวณต่อยอดเสมอ ล้างแล้วจะกลับไปเริ่มนับจากปีแรกใหม่)
+  const clearTaxOvRow = (k: 'exp' | 'ded') => setData(p => {
+    const ov: NonNullable<CashflowData['taxOv']> = {}
+    for (const [age, v] of Object.entries(p.taxOv ?? {})) {
+      const rest = { ...v }; delete rest[k]
+      if (Object.keys(rest).length) ov[age] = rest
+    }
+    return { ...p, taxOv: ov }
+  })
+  const taxOvCount = (k: 'exp' | 'ded') => Object.values(data.taxOv ?? {}).filter(v => v?.[k] != null).length
 
   const loadedRef = useRef(false)
   useEffect(() => {
@@ -701,8 +712,8 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
             </thead>
             <tbody>
               <tr><td style={tdLabel}>เงินได้พึงประเมิน</td>{taxRows.map(r => <td key={r.age} style={td}>{fmt0(r.taxBreak!.ti)}</td>)}</tr>
-              <tr><td style={tdLabel}>(−) ค่าใช้จ่าย <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>(แก้ไขได้)</span></td>{taxRows.map(r => <td key={r.age} style={{ ...td, padding: '3px 4px' }}><TaxCell value={r.taxBreak!.expD} overridden={data.taxOv?.[String(r.age)]?.exp != null} derived={r.expDerived} onChange={v => setTaxOv(r.age, 'exp', v)} /></td>)}</tr>
-              <tr><td style={tdLabel}>(−) ค่าลดหย่อนรวม <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>(แก้ไขได้)</span></td>{taxRows.map(r => <td key={r.age} style={{ ...td, padding: '3px 4px' }}><TaxCell value={r.taxBreak!.allD - r.taxBreak!.expD} overridden={data.taxOv?.[String(r.age)]?.ded != null} derived={r.dedDerived} onChange={v => setTaxOv(r.age, 'ded', v)} /></td>)}</tr>
+              <tr><td style={tdLabel}>(−) ค่าใช้จ่าย <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>(แก้ไขได้)</span>{taxOvCount('exp') > 0 && <button onClick={() => clearTaxOvRow('exp')} title={`ล้างค่าที่กรอกเองทั้งแถว (${taxOvCount('exp')} ปี) แล้วเริ่มนับจากปีแรกใหม่`} style={{ marginLeft: 6, padding: '1px 6px', fontSize: 9, background: 'transparent', border: '1px solid var(--card-border)', borderRadius: 4, color: '#fbbf24', cursor: 'pointer', fontFamily: 'inherit' }}>ล้าง {taxOvCount('exp')}</button>}</td>{taxRows.map(r => <td key={r.age} style={{ ...td, padding: '3px 4px' }}><TaxCell value={r.taxBreak!.expD} overridden={data.taxOv?.[String(r.age)]?.exp != null} derived={r.expDerived} onChange={v => setTaxOv(r.age, 'exp', v)} /></td>)}</tr>
+              <tr><td style={tdLabel}>(−) ค่าลดหย่อนรวม <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>(แก้ไขได้)</span>{taxOvCount('ded') > 0 && <button onClick={() => clearTaxOvRow('ded')} title={`ล้างค่าที่กรอกเองทั้งแถว (${taxOvCount('ded')} ปี) แล้วเริ่มนับจากปีแรกใหม่`} style={{ marginLeft: 6, padding: '1px 6px', fontSize: 9, background: 'transparent', border: '1px solid var(--card-border)', borderRadius: 4, color: '#fbbf24', cursor: 'pointer', fontFamily: 'inherit' }}>ล้าง {taxOvCount('ded')}</button>}</td>{taxRows.map(r => <td key={r.age} style={{ ...td, padding: '3px 4px' }}><TaxCell value={r.taxBreak!.allD - r.taxBreak!.expD} overridden={data.taxOv?.[String(r.age)]?.ded != null} derived={r.dedDerived} onChange={v => setTaxOv(r.age, 'ded', v)} /></td>)}</tr>
               <tr style={{ background: 'var(--hover)' }}><td style={{ ...tdLabel, fontWeight: 700, color: 'var(--text-primary)' }}>เงินได้สุทธิ</td>{taxRows.map(r => <td key={r.age} style={{ ...td, fontWeight: 700 }}>{fmt0(r.taxBreak!.ni)}</td>)}</tr>
               <tr><td style={{ ...tdLabel, fontWeight: 700, color: '#fb923c' }}>ภาษีที่ต้องชำระ</td>{taxRows.map(r => <td key={r.age} style={{ ...td, color: '#fb923c', fontWeight: 700 }}>{fmt0(r.taxBreak!.tax)}</td>)}</tr>
               <tr><td style={tdLabel}>อัตราภาษีที่แท้จริง</td>{taxRows.map(r => <td key={r.age} style={{ ...td, color: 'var(--text-muted)' }}>{r.taxBreak!.eff.toFixed(1)}%</td>)}</tr>
