@@ -142,7 +142,7 @@ async function morningstarFundReturn(identifier: string): Promise<number | null>
     // Flat fields
     const flat = d?.ReturnM12 ?? d?.rp1Year ?? d?.OneYearReturn
     if (typeof flat === 'number') return parseFloat(flat.toFixed(2))
-    console.log('[MS perf keys]', Object.keys(d ?? {}))
+    console.warn('[MS perf] อ่านผลตอบแทนจากรูปแบบข้อมูลนี้ไม่ออก — ฟิลด์ที่ได้มา:', Object.keys(d ?? {}))
     return null
   } catch (e: any) {
     console.error('[MS perf]', e?.message)

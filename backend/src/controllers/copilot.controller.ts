@@ -296,8 +296,6 @@ export async function chatCopilot(req: AuthRequest, res: Response): Promise<void
         data: { aiCostThb: spentThisMonth + cost, aiCostPeriod: period },
       }).catch(() => { /* ไม่ให้ error การบันทึกต้นทุนกระทบการตอบ */ })
     }
-    // log ไว้ดูว่า caching ทำงาน (cacheR > 0 ในเทิร์นที่ 2 เป็นต้นไป)
-    console.log(`[copilot] in=${u.input_tokens} cacheWrite=${u.cache_creation_input_tokens ?? 0} cacheRead=${u.cache_read_input_tokens ?? 0} out=${u.output_tokens} cost≈฿${costThbFromUsage(u as any).toFixed(3)}`)
     res.end()
   } catch (e: any) {
     // ถ้ายังไม่ได้ส่ง header สถานะ (ไม่น่าเกิดเพราะ setHeader ไปแล้ว) — เขียนข้อความ error ต่อท้าย
