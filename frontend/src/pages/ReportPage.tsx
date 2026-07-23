@@ -17,8 +17,11 @@ import { useInsuranceCoverage } from '../components/InsuranceCoverageSummary'
 import { PORTFOLIO_SETS, DEFAULT_ASSETS, DEFAULT_CORR, computePortfolio, applyMarketData, applyCorrelation } from '../lib/portfolioReturns'
 import { mulberry32, toNum } from '@shared/finance/math'
 import { computeChildPlan, levelForAge, type ChildSetting } from './EducationPlanPage'
+import { TEAL, AMBERR, REDR, GREENR, DomainCard } from './report/primitives'
+import { fmt } from './report/format'
+import Acknowledgement from './report/sections/Acknowledgement'
+import Assumptions from './report/sections/Assumptions'
 
-const fmt = (n: number) => (isFinite(n) ? Math.round(n) : 0).toLocaleString('th-TH')
 
 // สูตรทุนการศึกษาใช้ computeChildPlan ตัวเดียวกับหน้าทุนการศึกษา (คิดระดับชั้นที่ตัดออก +
 // เงินออมที่โตตามอัตราขึ้นเงินเดือน) — เดิมที่นี่มีสูตรของตัวเองที่ตกรุ่น ทำให้ตัวเลขไม่ตรงกัน
@@ -202,37 +205,6 @@ export default function ReportPage() {
 
 
 
-  /* ── ชิ้นส่วนดีไซน์รายงาน (สไตล์มืออาชีพ) ── */
-  const TEAL = '#00cfc1', AMBERR = '#d97706', REDR = '#dc2626', GREENR = '#059669'
-  const Chip = ({ label, tone }: { label: string; tone: 'good' | 'warn' | 'bad' }) => {
-    const c = tone === 'good' ? GREENR : tone === 'warn' ? AMBERR : REDR
-    return <span style={{ padding: '3px 10px', borderRadius: 6, background: `${c}14`, color: c, fontSize: 10, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{label}</span>
-  }
-  const PBar = ({ pct, tone }: { pct: number; tone: 'good' | 'warn' | 'bad' }) => (
-    <div style={{ width: '100%', height: 6, borderRadius: 999, background: '#f1f5f9', margin: '10px 0 12px', overflow: 'hidden' }}>
-      <div style={{ height: '100%', width: `${Math.max(3, Math.min(100, pct))}%`, borderRadius: 999, background: tone === 'good' ? TEAL : tone === 'warn' ? '#f59e0b' : '#ef4444' }} />
-    </div>
-  )
-  const MiniRow = ({ l, v, strong }: { l: string; v: string; strong?: boolean }) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px', borderBottom: '1px solid #f8fafc', fontSize: 12.5 }}>
-      <span style={{ color: '#64748b' }}>{l}</span>
-      <span style={{ fontWeight: strong ? 800 : 700, color: '#0f172a', fontFamily: 'monospace' }}>{v}</span>
-    </div>
-  )
-  const DomainCard = ({ no, title, status, pct, rows, advice }: { no: number; title: string; status: { label: string; tone: 'good' | 'warn' | 'bad' }; pct: number; rows: [string, string][]; advice?: string }) => (
-    <div style={{ border: '1px solid #f1f5f9', borderRadius: 12, padding: '16px 18px', breakInside: 'avoid' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-        <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>
-          <span style={{ color: TEAL, marginRight: 6 }}>{no}.</span>{title}
-        </div>
-        <Chip label={status.label} tone={status.tone} />
-      </div>
-      <PBar pct={pct} tone={status.tone} />
-      {rows.map(([l, v], i) => <MiniRow key={i} l={l} v={v} strong={i === rows.length - 1} />)}
-      {advice && <div style={{ fontSize: 11, color: '#64748b', marginTop: 8, lineHeight: 1.6, fontStyle: 'italic' }}>“{advice}”</div>}
-    </div>
-  )
-
   function autoNode(kind: string) {
     if (kind === 'service') {
       // หนังสือข้อตกลงการให้บริการ (Letter of Engagement) — บีบให้จบ 1 หน้า A4 พอดี
@@ -329,27 +301,7 @@ export default function ReportPage() {
         </div>
       )
     }
-    if (kind === 'ack2') {
-      // ── ข้อควรทราบ (หน้าสุดท้ายเสมอ · 1 หน้า) ──
-      const PARAS = [
-        'เราเข้าใจดีว่าท่านอาจมีคำถามและข้อกังวลต่าง ๆ ในระหว่างการสร้างและรักษาความมั่นคงทางการเงิน สภาพแวดล้อมทางการเงินในปัจจุบันมีความซับซ้อนและเต็มไปด้วยความไม่แน่นอนในหลายด้าน การตัดสินใจของท่านเกี่ยวกับการทำงาน การใช้จ่าย การลงทุน และการเกษียณ ทั้งในปัจจุบันและอนาคต ล้วนส่งผลอย่างมีนัยสำคัญต่อฐานะทางการเงินของท่านในระยะยาว',
-        'เพื่อช่วยให้ท่านเรียนรู้ ทำความเข้าใจ และสร้างหลักคิดส่วนบุคคลสำหรับการตัดสินใจ จึงจัดทำ "แผนการเงินส่วนบุคคล" ขึ้น เพื่อเพิ่มพูนความรู้เกี่ยวกับหัวข้อต่าง ๆ และอธิบายรายละเอียดที่ซับซ้อนของโลกการเงิน แผนนี้เป็นกรอบแนวทางที่ช่วยให้เรื่องทางการเงินของท่านมีความชัดเจนและเป็นระบบมากขึ้น',
-        'แผนนี้จัดทำขึ้นจากข้อมูลที่เป็นความลับเกี่ยวกับทรัพยากรและเป้าหมายในปัจจุบันที่ท่านได้ให้ไว้ แม้ภาพประกอบต่าง ๆ ในแผนจะเป็นเครื่องมือที่มีประโยชน์สำหรับการพิจารณาด้านการเงินของท่าน แต่แผนนี้ไม่ได้ถือเป็นจุดสิ้นสุดของการวางแผนทั้งหมด เนื่องจากการวางแผนทางการเงินเป็นกระบวนการที่ต้องดำเนินอย่างต่อเนื่อง',
-        'ตัวอย่างสมมติเกี่ยวกับหลักการทางคณิตศาสตร์นี้จัดทำขึ้นเป็นพิเศษ เพื่อจำลองสถานการณ์และการเปลี่ยนแปลงที่อาจเกิดขึ้นในอนาคตทางการเงินของท่าน สมมติฐานที่ใช้ในตัวอย่างนี้ได้รับการคัดเลือกโดยเฉพาะเพื่อแสดงให้เห็นถึงแนวทางที่สมเหตุสมผลสำหรับสถานการณ์ทางการเงินของท่าน และเน้นให้ที่ปรึกษาทางการเงินพิจารณาถึงผลกระทบในอนาคตอันซับซ้อนที่เกิดจากปัจจัยต่าง ๆ ร่วมกัน ได้แก่ รายได้ ค่าใช้จ่าย เงินออม การเติบโตของสินทรัพย์ ภาษี ผลประโยชน์หลังเกษียณ และประกันภัย',
-        'เอกสารนี้ไม่ใช่การโฆษณาหรือการชักชวนให้ลงทุนในผลิตภัณฑ์ กลยุทธ์การลงทุน หรือบริการใดโดยเฉพาะ อีกทั้งไม่มีการให้หรือสื่อเป็นนัยถึงคำแนะนำหรือการคาดการณ์เกี่ยวกับการลงทุนหรือกลยุทธ์การลงทุนใดโดยเฉพาะ ตัวอย่างการเติบโตของสินทรัพย์ในเอกสารนี้ใช้เพื่อสาธิตแนวคิดและความสัมพันธ์ทางคณิตศาสตร์อย่างเคร่งครัด โดยนำเสนอภาพรวมที่สมดุลและครบถ้วนของหลักการทางการเงินบางประการ สมมติฐานเกี่ยวกับการเติบโตใช้กับบัญชีโดยทั่วไปตามแนวทางด้านภาษีที่แตกต่างกัน ตัวอย่าง แผนภูมิ และตารางต่าง ๆ ไม่ได้คาดการณ์หรือแสดงถึงผลการดำเนินงาน ผลตอบแทน หรือค่าใช้จ่ายของการลงทุนใดโดยเฉพาะ ทั้งในอดีตและอนาคต',
-        'แผนนี้ไม่ได้ให้คำแนะนำด้านภาษีหรือกฎหมาย แต่อาจแสดงตัวอย่างกฎหรือผลกระทบทางภาษีบางประการ รวมทั้งกล่าวถึงทางเลือกทางกฎหมายที่อาจเป็นไปได้เพื่อวัตถุประสงค์ทางการศึกษา ข้อมูลในเอกสารนี้ไม่สามารถใช้แทนการปรึกษาผู้เชี่ยวชาญด้านกฎหมายหรือที่ปรึกษาด้านภาษีที่มีความสามารถ และควรนำไปใช้ร่วมกับคำแนะนำของผู้เชี่ยวชาญดังกล่าว',
-        'ผลลัพธ์ที่แสดงในตัวอย่างนี้ไม่ใช่การรับประกันหรือการคาดการณ์ผลการดำเนินงานในอนาคต ผลลัพธ์ดังกล่าวมีไว้เพื่อประกอบการอธิบายเท่านั้น เอกสารนี้มีข้อความที่เกี่ยวกับการคาดการณ์ในอนาคต ซึ่งไม่สามารถรับประกันได้ว่าความเห็นและความคิดเห็นที่แสดงไว้จะเกิดขึ้นจริง ข้อมูลในอดีตแสดงถึงผลการดำเนินงานที่ผ่านมาเท่านั้น และไม่ได้บ่งชี้หรือรับประกันผลลัพธ์ในอนาคต ข้อมูล สารสนเทศ และแบบจำลองทางสถิติที่แสดงในเอกสารนี้ได้มาจากแหล่งข้อมูลที่เชื่อว่าน่าเชื่อถือ แต่ไม่สามารถรับประกันความถูกต้องหรือความครบถ้วนสมบูรณ์ได้',
-        'หน้าสมมติฐานประกอบด้วยข้อมูลที่ท่านให้ไว้และนำไปใช้ตลอดการนำเสนอ รายการสินทรัพย์ในเอกสารนี้ไม่ใช่ใบแจ้งยอดบัญชี และอาจไม่รวมยอดคงเหลือ การถือครองสินทรัพย์ และผลตอบแทนที่เป็นปัจจุบันหรือครบถ้วน โปรดตรวจสอบความถูกต้องของข้อมูล และแจ้งที่ปรึกษาทางการเงินของท่านโดยเร็ว หากพบความคลาดเคลื่อนในสมมติฐาน เนื่องจากความคลาดเคลื่อนดังกล่าวอาจส่งผลอย่างมีนัยสำคัญต่อการนำเสนอ',
-        'ผลตอบแทนจากการลงทุน อัตราภาษี และอัตราเงินเฟ้อที่แท้จริงในอนาคตของท่านยังไม่สามารถทราบได้ ตัวอย่างนี้ใช้สมมติฐานที่เป็นตัวแทนในแบบจำลองการวางแผนทางการเงิน เพื่อจัดทำรายงานสำหรับการศึกษาและการอภิปราย การคำนวณและสมมติฐานในรายงานนี้อาจไม่ครอบคลุมค่าธรรมเนียม ค่าใช้จ่าย และต้นทุนทั้งหมดที่อาจเกิดขึ้นในช่วงเวลาที่ตัวอย่างนี้ครอบคลุม ซึ่งหากนำมารวมคำนวณ อาจส่งผลให้ผลตอบแทนจากการลงทุนลดลงและทำให้ผลลัพธ์ของตัวอย่างไม่น่าพึงพอใจเท่าที่แสดงไว้ โปรดอย่าใช้ผลลัพธ์ในรายงานนี้เพื่อคาดการณ์ผลการดำเนินงานจริงของการลงทุนในอนาคต สภาวะตลาด ผลกระทบทางภาษี หรืออัตราเงินเฟ้อ',
-      ]
-      return (
-        <div style={{ marginBottom: 8 }}>
-          {PARAS.map((t, i2) => (
-            <p key={i2} style={{ fontSize: 11.5, color: '#334155', lineHeight: 1.9, marginBottom: 12, textAlign: 'justify', textIndent: 30 }}>{t}</p>
-          ))}
-        </div>
-      )
-    }
+    if (kind === 'ack2') return <Acknowledgement />
     if (kind === 'taxfull') {
       // ── การวิเคราะห์ภาษีเงินได้ — จำลองหน้าวางแผนภาษีต่อคน ──
       const persons = [
@@ -906,57 +858,7 @@ export default function ReportPage() {
       )
     }
     if (kind === 'assumptions') {
-      const pc = (v: any, suffix = '%') => v == null || v === '' ? '—' : `${v}${suffix}`
-      const rows: [string, string][] = [
-        ['อัตราเงินเฟ้อทั่วไป', pc(profile?.inflationRate ?? 3)],
-        ['อัตราเงินเฟ้อค่าการศึกษา', pc(eduInf)],
-        ['ผลตอบแทนกองทุนเพื่อการศึกษา', pc(eduRet)],
-        ['อายุเกษียณ (ลูกค้า)', pc(profile?.retirementAgeSelf ?? 60, ' ปี')],
-        ['อายุขัยที่ใช้วางแผน (ลูกค้า)', pc(profile?.lifeExpectancySelf ?? 85, ' ปี')],
-        ...(client?.spouseProfile?.firstName ? [
-          ['อายุเกษียณ (คู่สมรส)', pc(profile?.retirementAgeSpouse ?? 60, ' ปี')] as [string, string],
-          ['อายุขัยที่ใช้วางแผน (คู่สมรส)', pc(profile?.lifeExpectancySpouse ?? 85, ' ปี')] as [string, string],
-        ] : []),
-        ['ผลตอบแทนคาดหวังก่อนเกษียณ', pc(retPlan?.self?.preRetirementReturn ?? 8)],
-        ['ผลตอบแทนคาดหวังหลังเกษียณ', pc(retPlan?.self?.postRetirementReturn ?? 5)],
-        ['อัตราการเติบโตของรายได้', pc(retPlan?.self?.savingsGrowthRate ?? 0)],
-        ['ผลตอบแทนพอร์ตลงทุนปัจจุบัน (ถัวเฉลี่ย)', `${portRet.toFixed(1)}%`],
-      ]
-      return (
-        <div style={{ marginBottom: 16 }}>
-          <p style={{ fontSize: 13, color: '#64748b', lineHeight: 1.7, marginBottom: 12 }}>การคำนวณทั้งหมดในรายงานฉบับนี้ตั้งอยู่บนสมมติฐานต่อไปนี้ การเปลี่ยนแปลงของสมมติฐานแม้เพียงเล็กน้อยอาจส่งผลต่อผลลัพธ์อย่างมีนัยสำคัญ</p>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <tbody>{rows.map(([l, v], i) => (
-              <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 ? '#fbfdfe' : 'transparent' }}>
-                <td style={{ padding: '8px 10px', color: '#475569' }}>{l}</td>
-                <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, fontFamily: 'monospace', color: '#0f172a' }}>{v}</td>
-              </tr>
-            ))}</tbody>
-          </table>
-          <p style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 10, lineHeight: 1.7 }}>* สมมติฐานปรับแก้ได้ที่หน้า "สมมติฐาน" ของโปรแกรม และควรทบทวนร่วมกันอย่างน้อยปีละ 1 ครั้ง</p>
-          {/* ค่าใช้จ่ายด้านการศึกษา (มูลค่าปัจจุบัน) */}
-          <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', borderLeft: `5px solid ${TEAL}`, paddingLeft: 10, margin: '22px 0 10px' }}>ค่าใช้จ่ายด้านการศึกษา (มูลค่าปัจจุบัน ณ ปี พ.ศ. {new Date().getFullYear() + 543})</div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
-            <thead>
-              <tr style={{ borderBottom: '1.5px solid #cbd5e1' }}>
-                {['ระดับการศึกษา', 'สถาบันรัฐ (บาท/ปี)', 'สถาบันเอกชน (บาท/ปี)', 'สถาบันนานาชาติ (บาท/ปี)'].map((h, i2) => (
-                  <th key={h} style={{ padding: '7px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: i2 === 0 ? 'left' : 'right' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>{([['kindergarten', 'อนุบาล 1–3'], ['primary', 'ประถม 1–6'], ['secondary', 'มัธยม 1–6'], ['bachelor', 'ปริญญาตรี (ปีแรก)'], ['master', 'ปริญญาโท (ปีแรก)']] as const).map(([k2, lbl], i2) => (
-              <tr key={k2} style={{ borderBottom: '1px solid #f1f5f9', background: i2 % 2 ? '#fbfdfe' : 'transparent' }}>
-                <td style={{ padding: '7px 10px', color: '#475569' }}>{lbl}</td>
-                {(['public', 'private', 'international'] as const).map(t2 => (
-                  <td key={t2} style={{ padding: '7px 10px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: toNum(eduCosts?.[k2]?.[t2]) > 0 ? '#0f172a' : '#cbd5e1' }}>
-                    {toNum(eduCosts?.[k2]?.[t2]) > 0 ? fmt(toNum(eduCosts[k2][t2])) : '—'}
-                  </td>
-                ))}
-              </tr>
-            ))}</tbody>
-          </table>
-        </div>
-      )
+      return <Assumptions profile={profile} client={client} retPlan={retPlan} portRet={portRet} eduInf={eduInf} eduRet={eduRet} eduCosts={eduCosts} />
     }
     if (kind === 'execsum') {
       // ── บทสรุปผู้บริหาร: สถานะการเงิน + เป้าหมาย + ผลวิเคราะห์ (สรุปอัตโนมัติจากข้อมูลจริง) + ช่องคอมเมนต์ ──
