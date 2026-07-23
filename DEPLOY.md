@@ -44,9 +44,41 @@ Export จากโลโก้ WealthPro แล้ววางใน `frontend/
   ```
 - ได้ URL เช่น `https://wealthpro-api.onrender.com`
 
-## 2.5 Staging — ทดสอบก่อนขึ้นจริง (แนะนำอย่างยิ่ง)
-ตอนนี้ push ขึ้น `main` = ขึ้น production ทันที ไม่มีที่ให้ลองก่อน
-วิธีทำ staging โดยไม่แตะฐานข้อมูลจริง:
+## 2.5 Staging — ✅ ใช้งานได้แล้ว (ตั้งค่าเสร็จ 23 ก.ค. 2569)
+
+| ส่วน | ค่าจริง |
+|---|---|
+| Git branch | `staging` |
+| ฐานข้อมูล | Neon branch `staging` (แตกจาก production · direct connection) |
+| Backend | `https://wealthpro-api-staging.onrender.com` (Render, branch `staging`, Free) |
+| Frontend | `https://wealth-pro-git-staging-ultimatelife.vercel.app` (ล็อกด้วย Vercel SSO — เฉพาะสมาชิกทีม) |
+| ตัวเชื่อม | `VITE_API_URL` ที่ Vercel **scope Preview เท่านั้น** |
+
+**ตัวแปรที่เว้นว่างไว้บน staging โดยตั้งใจ:** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (ไม่ทดสอบการจ่ายเงิน), `ANTHROPIC_API_KEY` (ไม่ให้เสียค่า AI)
+**ตัวแปรที่ต้องต่างจาก production:** `DATABASE_URL`, `FRONTEND_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET` (แยก secret ไว้ไม่ให้ token ข้ามระบบกันได้)
+
+### วิธีทำงานตั้งแต่นี้ไป
+```bash
+git switch staging      # แก้งานบน staging
+# ... แก้ไข ... แล้ว push
+git switch main; git merge staging; git push    # ผ่านแล้วค่อยขึ้น production
+```
+
+### วิธีดูว่ากำลังอยู่ระบบไหน
+staging จะมี**ป้ายส้มกลางบนจอ** "ระบบทดสอบ · ข้อมูลในนี้ไม่ใช่ของลูกค้าจริง" (`frontend/src/components/EnvBadge.tsx`)
+production ไม่ตั้ง `VITE_API_URL` ป้ายจึงไม่ขึ้น
+
+> **Render Free จะหลับเมื่อไม่มีคนใช้** — เปิด staging ครั้งแรกหลังทิ้งไว้นานจะรอ 30–60 วินาที เป็นปกติ
+
+### วิธีตรวจว่าแยกขาดจริง (ทำซ้ำได้ทุกครั้งที่สงสัย)
+1. F12 → Network → คลิก request ใด ๆ → **Request URL** ต้องเป็น `wealthpro-api-staging.onrender.com`
+2. สร้างลูกค้าทดสอบบน staging → เปิด `wealthpro.cloud` → ต้องไม่เห็น
+
+---
+
+<details>
+<summary>ขั้นตอนที่ใช้ตอนตั้งค่าครั้งแรก (เก็บไว้อ้างอิง)</summary>
+
 
 1. **สร้าง branch `staging`** — `git switch -c staging && git push -u origin staging`
    Vercel จะสร้าง preview deployment ให้อัตโนมัติที่ URL คงที่ เช่น
@@ -65,7 +97,12 @@ Export จากโลโก้ WealthPro แล้ววางใน `frontend/
    > rewrite `/api` ไป production แบบตายตัว เท่ากับทดสอบบนข้อมูลลูกค้าจริง
    > (โค้ดฝั่งหน้าเว็บรองรับตัวแปรนี้แล้วที่ `frontend/src/lib/api.ts`)
 
-จากนั้นเปลี่ยนวิธีทำงานเป็น: push → `staging` → ทดสอบ → merge เข้า `main` เมื่อผ่าน
+**กับดักที่เจอจริงตอนตั้งค่า:**
+- Vercel **ข้าม build เมื่อ commit SHA เคย deploy แล้ว** → branch ใหม่ที่ชี้ commit เดียวกับ main จะไม่เกิด preview ต้องมีการแก้ไฟล์ใน `frontend/` จริงก่อน (commit ว่างไม่พอ เพราะมีตัวเลือก "Skip deployments when there are no changes to the root directory" เปิดอยู่ด้วย)
+- Render: **Language ต้องเป็น Node ไม่ใช่ Docker** (repo ไม่มี Dockerfile) และแก้ทีหลังไม่ได้ ต้องสร้าง service ใหม่
+- `FRONTEND_URL` ต้องตรงกับโดเมน preview เป๊ะ ไม่งั้น CORS บล็อกและล็อกอินไม่ได้
+
+</details>
 
 ## 3. Frontend — Vercel (Import repo, root = `frontend/`)
 > ⚠️ frontend import โมดูลกลาง `shared/` ผ่าน alias `@shared` ซึ่งอยู่นอก root directory
