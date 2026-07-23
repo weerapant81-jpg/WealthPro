@@ -115,17 +115,30 @@ function autoFixedItems(isSelf: boolean, cp: any, lifeInsurances: any[], current
 }
 
 /* ── ช่องแก้ไขภาษีรายปี (ค่าใช้จ่าย/ลดหย่อน) — เว้นว่าง = กลับไปใช้ค่าคำนวณ ── */
-function TaxCell({ value, overridden, onChange }: { value: number; overridden: boolean; onChange: (v: number | null) => void }) {
+/**
+ * ช่องแก้ค่าใช้จ่าย/ค่าลดหย่อนในตารางภาษี
+ *   overridden = ปีนี้ผู้ใช้พิมพ์เอง (เหลืองเข้ม)
+ *   derived    = ปีนี้คำนวณต่อยอดจากปีที่พิมพ์ไว้ก่อนหน้า โดยโตตามเงินได้ (เหลืองจาง)
+ * เว้นว่าง = กลับไปใช้ค่าที่ระบบคำนวณให้ตามปกติ
+ */
+function TaxCell({ value, overridden, derived, onChange }: { value: number; overridden: boolean; derived?: boolean; onChange: (v: number | null) => void }) {
   const disp = Math.round(value).toLocaleString('en-US')
   const [text, setText] = useState(disp)
   const [focus, setFocus] = useState(false)
   useEffect(() => { if (!focus) setText(disp) }, [disp, focus])
   const commit = () => { setFocus(false); const r = text.replace(/,/g, '').trim(); if (r === '') onChange(null); else if (/^\d+$/.test(r)) onChange(Number(r)) }
+  const tip = overridden ? 'ค่าที่คุณกรอกเอง — เว้นว่างเพื่อกลับไปใช้ค่าคำนวณ'
+    : derived ? 'คำนวณต่อจากปีที่คุณกรอกไว้ โดยเพิ่มขึ้นตามเงินได้ — พิมพ์ทับได้ถ้าต้องการแก้เฉพาะปีนี้'
+    : 'แก้ไขได้ — พิมพ์ปีแรกแล้วปีถัด ๆ ไปจะเพิ่มตามเงินได้ให้เอง'
   return (
-    <input value={text} inputMode="numeric" title="แก้ไขได้ — เว้นว่างเพื่อกลับไปใช้ค่าคำนวณ"
+    <input value={text} inputMode="numeric" title={tip}
       onFocus={() => setFocus(true)} onChange={e => setText(e.target.value)} onBlur={commit}
       onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-      style={{ width: 88, padding: '2px 5px', textAlign: 'right', background: overridden ? 'rgba(245,158,11,0.12)' : 'var(--navy-900)', border: '1px solid var(--card-border)', borderRadius: 4, color: overridden ? '#fbbf24' : 'var(--text-primary)', fontSize: 11, fontFamily: 'monospace', outline: 'none' }} />
+      style={{ width: 88, padding: '2px 5px', textAlign: 'right',
+        background: overridden ? 'rgba(245,158,11,0.12)' : derived ? 'rgba(245,158,11,0.05)' : 'var(--navy-900)',
+        border: '1px solid var(--card-border)', borderRadius: 4,
+        color: overridden ? '#fbbf24' : derived ? '#d1a054' : 'var(--text-primary)',
+        fontSize: 11, fontFamily: 'monospace', outline: 'none' }} />
   )
 }
 
@@ -256,7 +269,7 @@ export function buildTaxState(d: CashflowData, age: number, cp: any, retireAge: 
 }
 
 /* ── projection ── */
-type ProjRow = { age: number; year: number; inWork: number; inAsset: number; retIncome: number; retBalance: number; inTotal: number; retExpense: number; exFixed: number; exVar: number; exSaving: number; tax: number; outTotal: number; net: number; goalEdu: number; goalRet: number; goalIns: number; goalTotal: number; remain: number; taxBreak?: ReturnType<typeof calc> }
+type ProjRow = { age: number; year: number; inWork: number; inAsset: number; retIncome: number; retBalance: number; inTotal: number; retExpense: number; exFixed: number; exVar: number; exSaving: number; tax: number; outTotal: number; net: number; goalEdu: number; goalRet: number; goalIns: number; goalTotal: number; remain: number; taxBreak?: ReturnType<typeof calc>; expDerived?: boolean; dedDerived?: boolean }
 
 const card: React.CSSProperties = { background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 12, padding: '14px 16px' }
 
@@ -353,6 +366,9 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
   const rows = useMemo<ProjRow[]>(() => {
     const out: ProjRow[] = []
     const yr0 = new Date().getFullYear() + 543
+    // ค่าที่ผู้ใช้กรอกล่าสุด + เงินได้พึงประเมินของปีนั้น ใช้เป็นฐานให้ปีถัด ๆ ไปโตตามรายได้
+    let expAnchor: { v: number; ti: number } | null = null
+    let dedAnchor: { v: number; ti: number } | null = null
     for (let age = currentAge; age <= lifeExp; age++) {
       const inWork = sumAt(data.incomeWork, age, retireAge)
       const inAsset = sumAt(data.incomeAsset, age, retireAge)
@@ -365,15 +381,30 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
       const exFixed = sumAt(data.expFixed, age, retireAge)
       const exVar = sumAt(data.expVar, age, retireAge)
       const exSaving = sumAt(data.expSaving, age, retireAge)
+      let expDerived = false, dedDerived = false
       let taxBreak = age <= retireAge ? calc(buildTaxState(data, age, cp, retireAge, taxPlan?.[person] ?? null)) : undefined
-      // override ค่าใช้จ่าย/ค่าลดหย่อน รายปี (แก้ในตารางภาษี) → คำนวณภาษีใหม่
+      // ── override ค่าใช้จ่าย/ค่าลดหย่อนในตารางภาษี ──
+      // กรอกปีไหน ปีนั้นใช้ค่าที่กรอก และ "ปีถัด ๆ ไปที่ไม่ได้กรอก" จะโตตามเงินได้พึงประเมิน
+      // (ไม่ต้องไล่พิมพ์ทีละปี) · ถ้าอยากแก้เฉพาะปีใดปีหนึ่งก็กรอกทับได้ ค่านั้นจะกลายเป็นตัวตั้งของปีต่อไป
       const ovT = taxBreak ? data.taxOv?.[String(age)] : undefined
-      if (taxBreak && ovT && (ovT.exp != null || ovT.ded != null)) {
-        const expD = ovT.exp ?? taxBreak.expD
-        const ded = ovT.ded ?? (taxBreak.allD - taxBreak.expD)
-        const ni = Math.max(0, taxBreak.ti - expD - ded)
-        const t = calcTax(ni)
-        taxBreak = { ...taxBreak, expD, allD: expD + ded, ni, tax: t, netTax: t, eff: taxBreak.ti > 0 ? (t / taxBreak.ti) * 100 : 0 }
+      if (taxBreak) {
+        const pick = (typed: number | undefined, anchor: { v: number; ti: number } | null, fallback: number) => {
+          if (typed != null) return typed
+          if (!anchor) return fallback
+          return anchor.ti > 0 ? anchor.v * (taxBreak!.ti / anchor.ti) : anchor.v
+        }
+        expDerived = ovT?.exp == null && expAnchor != null
+        dedDerived = ovT?.ded == null && dedAnchor != null
+        const expD = pick(ovT?.exp, expAnchor, taxBreak.expD)
+        const ded = pick(ovT?.ded, dedAnchor, taxBreak.allD - taxBreak.expD)
+        // ปีที่ผู้ใช้กรอกเอง = ตัวตั้งใหม่สำหรับปีถัด ๆ ไป
+        if (ovT?.exp != null) expAnchor = { v: ovT.exp, ti: taxBreak.ti }
+        if (ovT?.ded != null) dedAnchor = { v: ovT.ded, ti: taxBreak.ti }
+        if (expD !== taxBreak.expD || ded !== taxBreak.allD - taxBreak.expD) {
+          const ni = Math.max(0, taxBreak.ti - expD - ded)
+          const t = calcTax(ni)
+          taxBreak = { ...taxBreak, expD, allD: expD + ded, ni, tax: t, netTax: t, eff: taxBreak.ti > 0 ? (t / taxBreak.ti) * 100 : 0 }
+        }
       }
       const tax = taxBreak ? taxBreak.netTax : 0
       const inTotal = inWork + inAsset + retIncome
@@ -383,7 +414,7 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
       const goalRet = sumAt(data.goalRetire, age, retireAge)
       const goalIns = sumAt(data.goalInsurance, age, retireAge)
       const goalTotal = goalEdu + goalRet + goalIns
-      out.push({ age, year: yr0 + (age - currentAge), inWork, inAsset, retIncome, retBalance, inTotal, retExpense, exFixed, exVar, exSaving, tax, outTotal, net, goalEdu, goalRet, goalIns, goalTotal, remain: net - goalTotal, taxBreak })
+      out.push({ age, year: yr0 + (age - currentAge), inWork, inAsset, retIncome, retBalance, inTotal, retExpense, exFixed, exVar, exSaving, tax, outTotal, net, goalEdu, goalRet, goalIns, goalTotal, remain: net - goalTotal, taxBreak, expDerived, dedDerived })
     }
     return out
   }, [data, currentAge, lifeExp, retireAge, cp, taxPlan, person, retBalByAge, retExpByAge, retOpenByAge])
@@ -661,8 +692,8 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
             </thead>
             <tbody>
               <tr><td style={tdLabel}>เงินได้พึงประเมิน</td>{taxRows.map(r => <td key={r.age} style={td}>{fmt0(r.taxBreak!.ti)}</td>)}</tr>
-              <tr><td style={tdLabel}>(−) ค่าใช้จ่าย <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>(แก้ไขได้)</span></td>{taxRows.map(r => <td key={r.age} style={{ ...td, padding: '3px 4px' }}><TaxCell value={r.taxBreak!.expD} overridden={data.taxOv?.[String(r.age)]?.exp != null} onChange={v => setTaxOv(r.age, 'exp', v)} /></td>)}</tr>
-              <tr><td style={tdLabel}>(−) ค่าลดหย่อนรวม <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>(แก้ไขได้)</span></td>{taxRows.map(r => <td key={r.age} style={{ ...td, padding: '3px 4px' }}><TaxCell value={r.taxBreak!.allD - r.taxBreak!.expD} overridden={data.taxOv?.[String(r.age)]?.ded != null} onChange={v => setTaxOv(r.age, 'ded', v)} /></td>)}</tr>
+              <tr><td style={tdLabel}>(−) ค่าใช้จ่าย <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>(แก้ไขได้)</span></td>{taxRows.map(r => <td key={r.age} style={{ ...td, padding: '3px 4px' }}><TaxCell value={r.taxBreak!.expD} overridden={data.taxOv?.[String(r.age)]?.exp != null} derived={r.expDerived} onChange={v => setTaxOv(r.age, 'exp', v)} /></td>)}</tr>
+              <tr><td style={tdLabel}>(−) ค่าลดหย่อนรวม <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>(แก้ไขได้)</span></td>{taxRows.map(r => <td key={r.age} style={{ ...td, padding: '3px 4px' }}><TaxCell value={r.taxBreak!.allD - r.taxBreak!.expD} overridden={data.taxOv?.[String(r.age)]?.ded != null} derived={r.dedDerived} onChange={v => setTaxOv(r.age, 'ded', v)} /></td>)}</tr>
               <tr style={{ background: 'var(--hover)' }}><td style={{ ...tdLabel, fontWeight: 700, color: 'var(--text-primary)' }}>เงินได้สุทธิ</td>{taxRows.map(r => <td key={r.age} style={{ ...td, fontWeight: 700 }}>{fmt0(r.taxBreak!.ni)}</td>)}</tr>
               <tr><td style={{ ...tdLabel, fontWeight: 700, color: '#fb923c' }}>ภาษีที่ต้องชำระ</td>{taxRows.map(r => <td key={r.age} style={{ ...td, color: '#fb923c', fontWeight: 700 }}>{fmt0(r.taxBreak!.tax)}</td>)}</tr>
               <tr><td style={tdLabel}>อัตราภาษีที่แท้จริง</td>{taxRows.map(r => <td key={r.age} style={{ ...td, color: 'var(--text-muted)' }}>{r.taxBreak!.eff.toFixed(1)}%</td>)}</tr>
