@@ -1,6 +1,12 @@
 ﻿import { Response, NextFunction } from 'express'
 import { prisma } from '../lib/prisma'
 import { AuthRequest } from '../middleware/auth'
+import {
+  toNum, sumMonthlyIncome, findSalaryRow,
+  toMonthly, toAnnual,
+  ratioState, RATIO_CATEGORIES, categoryScore, type RatioKey,
+  NON_MORTGAGE_CATS, DEBT_PAYMENT_CATS, isNonMortgageDebt, isShortTermDebt,
+} from '../../../shared/finance'
 
 // มุมมองบุคคล: เห็น "ของคนนั้น + ร่วม (shared)" — สำหรับ expenses/assets/liabilities
 const personWhere = (req: AuthRequest) => {
@@ -282,10 +288,6 @@ export async function computeFinancialSummary(userId: string, isSpouse: boolean)
     prisma.lifeInsurancePolicy.findMany({ where: { userId } }),
   ])
 
-  const toAnnual = (amount: number, freq: string) => freq === 'MONTHLY' ? amount * 12 : amount
-  const toMonthly = (amount: number, freq: string) => freq === 'MONTHLY' ? amount : amount / 12
-  const toNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
-
   // Assets from investment-profile (client = ฟิลด์หลัก, spouse = spouseData) + รายการในตาราง Asset
   const invSrc = isSpouse ? ((invProfile as any)?.spouseData ?? {}) : (invProfile ?? {})
   const savingsAccounts  = (invSrc?.savingsAccounts  ?? []) as any[]
@@ -319,9 +321,9 @@ export async function computeFinancialSummary(userId: string, isSpouse: boolean)
   // หนี้สิน — ตรงกับงบดุล: ระยะสั้น = ตาราง Liability(short_) + หนี้สินคงค้างครบกำหนด ≤ 1 ปี,
   //                          ระยะยาว = หนี้สินคงค้างครบกำหนด > 1 ปี
   const profileLiabilities = (invSrc?.liabilities ?? []) as any[]
-  const profShortDebt = profileLiabilities.filter(l => (parseFloat(String(l.termYears)) || 0) <= 1)
+  const profShortDebt = profileLiabilities.filter(l => isShortTermDebt(l.termYears))
     .reduce((s, l) => s + toNum(l.currentBalance), 0)
-  const profLongDebt  = profileLiabilities.filter(l => (parseFloat(String(l.termYears)) || 0) > 1)
+  const profLongDebt  = profileLiabilities.filter(l => !isShortTermDebt(l.termYears))
     .reduce((s, l) => s + toNum(l.currentBalance), 0)
 
   const shortDebtBalance = liabilities.filter(l => l.category.startsWith('short_')).reduce((s, l) => s + l.balance, 0)
@@ -329,13 +331,8 @@ export async function computeFinancialSummary(userId: string, isSpouse: boolean)
   const longDebtBalance  = profLongDebt
   const totalDebtBalance = shortDebtBalance + longDebtBalance
   const netWorth         = totalAssets - totalDebtBalance
-  // ภาระหนี้ตามหลัก CFP: จำนอง(บ้าน+คอนโด) + หนี้อื่น(รถ+บัตร/สินเชื่อ+การศึกษา)
-  const HOUSING_CATS = ['fixed_house_loan', 'fixed_condo_loan']
-  // "หนี้ที่ไม่จดจำนอง" = บัตรเครดิต + สินเชื่อส่วนบุคคล + วงเงิน OD + หนี้การศึกษา (ไม่รวมผ่อนบ้าน/คอนโด และไม่รวมผ่อนรถ)
-  const NON_MORTGAGE_CATS = ['fixed_credit', 'fixed_edu_loan']
-  const DEBT_PAYMENT_CATS = [...HOUSING_CATS, 'fixed_car_loan', ...NON_MORTGAGE_CATS]
+  // ภาระหนี้ตามหลัก CFP — หมวดหนี้อยู่ที่ shared/finance/debt.ts (ใช้ร่วมกับ frontend)
   // ค่าผ่อนหนี้ต่อเดือน — รวมจาก "ตารางหนี้สินคงค้าง" ด้วย (ให้ตรงกับงบกระแสเงินสด ที่ดึงจากแหล่งนี้)
-  const isNonMortgageDebt = (t: any) => /บัตรเครดิต|สินเชื่อส่วนบุคคล|เบิกเกินบัญชี|\bOD\b|การศึกษา|กยศ/i.test(String(t ?? ''))
   const profDebtPayAll      = profileLiabilities.reduce((s, l) => s + toNum(l.monthlyPayment), 0)
   const profDebtPayNonMort  = profileLiabilities.filter(l => isNonMortgageDebt(l.debtType)).reduce((s, l) => s + toNum(l.monthlyPayment), 0)
   const totalMonthlyPayment = expenses
@@ -348,18 +345,13 @@ export async function computeFinancialSummary(userId: string, isSpouse: boolean)
   // รายได้ — ดึงจาก clientProfile.incomeSources (ตรงกับงบกระแสเงินสด CashFlowTab)
   // ความถี่ใหม่: freq 'รายปี' = ก้อนรายปี (หาร 12) · เผื่อข้อมูลเก่าที่ใช้ label 'โบนัส' · fallback ตาราง Income เดิม
   const incomeSources = (isSpouse ? (clientProfile as any)?.spouseIncomeSources : (clientProfile as any)?.incomeSources) ?? [] as any[]
-  const isAnnualInc = (s: any) => s?.freq === 'รายปี' || (!s?.freq && String(s?.label ?? '').includes('โบนัส'))
-  const incMonthly = (src: any) => {
-    const amt = toNum(src.amount)
-    return isAnnualInc(src) ? amt / 12 : amt
-  }
-  const monthlyIncomeSources = (incomeSources as any[]).filter(s => toNum(s.amount) > 0).reduce((s, src) => s + incMonthly(src), 0)
+  const monthlyIncomeSources = sumMonthlyIncome(incomeSources as any[])
   const incomeTableAnnual = incomes.reduce((s, i) => s + toAnnual(i.amount, i.frequency), 0)
   const totalAnnualIncome = monthlyIncomeSources > 0 ? monthlyIncomeSources * 12 : (isSpouse ? 0 : incomeTableAnnual)
   const monthlyIncome = totalAnnualIncome / 12
 
   // SS + PVD auto-deductions — เงินเดือน = แถวที่ auto (ดึงจากข้อมูลการทำงาน) · เผื่อ label 'เงินเดือน' เดิม
-  const salarySource = (incomeSources as any[]).find(s => s?.auto || s?.label === 'เงินเดือน')
+  const salarySource = findSalaryRow(incomeSources as any[])
   const monthlySalary = salarySource ? toNum(salarySource.amount) : (isSpouse ? 0 : (clientProfile?.salary ?? 0))
   const ssMonthly  = welfare?.hasSocialSecurity  ? Math.min(Number(monthlySalary), 17500) * 0.05 : 0
   const pvdMonthly = welfare?.hasPVD ? Number(monthlySalary) * (Number(welfare.pvdEmployeeRate ?? 0) / 100) : 0
@@ -388,28 +380,14 @@ export async function computeFinancialSummary(userId: string, isSpouse: boolean)
   const r7 = totalAnnualIncome > 0      ? ((annualSavings + netAnnualCashFlow) / totalAnnualIncome) * 100 : null
   const r8 = netWorth > 0              ? (investAssets / netWorth) * 100                           : null
 
-  const state = (key: string, val: number | null): string => {
-    if (val === null) return 'nodata'
-    switch (key) {
-      case 'ratio1': return val >= 1 ? 'good' : val >= 0.5 ? 'warning' : 'danger'
-      case 'ratio2': return (val >= 3 && val <= 6) ? 'good' : val < 3 ? 'warning' : 'danger'
-      case 'ratio3': return val >= 15 ? 'good' : val >= 10 ? 'warning' : 'danger'
-      case 'ratio4': return val < 50  ? 'good' : val < 70  ? 'warning' : 'danger'
-      case 'ratio5': return val < 35  ? 'good' : val < 45  ? 'warning' : 'danger'
-      case 'ratio6': return val < 15  ? 'good' : val < 20  ? 'warning' : 'danger'
-      case 'ratio7': return val >= 10 ? 'good' : val >= 5  ? 'warning' : 'danger'
-      case 'ratio8': return val >= 50 ? 'good' : val >= 25 ? 'warning' : 'danger'
-      default: return 'nodata'
-    }
-  }
-
+  // เกณฑ์ตัดสิน good/warning/danger อยู่ที่ shared/finance/ratios.ts (frontend ใช้เกณฑ์เดียวกันคำนวณคำแนะนำ)
   const ratioValues: Record<string, number | null> = {
     ratio1: r1, ratio2: r2, ratio3: r3, ratio4: r4,
     ratio5: r5, ratio6: r6, ratio7: r7, ratio8: r8,
   }
 
   const ratios = Object.entries(ratioValues).map(([key, value]) => ({
-    key, value, state: state(key, value),
+    key, value, state: ratioState(key, value),
   }))
 
   const adviceMap: Record<string, string | null> = {}
@@ -419,15 +397,11 @@ export async function computeFinancialSummary(userId: string, isSpouse: boolean)
   }
 
   // Financial Health Score (0–100) — เฉลี่ยถ่วงน้ำหนัก 3 หมวดจากสถานะอัตราส่วน (แหล่งเดียว กัน drift)
-  const scoreOf = (st: string): number | null => st === 'good' ? 100 : st === 'warning' ? 60 : st === 'danger' ? 20 : null
-  const catAvg = (keys: string[]): number | null => {
-    const vals = keys.map(k => scoreOf(ratios.find(r => r.key === k)!.state)).filter((v): v is number => v !== null)
-    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null
-  }
+  const stateOf = (k: RatioKey) => ratios.find(r => r.key === k)!.state
   const rnd = (v: number | null) => v == null ? null : Math.round(v)
-  const liquidityScore = catAvg(['ratio1', 'ratio2', 'ratio3'])
-  const debtScore      = catAvg(['ratio4', 'ratio5', 'ratio6'])
-  const savingsScore   = catAvg(['ratio7', 'ratio8'])
+  const liquidityScore = categoryScore(RATIO_CATEGORIES.liquidity, stateOf)
+  const debtScore      = categoryScore(RATIO_CATEGORIES.debt, stateOf)
+  const savingsScore   = categoryScore(RATIO_CATEGORIES.savings, stateOf)
   const cats = [liquidityScore, debtScore, savingsScore].filter((v): v is number => v !== null)
   const healthScore = cats.length ? Math.round(cats.reduce((a, b) => a + b, 0) / cats.length) : null
   const labelOf = (sc: number | null) => sc == null ? 'ไม่มีข้อมูล'

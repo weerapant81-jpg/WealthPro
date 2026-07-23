@@ -1,5 +1,10 @@
 {
+  "private": true,
+  "scripts": {
+    "test": "npm --prefix frontend test && npm --prefix backend test"
+  },
   "devDependencies": {
+    "vitest": "^4.1.10",
     "xlsx": "^0.18.5"
   }
 }

@@ -1,3 +1,4 @@
+import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -34,7 +35,14 @@ export default defineConfig({
       },
     }),
   ],
-  server: { proxy: { '/api': 'http://localhost:3001' } },
+  // โมดูลกลางสูตรการเงิน (ใช้ร่วมกับ backend) อยู่นอกโฟลเดอร์ frontend
+  resolve: {
+    alias: { '@shared': fileURLToPath(new URL('../shared', import.meta.url)) },
+  },
+  server: {
+    proxy: { '/api': 'http://localhost:3001' },
+    fs: { allow: ['..'] },   // อนุญาตให้ dev server อ่านไฟล์ใน ../shared
+  },
   build: {
     rollupOptions: {
       output: {

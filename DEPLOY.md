@@ -28,6 +28,9 @@ Export จากโลโก้ WealthPro แล้ววางใน `frontend/
 ## 2. Backend — Render (New Web Service, root = `backend/`)
 - **Build:** `npm install && npx prisma generate && npm run build`
 - **Start:** `npm start`
+> ⚠️ backend คอมไพล์โฟลเดอร์ `shared/` (โมดูลกลางสูตรการเงิน ที่อยู่นอก `backend/`) ไปด้วย
+> ผลลัพธ์จึงเป็น `dist/backend/src/index.js` (ไม่ใช่ `dist/index.js`) — `npm start` ชี้ให้แล้ว
+> ถ้า Render ตั้ง Start Command เป็น `node dist/index.js` ตรง ๆ ต้องแก้เป็น `npm start`
 - **Env vars:**
   ```
   DATABASE_URL=<neon>
@@ -42,6 +45,8 @@ Export จากโลโก้ WealthPro แล้ววางใน `frontend/
 - ได้ URL เช่น `https://wealthpro-api.onrender.com`
 
 ## 3. Frontend — Vercel (Import repo, root = `frontend/`)
+> ⚠️ frontend import โมดูลกลาง `shared/` ผ่าน alias `@shared` ซึ่งอยู่นอก root directory
+> ที่ Vercel → Settings → Build & Deployment ต้องเปิด **"Include files outside of the Root Directory"** (ค่าเริ่มต้นเปิดอยู่)
 1. แก้ `frontend/vercel.json` → เปลี่ยน `REPLACE-WITH-BACKEND-URL` เป็น URL backend จริง
 2. **Env vars:**
    ```

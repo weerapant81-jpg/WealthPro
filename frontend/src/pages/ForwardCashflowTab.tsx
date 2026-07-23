@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { calc, calcTax, defaultState, type TaxState } from '../lib/tax'
-import { annualIncome, isAnnualIncome, taxCodeOf } from '../lib/income'
+import { annualIncome, isAnnualIncome, taxCodeOf, LEGACY_ANNUAL_LABEL } from '../lib/income'
 import { createPortal } from 'react-dom'
 import { Plus, Trash2, Check, Loader2, RefreshCw, X, Maximize2, FileText } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -114,7 +114,8 @@ function seedData(
     d.incomeWork.push({ id: uid(), label: 'เงินเดือน', base: 600000, growth: 5, startAge: currentAge, endAge: workEnd })
   }
   // โบนัส = 40(1) แบบรายปี ที่ไม่ใช่แถวเงินเดือน (หรือ label 'โบนัส' เดิม)
-  const bonus = srcs.find(s => !isSalaryRow(s) && ((taxCodeOf(s.label) === '1' && isAnnualIncome(s)) || (s.label || '').includes('โบนัส')))
+  const bonus = srcs.find(s => !isSalaryRow(s)
+    && ((taxCodeOf(s.label) === '1' && isAnnualIncome(s)) || String(s.label || '').trim() === LEGACY_ANNUAL_LABEL))
   d.incomeWork.push({ id: uid(), label: 'โบนัส', base: bonus ? annualIncome(bonus) : 0, growth: raise || 5, startAge: currentAge, endAge: workEnd, auto: !!bonus })
   // อาชีพเสริม/ธุรกิจ = 40(8)
   const extra = srcs.find(s => taxCodeOf(s.label) === '8' || (s.label || '').includes('อาชีพเสริม'))

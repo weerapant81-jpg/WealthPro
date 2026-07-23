@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma'
 import { AuthRequest } from '../middleware/auth'
 import { computeFinancialSummary } from './finance.controller'
 import { aiMonthlyCapThb, currentPeriod, costThbFromUsage } from '../lib/aiCost'
+import { isAnnualIncome } from '../../../shared/finance'
 
 const MODEL = 'claude-sonnet-5'
 
@@ -103,7 +104,10 @@ export async function buildClientContext(userId: string): Promise<string> {
   const incSrc: any = cp?.incomeSources
   const incList = Array.isArray(incSrc) ? incSrc : (Array.isArray(incSrc?.self) ? incSrc.self : [])
   if (incList.length) {
-    const src = incList.map((s: any) => toNum(s.amount) > 0 ? `${s.label || s.source || s.name || 'รายได้'} ${fmt(toNum(s.amount))}${(s.frequency === 'YEARLY' || s.isBonus || /โบนัส/.test(s.label || s.source || '')) ? '/ปี' : '/เดือน'}` : '').filter(Boolean)
+    // ความถี่ใช้กติกาเดียวกับงบกระแสเงินสด/อัตราส่วน (shared/finance/income.ts)
+    const src = incList.map((s: any) => toNum(s.amount) > 0
+      ? `${s.label || s.source || s.name || 'รายได้'} ${fmt(toNum(s.amount))}${isAnnualIncome(s) ? '/ปี' : '/เดือน'}`
+      : '').filter(Boolean)
     if (src.length) lines.push('แหล่งรายได้: ' + src.join(' · '))
   }
   if (sm && fin?.healthScore != null) lines.push(`\nคะแนนสุขภาพการเงิน: ${fin.healthScore}/100 (${fin.healthLabel})`)

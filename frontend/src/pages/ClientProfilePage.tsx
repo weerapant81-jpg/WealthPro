@@ -10,7 +10,7 @@ import { TableExcelButton } from '../components/exportable'
 import { WizardNav } from '../components/WizardNav'
 import { ThaiDateInput } from '../components/ThaiDateInput'
 import { fixThaiMojibake } from '../lib/fixThaiMojibake'
-import { INCOME_40_LABELS, INCOME_FREQS, migrateIncomeLabel, annualIncome, type IncomeSource as ISType } from '../lib/income'
+import { INCOME_40_LABELS, INCOME_FREQS, migrateIncomeLabel, annualIncome, isAnnualIncome, type IncomeSource as ISType } from '../lib/income'
 import { MoneyInputStr as CommaInput } from '../components/MoneyInput'
 import InsuranceTab from './InsuranceTab'
 import InvestmentProfileTab from './InvestmentProfileTab'
@@ -403,7 +403,7 @@ export default function ClientProfilePage() {
         label: migrateIncomeLabel(r.label),
         source: r.source || '',
         amount: r.amount ?? '',
-        freq: r.freq || (String(r.label || '').includes('โบนัส') ? 'รายปี' : 'รายเดือน'),
+        freq: r.freq || (isAnnualIncome(r) ? 'รายปี' : 'รายเดือน'),
         auto: r.auto ?? (r.label === 'เงินเดือน'),
       }))
       if (profile.incomeSources?.length) setIncomeSources(migrateRows(profile.incomeSources))

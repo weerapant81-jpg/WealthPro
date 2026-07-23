@@ -2,7 +2,46 @@ import { describe, it, expect } from 'vitest'
 import {
   INCOME_40, INCOME_40_LABELS, taxCodeOf, migrateIncomeLabel,
   isAnnualIncome, monthlyIncome, annualIncome,
+  toNum, sumMonthlyIncome, findSalaryRow,
 } from './income'
+
+describe('toNum', () => {
+  it('รองรับตัวเลขที่มีลูกน้ำ และไม่คืน NaN', () => {
+    expect(toNum('1,234,567')).toBe(1234567)
+    expect(toNum(500)).toBe(500)
+    expect(toNum('')).toBe(0)
+    expect(toNum(null)).toBe(0)
+    expect(toNum('abc')).toBe(0)
+  })
+})
+
+describe('sumMonthlyIncome', () => {
+  it('รวมทุกแหล่งเป็นต่อเดือน โดยข้ามแถวยอด ≤ 0', () => {
+    expect(sumMonthlyIncome([
+      { label: '40(1) เงินเดือน/ค่าจ้าง/โบนัส', amount: '50000' },
+      { label: '40(1) เงินเดือน/ค่าจ้าง/โบนัส', amount: '120000', freq: 'รายปี' },
+      { label: '40(5) ค่าเช่าทรัพย์สิน', amount: '0' },
+      { label: '40(8) ธุรกิจ', amount: '' },
+    ])).toBe(60000)
+  })
+  it('ไม่มีข้อมูล → 0', () => {
+    expect(sumMonthlyIncome([])).toBe(0)
+    expect(sumMonthlyIncome(null)).toBe(0)
+    expect(sumMonthlyIncome(undefined)).toBe(0)
+  })
+})
+
+describe('findSalaryRow', () => {
+  it('เลือกแถวที่ระบบดึงมาอัตโนมัติก่อน · เผื่อ label เดิม', () => {
+    const auto = { label: '40(1) เงินเดือน/ค่าจ้าง/โบนัส', amount: '50000', auto: true }
+    expect(findSalaryRow([{ label: 'อื่น', amount: '1' }, auto])).toBe(auto)
+    expect(findSalaryRow([{ label: 'เงินเดือน', amount: '30000' }])?.amount).toBe('30000')
+  })
+  it('ไม่มีแถวเงินเดือน → undefined', () => {
+    expect(findSalaryRow([{ label: '40(5) ค่าเช่า', amount: '1' }])).toBeUndefined()
+    expect(findSalaryRow(null)).toBeUndefined()
+  })
+})
 
 describe('INCOME_40 — หมวดเงินได้', () => {
   it('มีครบ 8 มาตรา เรียง 1–8', () => {

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { card, inp } from '../styles/dark'
 import { Droplets, CreditCard, PiggyBank, AlertTriangle, CheckCircle2, XCircle, Info, Pencil, Check, X, TrendingUp } from 'lucide-react'
+import { ratioTarget, ratioTargetMax, RATIO_CATEGORIES, type RatioKey } from '@shared/finance/ratios'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -32,39 +33,42 @@ function actionPlan(key: string, value: number | null, sm: Summary): string | nu
   if (value === null) return null
   const baht = (n: number) => new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(Math.max(0, Math.round(n)))
   const perMonth = (yearlyGap: number) => baht(yearlyGap / 12)
+  // เป้าหมายดึงจากเกณฑ์กลาง shared/finance/ratios.ts — เกณฑ์เดียวกับที่ backend ใช้ตัดสิน good/warning/danger
+  const target = ratioTarget(key as RatioKey)
+  const pct = target / 100
   switch (key) {
     case 'ratio1': {
-      const gap = sm.shortDebtBalance - sm.liquidAssets
+      const gap = sm.shortDebtBalance * target - sm.liquidAssets
       return gap > 0 ? `เพิ่มสินทรัพย์สภาพคล่องอีก ~${baht(gap)} บาท หรือลดหนี้ระยะสั้นลง เพื่อให้สภาพคล่องครอบคลุมหนี้ระยะสั้น (≥ 1 เท่า)` : null
     }
     case 'ratio2': {
-      const target = sm.totalMonthlyExp * 3
-      const gap = target - sm.liquidAssets
-      return gap > 0 ? `สะสมเงินสำรองฉุกเฉินเพิ่มอีก ~${baht(gap)} บาท (ออม ~${perMonth(gap)} บาท/เดือน เป็นเวลา 12 เดือน) ให้ครบ 3 เดือนของรายจ่าย — เป้าที่ดี 6 เดือน = ${baht(sm.totalMonthlyExp * 6)} บาท` : null
+      const max = ratioTargetMax('ratio2') ?? target * 2
+      const gap = sm.totalMonthlyExp * target - sm.liquidAssets
+      return gap > 0 ? `สะสมเงินสำรองฉุกเฉินเพิ่มอีก ~${baht(gap)} บาท (ออม ~${perMonth(gap)} บาท/เดือน เป็นเวลา 12 เดือน) ให้ครบ ${target} เดือนของรายจ่าย — เป้าที่ดี ${max} เดือน = ${baht(sm.totalMonthlyExp * max)} บาท` : null
     }
     case 'ratio3': {
-      const gap = sm.netWorth * 0.15 - sm.liquidAssets
-      return gap > 0 ? `โยกสินทรัพย์มาเป็นเงินสด/สภาพคล่องเพิ่มอีก ~${baht(gap)} บาท ให้ถึง 15% ของความมั่งคั่งสุทธิ` : null
+      const gap = sm.netWorth * pct - sm.liquidAssets
+      return gap > 0 ? `โยกสินทรัพย์มาเป็นเงินสด/สภาพคล่องเพิ่มอีก ~${baht(gap)} บาท ให้ถึง ${target}% ของความมั่งคั่งสุทธิ` : null
     }
     case 'ratio4': {
-      const reduce = sm.totalDebtBalance - sm.totalAssets * 0.5
-      return reduce > 0 ? `ทยอยลดยอดหนี้ลงอีก ~${baht(reduce)} บาท (โปะเงินต้น/เลี่ยงก่อหนี้ใหม่) ให้หนี้ไม่เกิน 50% ของสินทรัพย์` : null
+      const reduce = sm.totalDebtBalance - sm.totalAssets * pct
+      return reduce > 0 ? `ทยอยลดยอดหนี้ลงอีก ~${baht(reduce)} บาท (โปะเงินต้น/เลี่ยงก่อหนี้ใหม่) ให้หนี้ไม่เกิน ${target}% ของสินทรัพย์` : null
     }
     case 'ratio5': {
-      const reduce = sm.totalMonthlyPayment - sm.monthlyIncome * 0.35
-      return reduce > 0 ? `ลดภาระผ่อนหนี้รวมลง ~${baht(reduce)} บาท/เดือน (รีไฟแนนซ์ ยืดงวด หรือโปะหนี้ดอกสูง) ให้ไม่เกิน 35% ของรายได้` : null
+      const reduce = sm.totalMonthlyPayment - sm.monthlyIncome * pct
+      return reduce > 0 ? `ลดภาระผ่อนหนี้รวมลง ~${baht(reduce)} บาท/เดือน (รีไฟแนนซ์ ยืดงวด หรือโปะหนี้ดอกสูง) ให้ไม่เกิน ${target}% ของรายได้` : null
     }
     case 'ratio6': {
-      const reduce = sm.nonMortgageMonthlyPay - sm.monthlyIncome * 0.15
-      return reduce > 0 ? `ลดภาระหนี้ที่ไม่ใช่บ้านลง ~${baht(reduce)} บาท/เดือน (เร่งปิดบัตรเครดิต/สินเชื่อดอกเบี้ยสูงก่อน) ให้ไม่เกิน 15% ของรายได้` : null
+      const reduce = sm.nonMortgageMonthlyPay - sm.monthlyIncome * pct
+      return reduce > 0 ? `ลดภาระหนี้ที่ไม่ใช่บ้านลง ~${baht(reduce)} บาท/เดือน (เร่งปิดบัตรเครดิต/สินเชื่อดอกเบี้ยสูงก่อน) ให้ไม่เกิน ${target}% ของรายได้` : null
     }
     case 'ratio7': {
-      const gapYear = (0.10 - value / 100) * sm.totalAnnualIncome
-      return gapYear > 0 ? `ออม/ลงทุนเพิ่มอีก ~${perMonth(gapYear)} บาท/เดือน (~${baht(gapYear)} บาท/ปี) โดยตั้งหักออมอัตโนมัติ ให้อัตราการออมถึง 10% ของรายได้` : null
+      const gapYear = (pct - value / 100) * sm.totalAnnualIncome
+      return gapYear > 0 ? `ออม/ลงทุนเพิ่มอีก ~${perMonth(gapYear)} บาท/เดือน (~${baht(gapYear)} บาท/ปี) โดยตั้งหักออมอัตโนมัติ ให้อัตราการออมถึง ${target}% ของรายได้` : null
     }
     case 'ratio8': {
-      const gap = sm.netWorth * 0.5 - sm.investAssets
-      return gap > 0 ? `จัดสรรเงินไปลงทุนเพิ่มอีก ~${baht(gap)} บาท (กองทุนรวม/หุ้น/ตราสารหนี้ ตามระดับความเสี่ยง) ให้สินทรัพย์ลงทุนถึง 50% ของความมั่งคั่ง` : null
+      const gap = sm.netWorth * pct - sm.investAssets
+      return gap > 0 ? `จัดสรรเงินไปลงทุนเพิ่มอีก ~${baht(gap)} บาท (กองทุนรวม/หุ้น/ตราสารหนี้ ตามระดับความเสี่ยง) ให้สินทรัพย์ลงทุนถึง ${target}% ของความมั่งคั่ง` : null
     }
     default: return null
   }
@@ -380,9 +384,9 @@ export default function FinancialRatioTab({ person = 'client' }: { person?: 'cli
       {/* 3 bento เต็มความกว้าง: สภาพคล่อง → หนี้สิน → ออม/ลงทุน (อัตราส่วนเรียงแนวนอน + คอมเมนต์ใต้แถว) */}
       {(() => {
         const CAT_META = {
-          liquidity: { label: 'ด้านสภาพคล่อง', color: '#22d3ee', icon: Droplets, keys: ['ratio1', 'ratio2', 'ratio3'] },
-          debt:      { label: 'ด้านหนี้สิน',    color: '#f43f5e', icon: CreditCard, keys: ['ratio4', 'ratio5', 'ratio6'] },
-          savings:   { label: 'ด้านการออม/ลงทุน', color: '#a78bfa', icon: PiggyBank, keys: ['ratio7', 'ratio8'] },
+          liquidity: { label: 'ด้านสภาพคล่อง', color: '#22d3ee', icon: Droplets, keys: RATIO_CATEGORIES.liquidity },
+          debt:      { label: 'ด้านหนี้สิน',    color: '#f43f5e', icon: CreditCard, keys: RATIO_CATEGORIES.debt },
+          savings:   { label: 'ด้านการออม/ลงทุน', color: '#a78bfa', icon: PiggyBank, keys: RATIO_CATEGORIES.savings },
         } as const
         const CatAdvice = (cat: 'liquidity' | 'debt' | 'savings') => {
           if (!hasData) return null

@@ -19,7 +19,10 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+
+    /* โมดูลกลางสูตรการเงิน (ใช้ร่วมกับ backend) */
+    "paths": { "@shared/*": ["../shared/*"] }
   },
-  "include": ["src"]
+  "include": ["src", "../shared"]
 }
