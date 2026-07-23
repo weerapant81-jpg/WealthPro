@@ -1,0 +1,88 @@
+name: CI
+
+# รันทุกครั้งที่ push ขึ้น main/staging และทุก pull request
+# จุดประสงค์: กันของพังหลุดขึ้น production เมื่อคนที่ push ลืมรันเทสต์เอง
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+
+# push ซ้อนกันบน branch เดียวกัน → ยกเลิกรอบเก่า ไม่ต้องรอคิว
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend — typecheck + tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: ติดตั้ง dependency
+        working-directory: backend
+        run: npm ci
+
+      # ต้องมาก่อน tsc — โค้ดอ้าง type ที่ Prisma สร้างตอน generate
+      # generate ไม่ต้องต่อฐานข้อมูลจริง แต่ schema อ้าง env("DATABASE_URL") จึงใส่ค่าหลอกให้
+      - name: สร้าง Prisma client
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+        run: npx prisma generate
+
+      - name: Typecheck
+        working-directory: backend
+        run: npx tsc --noEmit
+
+      - name: เทสต์
+        working-directory: backend
+        run: npm test
+
+      - name: Build
+        working-directory: backend
+        run: npm run build
+
+  frontend:
+    name: Frontend — typecheck + tests + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: ติดตั้ง dependency
+        working-directory: frontend
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: frontend
+        run: npx tsc -p tsconfig.app.json --noEmit
+
+      - name: เทสต์ (รวมของโมดูลกลาง shared/)
+        working-directory: frontend
+        run: npm test
+
+      # ใช้คำสั่งเดียวกับที่ Vercel รัน — ถ้าตรงนี้ผ่าน Vercel ก็ควรผ่าน
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      # กันกับดักที่เคยทำให้ Vercel build พังเงียบมา 6 commit:
+      # Vercel ติดตั้งเฉพาะ frontend/package.json ถ้า build ไปดึงไฟล์จาก node_modules
+      # ที่โฟลเดอร์ราก จะผ่านในเครื่องแต่พังบน Vercel
+      - name: ตรวจว่า build ไม่พึ่ง node_modules ที่โฟลเดอร์ราก
+        working-directory: frontend
+        run: |
+          if npx tsc -p tsconfig.app.json --noEmit --listFiles | grep -v '/frontend/node_modules/' | grep -q '/node_modules/'; then
+            echo "::error::build อ้างไฟล์จาก node_modules นอกโฟลเดอร์ frontend — Vercel จะ build ไม่ผ่าน"
+            exit 1
+          fi
