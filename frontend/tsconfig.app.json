@@ -24,5 +24,9 @@
     /* โมดูลกลางสูตรการเงิน (ใช้ร่วมกับ backend) */
     "paths": { "@shared/*": ["../shared/*"] }
   },
-  "include": ["src", "../shared"]
+  "include": ["src", "../shared"],
+  // ไฟล์เทสต์ของ shared import 'vitest' ซึ่งอยู่ใน devDependencies ของ root
+  // แต่ Vercel ติดตั้งเฉพาะ frontend/package.json → tsc -b จะพังตอน build
+  // เทสต์ยังรันครบผ่าน `npm test` (vitest แปลงไฟล์เอง ไม่ผ่าน tsc)
+  "exclude": ["../shared/**/*.test.ts"]
 }

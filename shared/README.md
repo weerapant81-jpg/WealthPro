@@ -20,6 +20,17 @@
 โค้ดในนี้ต้องเป็น TypeScript ล้วน **ไม่พึ่ง dependency ใด ๆ** และห้ามใช้ API เฉพาะเบราว์เซอร์หรือเฉพาะ Node
 เพราะถูกคอมไพล์ด้วยทั้ง Vite (ESM, เบราว์เซอร์) และ tsc (CommonJS, Node)
 
+## ⚠️ ห้าม build ของ frontend พึ่ง node_modules ที่โฟลเดอร์ราก
+Vercel ตั้ง Root Directory = `frontend/` จึงติดตั้งเฉพาะ `frontend/package.json`
+ถ้าโค้ดใน `shared/` import แพ็กเกจที่มีอยู่แค่ที่ root **เครื่องเราจะ build ผ่านแต่ Vercel จะพัง**
+(เคยเกิดจริง: ไฟล์เทสต์ import `vitest` → `tsc -b` พังบน Vercel · แก้โดย exclude ไฟล์เทสต์ใน `frontend/tsconfig.app.json`)
+
+ตรวจก่อน push ได้ด้วยคำสั่งนี้ — ต้องไม่มีผลลัพธ์ออกมา:
+
+```bash
+cd frontend; npx tsc -p tsconfig.app.json --noEmit --listFiles | Select-String -SimpleMatch "Fin Program/node_modules"
+```
+
 ## เทสต์
 เทสต์ของโมดูลนี้อยู่ข้าง ๆ ไฟล์ต้นฉบับ และรันผ่านฝั่ง frontend:
 
