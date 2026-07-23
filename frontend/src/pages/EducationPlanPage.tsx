@@ -6,6 +6,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { ChartFrame, TableExcelButton } from '../components/exportable'
 import { usePortfolioReturns, type PortfolioReturn } from '../lib/portfolioReturns'
 import { toNum, growAnnuityFactor } from '@shared/finance/math'
+import { fundBalanceSeries } from '@shared/finance/education'
 
 /* ── helpers ── */
 const fmt = (n: number, d = 0) =>
@@ -69,17 +70,18 @@ export function buildEduChart({ age, setting, eduCosts, inflationPct, ratePct, i
   const thisYear = new Date().getFullYear()
   const maxYfn = plans.reduce((mx, p) => p.sched.reduce((a, x) => Math.max(a, x.yfn), mx), 0)
   const horizon = Math.max(m, maxYfn) + 4
-  const balances = plans.map(() => 0)
+  // เดินยอดด้วยฟังก์ชันกลาง — ตัวเดียวกับที่ตาราง "มูลค่าเงินกองทุน" ใช้ ตัวเลขจึงตรงกันเสมอ
+  const series = plans.map(p => fundBalanceSeries({
+    fees: p.sched.map(x => ({ yfn: x.yfn, amount: x.inflated })),
+    annualSaving: p.annual, r, g: gInc, savingYears: m, horizon,
+  }))
   const chartData: any[] = []
   for (let t = 0; t <= horizon; t++) {
     const row: any = { year: thisYear + t + 543 }
     plans.forEach((p, i) => {
       const due = p.sched.filter(x => x.yfn === t).reduce((s, x) => s + x.inflated, 0)
       row[`${p.key}_fee`] = due > 0 ? Math.round(due) : null
-      balances[i] -= due
-      if (t > 0) balances[i] *= (1 + r)
-      if (t < m) balances[i] += p.annual * Math.pow(1 + gInc, t)
-      row[p.key] = t <= maxYfn ? Math.round(balances[i]) : null
+      row[p.key] = t <= maxYfn ? Math.round(series[i][t]) : null
     })
     chartData.push(row)
   }
@@ -178,6 +180,21 @@ function ChildCard({ name, age, setting, onChange, eduCosts, inflation, fundRetu
   const annualSaving = annuityFactor > 0 ? totalPV / annuityFactor : 0
   const monthlySaving = annualSaving / 12
 
+  // มูลค่าเงินกองทุนรายปี — เดินยอดด้วยลำดับเดียวกับกราฟ "เงินออมสะสม" (buildEduChart) ตัวเลขจะได้ตรงกัน
+  //   แต่ละปี: จ่ายค่าเล่าเรียนของปีนั้น → ผลตอบแทนทบต้น → เติมเงินออมของปีนั้น (ออมเพิ่มขึ้นปีละ gInc)
+  // คิดเฉพาะระดับชั้นที่ติ๊ก "วางแผน" ไว้ · ใช้ประเภทสถาบัน + พอร์ตความเสี่ยงที่เลือกอยู่บนการ์ดนี้
+  const fundByYear = useMemo(() => {
+    const thisYear = new Date().getFullYear()
+    const horizon = rows.reduce((mx, x) => Math.max(mx, x.year - thisYear), 0)
+    const series = fundBalanceSeries({
+      fees: rows.filter(x => isIncluded(x.levelKey)).map(x => ({ yfn: x.year - thisYear, amount: x.inflated })),
+      annualSaving, r, g: gInc, savingYears: m, horizon,
+    })
+    const out: Record<number, number> = {}
+    series.forEach((v, t) => { out[thisYear + t] = v })
+    return out
+  }, [rows, excluded, r, m, gInc, annualSaving])
+
   const set = <K extends keyof ChildSetting>(k: K, v: ChildSetting[K]) => onChange({ ...setting, [k]: v })
 
   return (
@@ -236,12 +253,13 @@ function ChildCard({ name, age, setting, onChange, eduCosts, inflation, fundRetu
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, whiteSpace: 'nowrap', tableLayout: 'fixed' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--card-border)' }}>
-                <th style={{ ...th, textAlign: 'center', width: '10%' }}>อายุ</th>
-                <th style={{ ...th, textAlign: 'center', width: '12%' }}>ปี พ.ศ.</th>
-                <th style={{ ...th, textAlign: 'center', width: '20%' }}>ระดับ</th>
-                <th style={{ ...th, width: '25%' }}>ค่าเล่าเรียน (ปัจจุบัน)</th>
-                <th style={{ ...th, width: '23%' }}>ปรับเงินเฟ้อ</th>
-                <th style={{ ...th, textAlign: 'center', width: '10%' }}>วางแผน</th>
+                <th style={{ ...th, textAlign: 'center', width: '8%' }}>อายุ</th>
+                <th style={{ ...th, textAlign: 'center', width: '10%' }}>ปี พ.ศ.</th>
+                <th style={{ ...th, textAlign: 'center', width: '16%' }}>ระดับ</th>
+                <th style={{ ...th, width: '20%' }}>ค่าเล่าเรียน (ปัจจุบัน)</th>
+                <th style={{ ...th, width: '19%' }}>ปรับเงินเฟ้อ</th>
+                <th style={{ ...th, width: '19%' }}>มูลค่าเงินกองทุน</th>
+                <th style={{ ...th, textAlign: 'center', width: '8%' }}>วางแผน</th>
               </tr>
             </thead>
             <tbody>
@@ -254,6 +272,7 @@ function ChildCard({ name, age, setting, onChange, eduCosts, inflation, fundRetu
                   <td style={{ ...td, textAlign: 'center', color: 'var(--text-secondary)' }}>{x.level}</td>
                   <td style={tdNum}>{fmt(x.base)}</td>
                   <td style={{ ...tdNum, color: '#f59e0b' }}>{fmt(x.inflated)}</td>
+                  <td style={{ ...tdNum, color: (fundByYear[x.year] ?? 0) < 0 ? '#f87171' : '#4ade80' }}>{fmt(fundByYear[x.year] ?? 0)}</td>
                   <td style={{ ...td, textAlign: 'center' }}>
                     <input type="checkbox" checked={inc} onChange={() => toggleLevel(x.levelKey)}
                       title="เลือกระดับนี้ไปวางแผนออม/ลงทุน" style={{ cursor: 'pointer' }} />
@@ -265,6 +284,7 @@ function ChildCard({ name, age, setting, onChange, eduCosts, inflation, fundRetu
               <tr style={{ borderTop: '1px solid var(--card-border)' }}>
                 <td colSpan={4} style={{ ...tdNum, fontWeight: 700, color: 'var(--text-primary)' }}>รวม (เฉพาะที่เลือก)</td>
                 <td style={{ ...tdNum, fontWeight: 800, color: '#f59e0b' }}>{fmt(totalNominal)}</td>
+                <td />
                 <td />
               </tr>
             </tfoot>
