@@ -16,32 +16,18 @@ import { monthlyIncome as incMonthly, annualIncome as incAnnual, isAnnualIncome 
 import { useInsuranceCoverage } from '../components/InsuranceCoverageSummary'
 import { PORTFOLIO_SETS, DEFAULT_ASSETS, DEFAULT_CORR, computePortfolio, applyMarketData, applyCorrelation } from '../lib/portfolioReturns'
 import { mulberry32, toNum } from '@shared/finance/math'
+import { computeChildPlan, levelForAge, type ChildSetting } from './EducationPlanPage'
 
 const fmt = (n: number) => (isFinite(n) ? Math.round(n) : 0).toLocaleString('th-TH')
 
-/* ── financial math (mirror of feature pages) ── */
-
-const EDU_LEVELS = [
-  { key: 'kindergarten', ages: [3, 4, 5] }, { key: 'primary', ages: [6, 7, 8, 9, 10, 11] },
-  { key: 'secondary', ages: [12, 13, 14, 15, 16, 17] }, { key: 'bachelor', ages: [18, 19, 20, 21] }, { key: 'master', ages: [22, 23] },
-]
-function eduForChild(age: number, setting: any, eduCosts: any, inf: number, fundR: number) {
-  const inflation = inf / 100, r = fundR / 100
-  const type = setting?.type ?? 'private', includeMaster = setting?.includeMaster ?? false
-  let totalNominal = 0, totalPV = 0
-  for (let a = Math.max(age, 3); a <= 23; a++) {
-    const lvl = EDU_LEVELS.find(l => l.ages.includes(a)); if (!lvl) continue
-    if (lvl.key === 'master' && !includeMaster) continue
-    const base = toNum(eduCosts?.[lvl.key]?.[type]); if (base <= 0) continue
-    const yfn = a - age
-    totalNominal += base * Math.pow(1 + inflation, yfn)
-    totalPV += base * Math.pow(1 + inflation, yfn) / Math.pow(1 + r, yfn)
-  }
-  const m = Math.max(1, setting?.savingYears ?? 10)
-  const af = r === 0 ? m : (1 - Math.pow(1 + r, -m)) / r
-  const annual = totalPV / af
-  return { totalNominal, totalPV, annual, monthly: annual / 12 }
-}
+// สูตรทุนการศึกษาใช้ computeChildPlan ตัวเดียวกับหน้าทุนการศึกษา (คิดระดับชั้นที่ตัดออก +
+// เงินออมที่โตตามอัตราขึ้นเงินเดือน) — เดิมที่นี่มีสูตรของตัวเองที่ตกรุ่น ทำให้ตัวเลขไม่ตรงกัน
+const eduSettingOf = (setting: any): ChildSetting => ({
+  type: setting?.type ?? 'private',
+  savingYears: setting?.savingYears ?? 10,
+  includeMaster: setting?.includeMaster ?? false,
+  excludedLevels: setting?.excludedLevels ?? [],
+})
 
 
 interface Sec { k: string; t: string; lvl: 1 | 2; auto?: string }
@@ -1882,11 +1868,12 @@ export default function ReportPage() {
     }
     if (kind === 'education') {
       if (!children.length) return <div style={{ fontSize: 12.5, color: '#94a3b8', marginBottom: 12 }}>ยังไม่มีข้อมูลบุตร</div>
-      const LV_TH: Record<string, string> = { kindergarten: 'อนุบาล', primary: 'ประถม', secondary: 'มัธยม', bachelor: 'ปริญญาตรี', master: 'ปริญญาโท' }
       const nowYearBE = new Date().getFullYear() + 543
+      const eduGrowth = toNum(client?.salaryIncreaseRate)
+      const planOf = (c: any, i2: number) => computeChildPlan(toNum(c.age), eduSettingOf(eduPlan?.[i2]), eduCosts, eduInf, eduRet, eduGrowth)
       const totalAll = children.reduce((acc, c, i2) => {
-        const e = eduForChild(toNum(c.age), eduPlan?.[i2], eduCosts, eduInf, eduRet)
-        return { nominal: acc.nominal + e.totalNominal, pv: acc.pv + e.totalPV, monthly: acc.monthly + e.monthly }
+        const e = planOf(c, i2)
+        return { nominal: acc.nominal + e.totalNominal, pv: acc.pv + e.totalPV, monthly: acc.monthly + e.monthlySaving }
       }, { nominal: 0, pv: 0, monthly: 0 })
       const Stat = ({ l, v, c, unit = 'บาท' }: { l: string; v: string; c: string; unit?: string }) => (
         <div style={{ border: '1px solid #f1f5f9', borderLeft: `4px solid ${c}`, borderRadius: 10, padding: '10px 14px' }}>
@@ -1905,16 +1892,18 @@ export default function ReportPage() {
             <Stat l="ต้องออม/เดือน" v={fmt(totalAll.monthly)} c={GREENR} />
           </div>
           {children.map((c, ci) => {
-            const setting = eduPlan?.[ci] ?? {}
-            const type = setting?.type ?? 'private'
-            const includeMaster = setting?.includeMaster ?? false
+            const setting = eduSettingOf(eduPlan?.[ci])
+            const type = setting.type
+            const includeMaster = setting.includeMaster
             const ageNow = toNum(c.age)
+            // แสดงเฉพาะระดับชั้นที่เลือกไว้ในหน้าทุนการศึกษา (ที่ตัดออกไม่นับทั้งในตารางและยอดรวม)
             const rows: { age: number; year: number; lvl: string; cur: number; fut: number }[] = []
             for (let a = Math.max(ageNow, 3); a <= 23; a++) {
-              const lvl = EDU_LEVELS.find(l => l.ages.includes(a)); if (!lvl) continue
+              const lvl = levelForAge(a); if (!lvl) continue
               if (lvl.key === 'master' && !includeMaster) continue
+              if (setting.excludedLevels?.includes(lvl.key)) continue
               const base = toNum(eduCosts?.[lvl.key]?.[type]); if (base <= 0) continue
-              rows.push({ age: a, year: nowYearBE + (a - ageNow), lvl: LV_TH[lvl.key], cur: base, fut: base * Math.pow(1 + eduInf / 100, a - ageNow) })
+              rows.push({ age: a, year: nowYearBE + (a - ageNow), lvl: lvl.label, cur: base, fut: base * Math.pow(1 + eduInf / 100, a - ageNow) })
             }
             if (!rows.length) return null
             const tdE: React.CSSProperties = { padding: '4px 10px', fontSize: 11.5, color: '#334155' }
