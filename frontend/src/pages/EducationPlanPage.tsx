@@ -253,13 +253,14 @@ function ChildCard({ name, age, setting, onChange, eduCosts, inflation, fundRetu
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, whiteSpace: 'nowrap', tableLayout: 'fixed' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--card-border)' }}>
-                <th style={{ ...th, textAlign: 'center', width: '8%' }}>อายุ</th>
-                <th style={{ ...th, textAlign: 'center', width: '10%' }}>ปี พ.ศ.</th>
-                <th style={{ ...th, textAlign: 'center', width: '16%' }}>ระดับ</th>
-                <th style={{ ...th, width: '20%' }}>ค่าเล่าเรียน (ปัจจุบัน)</th>
-                <th style={{ ...th, width: '19%' }}>ปรับเงินเฟ้อ</th>
-                <th style={{ ...th, width: '19%' }}>มูลค่าเงินกองทุน</th>
-                <th style={{ ...th, textAlign: 'center', width: '8%' }}>วางแผน</th>
+                {/* 7 คอลัมน์กว้างเท่ากัน — table-layout: fixed แบ่งให้เองเมื่อไม่กำหนด width */}
+                <th style={{ ...th, textAlign: 'center' }}>อายุ</th>
+                <th style={{ ...th, textAlign: 'center' }}>ปี พ.ศ.</th>
+                <th style={{ ...th, textAlign: 'center' }}>ระดับ</th>
+                <th style={th}>ค่าเล่าเรียน (ปัจจุบัน)</th>
+                <th style={th}>ปรับเงินเฟ้อ</th>
+                <th style={th}>มูลค่าเงินกองทุน</th>
+                <th style={{ ...th, textAlign: 'center' }}>วางแผน</th>
               </tr>
             </thead>
             <tbody>
@@ -440,7 +441,8 @@ function EduSavingsChart({ name, age, setting, eduCosts, inflation, fundReturn, 
   )
 }
 
-const th: React.CSSProperties = { padding: '7px 10px', textAlign: 'right', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }
+// หัวตารางยอมให้ตัดบรรทัดได้ (ตัวตารางเป็น nowrap) — คอลัมน์กว้างเท่ากันแล้วหัวยาว ๆ จะได้ไม่ถูกตัดหาย
+const th: React.CSSProperties = { padding: '7px 10px', textAlign: 'right', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'normal' }
 const td: React.CSSProperties = { padding: '6px 10px', textAlign: 'right', color: 'var(--text-primary)' }
 const tdNum: React.CSSProperties = { padding: '7px 10px', textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }
 
