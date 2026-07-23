@@ -2,6 +2,7 @@
 import * as Sentry from '@sentry/react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import ConnectionStatus from './components/ConnectionStatus'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ClientProvider, useClient } from './context/ClientContext'
 import Layout from './components/Layout'
@@ -41,7 +42,19 @@ const FeaturesPage = lazy(() => import('./pages/FeaturesPage'))
 const AboutPage = lazy(() => import('./pages/AboutPage'))
 const TutorialsPage = lazy(() => import('./pages/TutorialsPage'))
 
-const qc = new QueryClient()
+const qc = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // 4xx = เราส่งผิดเอง ลองซ้ำก็ได้ผลเดิม · ปัญหาเครือข่าย/5xx ค่อยลองซ้ำแบบถอยห่างขึ้นเรื่อย ๆ
+      retry: (count, err: any) => {
+        const st = err?.response?.status
+        if (st && st >= 400 && st < 500 && st !== 408 && st !== 429) return false
+        return count < 3
+      },
+      retryDelay: i => Math.min(1000 * 2 ** i, 15000),
+    },
+  },
+})
 
 // fallback ระหว่างโหลด chunk ของแต่ละหน้า
 function PageLoader() {
@@ -169,6 +182,7 @@ export default function App() {
     <QueryClientProvider client={qc}>
       <AuthProvider>
         <ClientProvider>
+          <ConnectionStatus />
           <BrowserRouter>
             <RouteErrorBoundary>
             <Suspense fallback={<PageLoader />}>
