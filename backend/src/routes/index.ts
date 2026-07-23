@@ -37,6 +37,11 @@ import { getInvestmentProfile, upsertInvestmentProfile } from '../controllers/in
 import { getMarketReturns, getAssetReturn } from '../controllers/marketreturns.controller'
 import { quoteSymbol, annualReturn } from '../controllers/settrade.controller'
 import { getThaiInflationRef } from '../lib/inflation'
+import { validate } from '../lib/validate'
+import {
+  registerSchema, loginSchema, emailOnlySchema, resetPasswordSchema, googleAuthSchema, appleAuthSchema,
+  refreshSchema, twoFactorEnableSchema, twoFactorDisableSchema, gameLeadSchema, checkoutSchema, setPlanSchema,
+} from '../lib/schemas'
 import { getSavingRatesRef } from '../lib/savingRates'
 import { chatCopilot } from '../controllers/copilot.controller'
 import { createCheckout, createPortal } from '../controllers/billing.controller'
@@ -55,7 +60,7 @@ const aiOnly = requirePlan('copilot')   // เฉพาะ AI
 const r = Router()
 
 // เกมเศรษฐี (/game) — ฟอร์ม lead เป็น public (มี throttle ในตัว) · รายการ lead เฉพาะ FA
-r.post('/game/lead', createGameLead)
+r.post('/game/lead', validate(gameLeadSchema), createGameLead)
 // lead จากเกม (public lead magnet) เป็นของแพลตฟอร์ม → เฉพาะผู้ให้บริการ (SUPER_ADMIN)
 r.get('/game/leads', authenticate, requireSuperAdmin, listGameLeads)
 r.put('/game/leads/:id', authenticate, requireSuperAdmin, updateGameLead)
@@ -67,37 +72,37 @@ r.patch('/tutorials/:id', authenticate, requireSuperAdmin, updateTutorial)
 r.delete('/tutorials/:id', authenticate, requireSuperAdmin, deleteTutorial)
 
 // Auth
-r.post('/auth/register', register)
-r.post('/auth/login', login)
-r.post('/auth/google', googleAuth)
-r.post('/auth/apple', appleAuth)
-r.post('/auth/refresh', refresh)
+r.post('/auth/register', validate(registerSchema), register)
+r.post('/auth/login', validate(loginSchema), login)
+r.post('/auth/google', validate(googleAuthSchema), googleAuth)
+r.post('/auth/apple', validate(appleAuthSchema), appleAuth)
+r.post('/auth/refresh', validate(refreshSchema), refresh)
 
 // AI Copilot
 r.post('/copilot/chat', authenticate, aiOnly, chatCopilot)
 
 // Billing (Stripe) — webhook แยกไปที่ index.ts (raw body)
-r.post('/billing/checkout', authenticate, createCheckout)
+r.post('/billing/checkout', authenticate, validate(checkoutSchema), createCheckout)
 r.post('/billing/portal', authenticate, createPortal)
 r.get('/auth/me', authenticate, me)
 // 2FA (TOTP) — บัญชี FA
 r.get('/auth/2fa/status', authenticate, status2fa)
 r.post('/auth/2fa/setup', authenticate, setup2fa)
-r.post('/auth/2fa/enable', authenticate, enable2fa)
-r.post('/auth/2fa/disable', authenticate, disable2fa)
+r.post('/auth/2fa/enable', authenticate, validate(twoFactorEnableSchema), enable2fa)
+r.post('/auth/2fa/disable', authenticate, validate(twoFactorDisableSchema), disable2fa)
 r.get('/advisor-profile', authenticate, getAdvisorProfile)
 r.put('/advisor-profile', authenticate, saveAdvisorProfile)
 r.get('/auth/verify-email', verifyEmail)
-r.post('/auth/resend-verify', resendVerify)
-r.post('/auth/forgot-password', forgotPassword)
-r.post('/auth/reset-password', resetPassword)
+r.post('/auth/resend-verify', validate(emailOnlySchema), resendVerify)
+r.post('/auth/forgot-password', validate(emailOnlySchema), forgotPassword)
+r.post('/auth/reset-password', validate(resetPasswordSchema), resetPassword)
 
 // อนุมัติการสมัครนักวางแผน (FA) — เฉพาะผู้ให้บริการ (SUPER_ADMIN)
 r.get('/admin/users', authenticate, requireSuperAdmin, listUsers)
 r.put('/admin/users/:id/approve', authenticate, requireSuperAdmin, approveUser)
 r.put('/admin/users/:id/archive', authenticate, requireSuperAdmin, archiveUser)
 r.put('/admin/users/:id/unarchive', authenticate, requireSuperAdmin, unarchiveUser)
-r.patch('/admin/users/:id/plan', authenticate, requireSuperAdmin, setUserPlan)
+r.patch('/admin/users/:id/plan', authenticate, requireSuperAdmin, validate(setPlanSchema), setUserPlan)
 r.get('/clients', authenticate, requireAdmin, listClients)
 r.post('/clients', authenticate, requireAdmin, createClient)
 r.put('/clients/:id', authenticate, requireAdmin, updateClient)
