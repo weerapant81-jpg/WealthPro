@@ -11,8 +11,10 @@ import CopilotWidget from './CopilotWidget'
 import { LayoutDashboard, Target, Settings, LogOut, ClipboardList, ClipboardCheck, ShieldCheck, Calculator, Users, RefreshCw, Sun, Moon, UserCog, Menu, ChevronLeft, ChevronRight, ChevronDown, User, Shield, TrendingUp, Wallet, Activity, Briefcase, Scale, HeartPulse, GraduationCap, CalendarRange, ScrollText, Receipt, Search, ArrowRight, FileText, BookOpen, Lock, CreditCard
 } from 'lucide-react'
 
+// เมนูย่อย: ปกติขับด้วย ?tab= · ถ้ามี path = ไปหน้าอื่นแทน (เช่น สมมติฐาน → /settings)
+type SubTab = { tab: string; icon: any; label: string; path?: string }
 // เมนูย่อยของ "ข้อมูลลูกค้า" (ขับแท็บด้วย ?tab=)
-const CLIENT_TABS = [
+const CLIENT_TABS: SubTab[] = [
   { tab: 'personal', icon: User, label: 'ข้อมูลส่วนบุคคล' },
   { tab: 'family', icon: Users, label: 'ข้อมูลครอบครัว' },
   { tab: 'insurance', icon: Shield, label: 'ข้อมูลการประกัน' },
@@ -22,7 +24,8 @@ const CLIENT_TABS = [
   { tab: 'risk', icon: Activity, label: 'ประเมินความเสี่ยง' },
 ]
 // เมนูย่อยของ "วางแผนการเงิน"
-const FINANCIAL_TABS = [
+const FINANCIAL_TABS: SubTab[] = [
+  { tab: 'assumptions', icon: Settings, label: 'สมมติฐาน', path: '/settings' },
   { tab: 'investment', icon: TrendingUp, label: 'มูลค่าสินทรัพย์ลงทุน' },
   { tab: 'social', icon: Shield, label: 'กองทุนประกันสังคม' },
   { tab: 'pvd', icon: Briefcase, label: 'กองทุนสำรองเลี้ยงชีพ' },
@@ -34,7 +37,7 @@ const FINANCIAL_TABS = [
   { tab: 'estate', icon: ScrollText, label: 'วางแผนมรดก' },
 ]
 // พาธที่มีเมนูย่อย
-const EXPANDABLE: Record<string, { tabs: typeof CLIENT_TABS; first: string }> = {
+const EXPANDABLE: Record<string, { tabs: SubTab[]; first: string }> = {
   '/client': { tabs: CLIENT_TABS, first: 'personal' },
   '/financial-plan': { tabs: FINANCIAL_TABS, first: 'investment' },
 }
@@ -52,7 +55,6 @@ const nav = [
   { to: '/action-plan', icon: ClipboardCheck, label: 'แผนปฏิบัติการ', feature: 'pro' as const },
   { to: '/forward-cashflow', icon: CalendarRange, label: 'งบการเงินล่วงหน้า', feature: 'pro' as const },
   { to: '/calculator', icon: Calculator, label: 'เครื่องคิดเลข' },
-  { to: '/settings', icon: Settings, label: 'สมมติฐาน' },
 ]
 
 export default function Layout({ children }: { children: ReactNode }) {
@@ -66,7 +68,12 @@ export default function Layout({ children }: { children: ReactNode }) {
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(() => ({ [currentPath]: true }))
   const setMenuOpen = (path: string, v: boolean | ((o: boolean) => boolean)) =>
     setOpenMenus(m => ({ ...m, [path]: typeof v === 'function' ? v(!!m[path]) : v }))
-  useEffect(() => { if (EXPANDABLE[currentPath]) setOpenMenus(m => ({ ...m, [currentPath]: true })) }, [currentPath])
+  // เมนูแม่ของหน้าปัจจุบัน — รองรับเมนูย่อยที่ชี้ไปหน้าอื่น (เช่น สมมติฐาน /settings อยู่ใต้ "วางแผนการเงิน")
+  const parentOf = (p: string) => Object.keys(EXPANDABLE).find(k => EXPANDABLE[k].tabs.some(t => t.path === p))
+  useEffect(() => {
+    const owner = EXPANDABLE[currentPath] ? currentPath : parentOf(currentPath)
+    if (owner) setOpenMenus(m => ({ ...m, [owner]: true }))
+  }, [currentPath])
   const initial = user?.name?.charAt(0).toUpperCase() ?? '?'
   // รูปโปรไฟล์ FA (base64) จาก advisor-profile — ถ้ามีใช้รูป ไม่มีใช้ตัวอักษร
   const { data: advProfile } = useQuery<any>({ queryKey: ['advisor-profile'], queryFn: () => api.get('/advisor-profile').then(r => r.data), retry: false })
@@ -142,7 +149,8 @@ export default function Layout({ children }: { children: ReactNode }) {
   const renderExpandable = (asRail: boolean, to: string, Icon: any, label: string) => {
     const cfg = EXPANDABLE[to]
     const open = !!openMenus[to]
-    const onPage = currentPath === to
+    const onOwnPage = currentPath === to                                        // อยู่บนหน้าแท็บของเมนูนี้จริง ๆ
+    const onPage = onOwnPage || parentOf(currentPath) === to                    // นับหน้าที่เมนูย่อยชี้ไป (เช่น /settings) ว่าอยู่ใต้เมนูนี้ด้วย
     const effTab = currentTab || cfg.first
     return (
       <div key={to}>
@@ -162,11 +170,11 @@ export default function Layout({ children }: { children: ReactNode }) {
         {!asRail && (
           <div style={{ overflow: 'hidden', maxHeight: open ? 600 : 0, transition: 'max-height 0.4s ease' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingTop: 2, paddingLeft: 10 }}>
-              {cfg.tabs.map(({ tab, icon: TIcon, label: tl }, i) => {
-                const activeSub = onPage && effTab === tab
+              {cfg.tabs.map(({ tab, icon: TIcon, label: tl, path }, i) => {
+                const activeSub = path ? currentPath === path : (onOwnPage && effTab === tab)
                 const delay = open ? i * 0.045 : 0
                 return (
-                  <button key={tab} onClick={() => { navigate(`${to}?tab=${tab}`); setDrawerOpen(false) }}
+                  <button key={tab} onClick={() => { navigate(path ?? `${to}?tab=${tab}`); setDrawerOpen(false) }}
                     style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12.5, textAlign: 'left', whiteSpace: 'nowrap',
                       color: activeSub ? 'var(--cyan-light)' : 'var(--text-muted)', background: activeSub ? 'var(--cyan-dim)' : 'transparent',
                       opacity: open ? 1 : 0, transform: open ? 'translateY(0)' : 'translateY(-8px)',
@@ -281,10 +289,10 @@ export default function Layout({ children }: { children: ReactNode }) {
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.02em', color: 'var(--text-muted)', padding: '6px 10px 8px' }}>
               {nav.find(n => n.to === railMenu.to)?.label}
             </div>
-            {EXPANDABLE[railMenu.to].tabs.map(({ tab, icon: TIcon, label: tl }) => {
-              const activeSub = currentPath === railMenu.to && (currentTab || EXPANDABLE[railMenu.to].first) === tab
+            {EXPANDABLE[railMenu.to].tabs.map(({ tab, icon: TIcon, label: tl, path }) => {
+              const activeSub = path ? currentPath === path : (currentPath === railMenu.to && (currentTab || EXPANDABLE[railMenu.to].first) === tab)
               return (
-                <button key={tab} onClick={() => { navigate(`${railMenu.to}?tab=${tab}`); setRailMenu(null); setDrawerOpen(false) }}
+                <button key={tab} onClick={() => { navigate(path ?? `${railMenu.to}?tab=${tab}`); setRailMenu(null); setDrawerOpen(false) }}
                   style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '9px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, textAlign: 'left', whiteSpace: 'nowrap',
                     color: activeSub ? 'var(--cyan-light)' : 'var(--text-secondary)', background: activeSub ? 'var(--cyan-dim)' : 'transparent' }}>
                   <TIcon size={15} />{tl}
