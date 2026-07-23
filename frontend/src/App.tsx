@@ -182,6 +182,9 @@ export default function App() {
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />
               <Route path="/" element={<HomeRoute />} />
+              {/* หน้าขายแบบตายตัว — แสดงเสมอไม่ว่าจะล็อกอินอยู่หรือไม่ (ต่างจาก "/" ที่ล็อกอินแล้วจะเป็นแดชบอร์ด)
+                  ใช้ส่งลิงก์ให้คนอื่นดู หรือให้ทีมตรวจหน้าขายโดยไม่ต้องออกจากระบบ */}
+              <Route path="/home" element={<LandingPage />} />
               <Route path="/income" element={<ClientRoute><IncomePage /></ClientRoute>} />
               <Route path="/financial-plan" element={<PlanRoute><FinancialPlanPage /></PlanRoute>} />
               <Route path="/action-plan" element={<PlanRoute><ActionPlanPage /></PlanRoute>} />
