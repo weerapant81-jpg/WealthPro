@@ -3,6 +3,7 @@
 import { toNum } from '@shared/finance/math'
 import { TEAL, AMBERR, REDR, GREENR } from '../primitives'
 import { fmt } from '../format'
+import AdviceBox from '../AdviceBox'
 import type { ReportCtx } from '../ctx'
 
 export default function ExecutiveSummary({ ctx }: { ctx: ReportCtx }) {
@@ -112,9 +113,9 @@ export default function ExecutiveSummary({ ctx }: { ctx: ReportCtx }) {
             return <div style={{ borderRadius: 8, overflow: 'hidden', background: '#fff' }}>{rows}</div>
           })()}
           <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748b', margin: '10px 0 4px' }}>ความเห็น/หมายเหตุเพิ่มเติม (ที่ปรึกษา)</div>
-          <textarea value={secs['exs2_analysis']?.text ?? ''} onChange={e => setText('exs2_analysis', e.target.value)}
-            placeholder="พิมพ์บทสรุป/ข้อเสนอแนะภาพรวมจากการวิเคราะห์..." rows={3}
-            style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: 8, padding: '8px 12px', fontFamily: 'inherit', fontSize: 12.5, color: '#1e293b', outline: 'none', resize: 'vertical', background: 'transparent' }} />
+          <AdviceBox title="บทสรุปผู้บริหาร" heading={false} minHeight={70}
+            placeholder="คลิกเพื่อพิมพ์บทสรุป/ข้อเสนอแนะภาพรวมจากการวิเคราะห์..."
+            value={secs['exs2_analysis']?.text ?? ''} onSave={v => setText('exs2_analysis', v)} />
         </div>
       </div>
     )

@@ -4,6 +4,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { mulberry32, toNum } from '@shared/finance/math'
 import { TEAL, AMBERR, REDR, GREENR } from '../primitives'
 import { fmt } from '../format'
+import AdviceBox from '../AdviceBox'
 import type { ReportCtx } from '../ctx'
 
 export default function CurrentStatus({ kind, ctx }: { kind: string; ctx: ReportCtx }) {
@@ -78,20 +79,13 @@ export default function CurrentStatus({ kind, ctx }: { kind: string; ctx: Report
         ))}</tbody>
       </table>
     )
-    const AdviceB = ({ k }: { k: string }) => (
-      <div style={{ border: '1px solid #cbd5e1', borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ fontSize: 12, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>ข้อเสนอแนะ</div>
-        <textarea value={secs[k]?.text ?? ''} onChange={e => setText(k, e.target.value)}
-          placeholder="พิมพ์ข้อเสนอแนะของนักวางแผนการเงิน..."
-          style={{ flex: 1, minHeight: 110, border: 'none', outline: 'none', resize: 'none', background: 'transparent', fontFamily: 'inherit', fontSize: 12.5, color: '#334155', lineHeight: 1.8 }} />
-      </div>
-    )
+
     const Row = ({ title, adviceKey, children }: { title: string; adviceKey: string; children: React.ReactNode }) => (
       <div style={{ marginBottom: 24, breakInside: 'avoid' }}>
         <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>{title}</div>
         <div style={{ display: 'grid', gridTemplateColumns: '330px 1fr', gap: 18, alignItems: 'stretch' }}>
           <div>{children}</div>
-          <AdviceB k={adviceKey} />
+          <AdviceBox title={title} value={secs[adviceKey]?.text ?? ''} onSave={v => setText(adviceKey, v)} />
         </div>
       </div>
     )
