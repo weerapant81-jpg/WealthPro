@@ -382,58 +382,6 @@ export default function SettingsPage() {
         alignItems: 'stretch',
       }}>
 
-          {/* สมมติฐานส่วนตัว */}
-          <Section icon={<User size={16} />} title="สมมติฐานส่วนตัว">
-            <Row label="อายุเกษียณ — ตนเอง">
-              <NumInput value={form.retirementAgeSelf} onChange={v => set('retirementAgeSelf', v)} unit="ปี" placeholder="60" />
-            </Row>
-            <Row label="อายุเกษียณ — คู่สมรส">
-              <NumInput value={form.retirementAgeSpouse} onChange={v => set('retirementAgeSpouse', v)} unit="ปี" placeholder="60" />
-            </Row>
-            <Row label="อายุขัย — ตนเอง">
-              <NumInput value={form.lifeExpectancySelf} onChange={v => set('lifeExpectancySelf', v)} unit="ปี" placeholder="85" />
-            </Row>
-            <Row label="อายุขัย — คู่สมรส">
-              <NumInput value={form.lifeExpectancySpouse} onChange={v => set('lifeExpectancySpouse', v)} unit="ปี" placeholder="85" />
-            </Row>
-          </Section>
-
-          {/* อัตราดอกเบี้ย */}
-          <Section icon={<TrendingUp size={16} />} title="อัตราดอกเบี้ย">
-            <Row label="บัตรเครดิต">
-              <NumInput value={form.creditCardRate} onChange={v => set('creditCardRate', v)} unit="%/ปี" step={0.1} />
-            </Row>
-            <Row label="กดเงินสดจากบัตรเครดิต">
-              <NumInput value={form.cashAdvanceRate} onChange={v => set('cashAdvanceRate', v)} unit="%/ปี" step={0.1} />
-            </Row>
-            <Row label="สินเชื่อส่วนบุคคล">
-              <NumInput value={form.personalLoanRate} onChange={v => set('personalLoanRate', v)} unit="%/ปี" step={0.1} />
-            </Row>
-            <Row label="ดอกเบี้ยบ้าน (สินเชื่อที่อยู่อาศัย)">
-              <NumInput value={form.homeLoanRate} onChange={v => set('homeLoanRate', v)} unit="%/ปี" step={0.1} />
-            </Row>
-            <Row label="ดอกเบี้ยรถยนต์">
-              <NumInput value={form.carLoanRate} onChange={v => set('carLoanRate', v)} unit="%/ปี" step={0.1} />
-            </Row>
-          </Section>
-
-          {/* อัตราดอกเบี้ยการออมอ้างอิงจาก ธปท. — แสดงอย่างเดียว */}
-          <SavingRatesCard />
-
-          {/* กองทุนประกันสังคม */}
-          <Section icon={<Shield size={16} />} title="กองทุนประกันสังคม">
-            <Row label="ผลตอบแทนเฉลี่ย 5 ปี" hint="ใช้ในแท็บ 'มูลค่ากองทุนประกันสังคม'">
-              <NumInput value={form.ssoReturnRate} onChange={v => set('ssoReturnRate', v)} unit="%/ปี" step={0.01} />
-            </Row>
-            <div style={{ marginTop: 6 }}>
-              <div style={{ fontSize: 13, color: 'var(--text-primary)', marginBottom: 6 }}>ข้อมูล ณ</div>
-              <input value={form.ssoReturnAsOf} onChange={e => set('ssoReturnAsOf', e.target.value)} style={inp} placeholder="เช่น เฉลี่ย 5 ปี (ก.พ. 2568)" />
-            </div>
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.5 }}>
-              อัปเดตจากเว็บประกันสังคม (sso.go.th) — แนะนำตรวจสอบ/แก้ไขทุกเดือน
-            </p>
-          </Section>
-
           {/* อัตราเงินเฟ้อ */}
           <Section icon={<Percent size={16} />} title="อัตราเงินเฟ้อ">
             <Row label="ทั่วไป">
@@ -474,6 +422,57 @@ export default function SettingsPage() {
             </Row>
           </Section>
 
+          {/* อัตราดอกเบี้ย */}
+          <Section icon={<TrendingUp size={16} />} title="อัตราดอกเบี้ย">
+            <Row label="บัตรเครดิต">
+              <NumInput value={form.creditCardRate} onChange={v => set('creditCardRate', v)} unit="%/ปี" step={0.1} />
+            </Row>
+            <Row label="กดเงินสดจากบัตรเครดิต">
+              <NumInput value={form.cashAdvanceRate} onChange={v => set('cashAdvanceRate', v)} unit="%/ปี" step={0.1} />
+            </Row>
+            <Row label="สินเชื่อส่วนบุคคล">
+              <NumInput value={form.personalLoanRate} onChange={v => set('personalLoanRate', v)} unit="%/ปี" step={0.1} />
+            </Row>
+            <Row label="ดอกเบี้ยบ้าน (สินเชื่อที่อยู่อาศัย)">
+              <NumInput value={form.homeLoanRate} onChange={v => set('homeLoanRate', v)} unit="%/ปี" step={0.1} />
+            </Row>
+            <Row label="ดอกเบี้ยรถยนต์">
+              <NumInput value={form.carLoanRate} onChange={v => set('carLoanRate', v)} unit="%/ปี" step={0.1} />
+            </Row>
+          </Section>
+
+          {/* อัตราดอกเบี้ยการออมอ้างอิงจาก ธปท. — แสดงอย่างเดียว */}
+          <SavingRatesCard />
+
+          {/* สมมติฐานส่วนตัว */}
+          <Section icon={<User size={16} />} title="สมมติฐานส่วนตัว">
+            <Row label="อายุเกษียณ — ตนเอง">
+              <NumInput value={form.retirementAgeSelf} onChange={v => set('retirementAgeSelf', v)} unit="ปี" placeholder="60" />
+            </Row>
+            <Row label="อายุเกษียณ — คู่สมรส">
+              <NumInput value={form.retirementAgeSpouse} onChange={v => set('retirementAgeSpouse', v)} unit="ปี" placeholder="60" />
+            </Row>
+            <Row label="อายุขัย — ตนเอง">
+              <NumInput value={form.lifeExpectancySelf} onChange={v => set('lifeExpectancySelf', v)} unit="ปี" placeholder="85" />
+            </Row>
+            <Row label="อายุขัย — คู่สมรส">
+              <NumInput value={form.lifeExpectancySpouse} onChange={v => set('lifeExpectancySpouse', v)} unit="ปี" placeholder="85" />
+            </Row>
+          </Section>
+
+          {/* กองทุนประกันสังคม */}
+          <Section icon={<Shield size={16} />} title="กองทุนประกันสังคม">
+            <Row label="ผลตอบแทนเฉลี่ย 5 ปี" hint="ใช้ในแท็บ 'มูลค่ากองทุนประกันสังคม'">
+              <NumInput value={form.ssoReturnRate} onChange={v => set('ssoReturnRate', v)} unit="%/ปี" step={0.01} />
+            </Row>
+            <div style={{ marginTop: 6 }}>
+              <div style={{ fontSize: 13, color: 'var(--text-primary)', marginBottom: 6 }}>ข้อมูล ณ</div>
+              <input value={form.ssoReturnAsOf} onChange={e => set('ssoReturnAsOf', e.target.value)} style={inp} placeholder="เช่น เฉลี่ย 5 ปี (ก.พ. 2568)" />
+            </div>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.5 }}>
+              อัปเดตจากเว็บประกันสังคม (sso.go.th) — แนะนำตรวจสอบ/แก้ไขทุกเดือน
+            </p>
+          </Section>
           {/* กองทุนสำรองเลี้ยงชีพ — ย้ายไปกรอกที่หน้าข้อมูลส่วนบุคคล (สวัสดิการที่มี) แล้ว */}
 
         {/* ── ค่าใช้จ่ายด้านการศึกษา — เต็มความกว้าง (ตารางกว้าง ใส่ในคอลัมน์เดียวไม่พอ) ── */}
