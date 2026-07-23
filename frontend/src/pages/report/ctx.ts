@@ -20,6 +20,19 @@ export type ReportCtx = {
   eduRet: number
   retR: any
   retRSp: any
+  insR: any
+  insRSp: any
+  eduR: any
+  covSelf: any
+  covSp: any
+
+  // งบ/อัตราส่วน/ข้อมูลตลาด
+  ratios: any
+  ratiosSp: any
+  sm: any
+  taxPlanQ: any
+  estatePlanQ: any
+  marketData: any
 
   // สถานะเอกสาร
   title: string
