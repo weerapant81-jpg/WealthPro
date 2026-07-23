@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import ConnectionStatus from './components/ConnectionStatus'
+import EnvBadge from './components/EnvBadge'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ClientProvider, useClient } from './context/ClientContext'
 import Layout from './components/Layout'
@@ -182,6 +183,7 @@ export default function App() {
     <QueryClientProvider client={qc}>
       <AuthProvider>
         <ClientProvider>
+          <EnvBadge />
           <ConnectionStatus />
           <BrowserRouter>
             <RouteErrorBoundary>
