@@ -117,6 +117,8 @@ const inp: React.CSSProperties = {
 const card: React.CSSProperties = {
   background: 'var(--card-bg)', border: '1px solid var(--card-border)',
   borderRadius: 16, padding: '20px 24px',
+  // เป็นช่องหนึ่งของ bento grid — ยืดเต็มความสูงของแถว ให้การ์ดในแถวเดียวกันสูงเท่ากัน
+  height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box',
 }
 
 function Section({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
@@ -370,11 +372,15 @@ export default function SettingsPage() {
           } />
       </div>
 
-      {/* 2-column grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 20, alignItems: 'start' }}>
-
-        {/* ── คอลัมน์ซ้าย ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* bento 3 คอลัมน์ — การ์ดในแถวเดียวกันสูงเท่ากัน (การ์ดยืดเต็มแถวเอง)
+          minmax แบบ max(280px, 1/3 ของความกว้าง) = บนจอกว้างได้ 3 คอลัมน์พอดี ไม่เกินนี้
+          จอแคบลงจะลดเหลือ 2 แล้ว 1 คอลัมน์อัตโนมัติ */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(max(280px, calc((100% - 40px) / 3)), 1fr))',
+        gap: 20,
+        alignItems: 'stretch',
+      }}>
 
           {/* สมมติฐานส่วนตัว */}
           <Section icon={<User size={16} />} title="สมมติฐานส่วนตัว">
@@ -428,11 +434,6 @@ export default function SettingsPage() {
             </p>
           </Section>
 
-        </div>
-
-        {/* ── คอลัมน์ขวา ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
           {/* อัตราเงินเฟ้อ */}
           <Section icon={<Percent size={16} />} title="อัตราเงินเฟ้อ">
             <Row label="ทั่วไป">
@@ -475,9 +476,7 @@ export default function SettingsPage() {
 
           {/* กองทุนสำรองเลี้ยงชีพ — ย้ายไปกรอกที่หน้าข้อมูลส่วนบุคคล (สวัสดิการที่มี) แล้ว */}
 
-        </div>
-
-        {/* ── ค่าใช้จ่ายด้านการศึกษา — full width ── */}
+        {/* ── ค่าใช้จ่ายด้านการศึกษา — เต็มความกว้าง (ตารางกว้าง ใส่ในคอลัมน์เดียวไม่พอ) ── */}
         <div style={{ gridColumn: '1 / -1' }}>
           <Section icon={<GraduationCap size={16} />} title="ค่าใช้จ่ายด้านการศึกษา">
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
