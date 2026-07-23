@@ -33,6 +33,20 @@ export type ReportCtx = {
   taxPlanQ: any
   estatePlanQ: any
   marketData: any
+  rebalQ: any
+  expensesQ: any[]
+  domainAdvice: Record<string, string>
+
+  // สินทรัพย์ลงทุน
+  invProfile: any
+  retPlan: any
+  allocation: { rows: { name: string; value: number }[]; total: number }
+  PIE_COLORS: string[]
+  totalInv: number
+  portRet: number
+  invAssetsSp: any[]
+  totalInvSp: number
+  portRetSp: number
 
   // สถานะเอกสาร
   title: string

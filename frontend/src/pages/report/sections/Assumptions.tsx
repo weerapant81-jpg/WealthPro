@@ -3,10 +3,10 @@
 import { toNum } from '@shared/finance/math'
 import { TEAL } from '../primitives'
 import { fmt } from '../format'
+import type { ReportCtx } from '../ctx'
 
-export default function Assumptions({ profile, client, retPlan, portRet, eduInf, eduRet, eduCosts }: {
-  profile: any; client: any; retPlan: any; portRet: number; eduInf: number; eduRet: number; eduCosts: any
-}) {
+export default function Assumptions({ ctx }: { ctx: ReportCtx }) {
+  const { profile, client, retPlan, portRet, eduInf, eduRet, eduCosts } = ctx
   const pc = (v: any, suffix = '%') => v == null || v === '' ? '—' : `${v}${suffix}`
   const rows: [string, string][] = [
     ['อัตราเงินเฟ้อทั่วไป', pc(profile?.inflationRate ?? 3)],
