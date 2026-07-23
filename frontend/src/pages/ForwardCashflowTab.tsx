@@ -16,6 +16,15 @@ const fmt0 = (n: number) => (isFinite(n) ? Math.round(n) : 0).toLocaleString('th
 const toMonthly = (amount: number, freq: string) => freq === 'QUARTERLY' ? amount / 3 : freq === 'ANNUALLY' ? amount / 12 : amount
 const uid = () => Math.random().toString(36).slice(2, 9)
 
+// แถวรายรับที่ระบบเติมให้เองแต่ลูกค้าไม่มีรายการนั้น (ยอด 0) — ไม่ต้องรกตาราง
+// แถวที่ผู้ใช้กด 'เพิ่มรายการ' เองจะไม่มีธง seeded จึงแสดงเสมอ แม้ยังไม่ได้กรอกยอด
+//
+// แผนที่บันทึกไว้ก่อนหน้านี้ยังไม่มีธง seeded (เพิ่งเพิ่มทีหลัง) จึงเทียบชื่อรายการที่ระบบ
+// เคยเติมให้ด้วย ไม่งั้นลูกค้าเดิมทุกรายจะยังเห็นแถวเปล่าอยู่จนกว่าจะกด "ดึงข้อมูลใหม่"
+const SEEDED_INCOME_LABELS = ['โบนัส', 'รายได้จากค่าเช่า', 'เงินปันผล/ดอกเบี้ย']
+const visibleIncome = (lines: Line[]) =>
+  lines.filter(l => !((l.seeded || SEEDED_INCOME_LABELS.includes(l.label.trim())) && !l.base))
+
 /**
  * ช่องกรอกที่ "พิมพ์ก่อน ส่งค่าทีหลัง"
  *
@@ -59,7 +68,7 @@ function LazyInput({ value, onCommit, sanitize, format, delay = 350, ...rest }: 
   )
 }
 
-export type Line = { id: string; label: string; base: number; growth: number; startAge: number; endAge: number; auto?: boolean; ov?: Record<string, number> }
+export type Line = { id: string; label: string; base: number; growth: number; startAge: number; endAge: number; auto?: boolean; seeded?: boolean; ov?: Record<string, number> }
 export type CashflowData = {
   incomeWork: Line[]
   incomeAsset: Line[]
@@ -172,7 +181,7 @@ function seedData(
   // โบนัส = 40(1) แบบรายปี ที่ไม่ใช่แถวเงินเดือน (หรือ label 'โบนัส' เดิม)
   const bonus = srcs.find(s => !isSalaryRow(s)
     && ((taxCodeOf(s.label) === '1' && isAnnualIncome(s)) || String(s.label || '').trim() === LEGACY_ANNUAL_LABEL))
-  d.incomeWork.push({ id: uid(), label: 'โบนัส', base: bonus ? annualIncome(bonus) : 0, growth: raise || 5, startAge: currentAge, endAge: workEnd, auto: !!bonus })
+  d.incomeWork.push({ id: uid(), label: 'โบนัส', base: bonus ? annualIncome(bonus) : 0, growth: raise || 5, startAge: currentAge, endAge: workEnd, auto: !!bonus, seeded: true })
   // อาชีพเสริม/ธุรกิจ = 40(8)
   const extra = srcs.find(s => taxCodeOf(s.label) === '8' || (s.label || '').includes('อาชีพเสริม'))
   if (extra && toNum(extra.amount) > 0) d.incomeWork.push({ id: uid(), label: extra.source || 'รายได้จากธุรกิจ/อาชีพเสริม', base: annualIncome(extra), growth: 5, startAge: currentAge, endAge: workEnd, auto: true })
@@ -180,8 +189,8 @@ function seedData(
   // รายได้จากทรัพย์สิน — ค่าเช่า 40(5) · เงินปันผล/ดอกเบี้ย 40(4)
   const rent = srcs.find(s => taxCodeOf(s.label) === '5' || (s.label || '').includes('ค่าเช่า'))
   const divInv = srcs.filter(s => taxCodeOf(s.label) === '4' || /เงินปันผล|รายได้จากการลงทุน/.test(s.label || ''))
-  d.incomeAsset.push({ id: uid(), label: 'รายได้จากค่าเช่า', base: rent ? annualIncome(rent) : 0, growth: prof?.rentInflation ?? 4, startAge: currentAge, endAge: retireAge - 1, auto: !!rent })
-  d.incomeAsset.push({ id: uid(), label: 'เงินปันผล/ดอกเบี้ย', base: divInv.reduce((sum, s) => sum + annualIncome(s), 0), growth: 0, startAge: currentAge, endAge: retireAge - 1, auto: divInv.length > 0 })
+  d.incomeAsset.push({ id: uid(), label: 'รายได้จากค่าเช่า', base: rent ? annualIncome(rent) : 0, growth: prof?.rentInflation ?? 4, startAge: currentAge, endAge: retireAge - 1, auto: !!rent, seeded: true })
+  d.incomeAsset.push({ id: uid(), label: 'เงินปันผล/ดอกเบี้ย', base: divInv.reduce((sum, s) => sum + annualIncome(s), 0), growth: 0, startAge: currentAge, endAge: retireAge - 1, auto: divInv.length > 0, seeded: true })
 
   // ค่าใช้จ่าย (จาก /expenses) — แยกตาม prefix
   const fx = (expenses ?? []).filter(e => String(e.category).startsWith('fixed_'))
@@ -640,8 +649,8 @@ export default function ForwardCashflowTab({ person = 'self' }: { person?: 'self
             </thead>
             <tbody>
               <SecHeader title="กระแสเงินสดรับ" />
-              {data.incomeWork.map(l => ELine({ secKey: 'incomeWork', line: l, color: '#22c55e' }))}
-              {data.incomeAsset.map(l => ELine({ secKey: 'incomeAsset', line: l, color: '#22c55e' }))}
+              {visibleIncome(data.incomeWork).map(l => ELine({ secKey: 'incomeWork', line: l, color: '#22c55e' }))}
+              {visibleIncome(data.incomeAsset).map(l => ELine({ secKey: 'incomeAsset', line: l, color: '#22c55e' }))}
               {AddRow({ secKey: 'incomeWork', isIncome: true, accent: '#22c55e' })}
               <Row label="มูลค่ากองทุนเกษียณ (ต้นปี)" getter={r => r.retIncome} color="#22c55e" indent />
               <Row label="รวมกระแสเงินสดรับ" getter={r => r.inTotal} color="#22c55e" bold />

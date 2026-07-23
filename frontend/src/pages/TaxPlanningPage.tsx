@@ -6,7 +6,7 @@ import { useIsCompact } from '../hooks/useViewport'
 import { calc, defaultState, BRACKETS, expenseFor, type TaxState, type ExpenseKey } from '../lib/tax'
 import { MoneyInput } from '../components/MoneyInput'
 import { hasSpouseInfo } from '../lib/spouse'
-import { annualIncome, taxCodeOf } from '../lib/income'
+import { annualIncome, taxCodeOf, INCOME_40 } from '../lib/income'
 import { toNum } from '@shared/finance/math'
 
 /* ── helpers ── */
@@ -230,16 +230,20 @@ export default function TaxPlanningPage() {
   type IncRow = { label: string; sec: string; key: keyof TaxState; inc: number; exp: number; note: string; prof?: boolean; expKey?: ExpenseKey; over?: boolean }
   const eKey = (k: ExpenseKey): { expKey: ExpenseKey; exp: number; over: boolean } =>
     ({ expKey: k, exp: expenseFor(s, k), over: s.expenseOverride?.[k] != null })
+  // ชื่อประเภทเงินได้ใช้ชุดเดียวกับหน้า "ที่มาของรายได้" (shared/finance/income.ts)
+  // ดึงจากค่าคงที่กลาง ไม่พิมพ์ซ้ำ — ที่ผ่านมาสองหน้านี้เรียกชื่อไม่เหมือนกัน ทำให้ที่ปรึกษาจับคู่ไม่ถูก
+  const sec40 = (code: string) => INCOME_40.find(c => c.code === code)!.label.replace(/^40\(\d\)\s*/, '')
   const incomeRows: IncRow[] = [
-    { label: 'เงินเดือน/ค่าจ้าง', sec: '40(1)', key: 'income40_1', inc: s.income40_1, note: 'หัก 50% รวม (1)-(3) ≤100,000', ...eKey('income40_1') },
-    { label: 'ค่าจ้าง/คอมมิชชั่น', sec: '40(2)', key: 'income40_2', inc: s.income40_2, note: 'หัก 50% รวม (1)-(3) ≤100,000', ...eKey('income40_2') },
-    { label: 'ค่าลิขสิทธิ์/Goodwill', sec: '40(3)', key: 'income40_3', inc: s.income40_3, note: 'หัก 50% รวม (1)-(3) ≤100,000', ...eKey('income40_3') },
-    { label: 'ดอกเบี้ย', sec: '40(4)', key: 'interest', inc: s.interest, exp: 0, note: 'หักค่าใช้จ่ายไม่ได้' },
-    { label: 'เงินปันผล', sec: '40(4)', key: 'dividend', inc: s.dividend, exp: 0, note: 'หักค่าใช้จ่ายไม่ได้' },
-    { label: 'วิชาชีพอิสระ', sec: '40(6)', key: 'prof40_6', inc: s.prof40_6, note: 'แพทย์ 60% · อื่นๆ 40%', prof: true, ...eKey('prof40_6') },
-    { label: 'รับเหมา (มีค่าของ)', sec: '40(7)', key: 'income40_7', inc: s.income40_7, note: 'หัก 60%', ...eKey('income40_7') },
-    { label: 'ค่าเช่าทรัพย์สิน', sec: '40(5)', key: 'rental', inc: s.rental, note: 'หัก 30% (บ้าน/สิ่งปลูกสร้าง)', ...eKey('rental') },
-    { label: 'เงินได้อื่นๆ', sec: '40(8)', key: 'other40', inc: s.other40, note: 'หัก 60%', ...eKey('other40') },
+    { label: sec40('1'), sec: '40(1)', key: 'income40_1', inc: s.income40_1, note: 'หัก 50% รวม (1)-(3) ≤100,000', ...eKey('income40_1') },
+    { label: sec40('2'), sec: '40(2)', key: 'income40_2', inc: s.income40_2, note: 'หัก 50% รวม (1)-(3) ≤100,000', ...eKey('income40_2') },
+    { label: sec40('3'), sec: '40(3)', key: 'income40_3', inc: s.income40_3, note: 'หัก 50% รวม (1)-(3) ≤100,000', ...eKey('income40_3') },
+    // 40(4) แยกเป็นสองช่องกรอก เพราะคิดภาษีคนละแบบได้ แต่อยู่ในประเภทเดียวกัน
+    { label: `${sec40('4')} — ดอกเบี้ย`, sec: '40(4)', key: 'interest', inc: s.interest, exp: 0, note: 'หักค่าใช้จ่ายไม่ได้' },
+    { label: `${sec40('4')} — เงินปันผล`, sec: '40(4)', key: 'dividend', inc: s.dividend, exp: 0, note: 'หักค่าใช้จ่ายไม่ได้' },
+    { label: sec40('5'), sec: '40(5)', key: 'rental', inc: s.rental, note: 'หัก 30% (บ้าน/สิ่งปลูกสร้าง)', ...eKey('rental') },
+    { label: sec40('6'), sec: '40(6)', key: 'prof40_6', inc: s.prof40_6, note: 'แพทย์ 60% · อื่นๆ 40%', prof: true, ...eKey('prof40_6') },
+    { label: sec40('7'), sec: '40(7)', key: 'income40_7', inc: s.income40_7, note: 'หัก 60%', ...eKey('income40_7') },
+    { label: sec40('8'), sec: '40(8)', key: 'other40', inc: s.other40, note: 'หัก 60%', ...eKey('other40') },
   ]
   const totInc = incomeRows.reduce((a, r) => a + r.inc, 0)
   const totExp = incomeRows.reduce((a, r) => a + r.exp, 0)
