@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import {
   Landmark, FileText, TrendingUp, Bot, PenLine, ShieldCheck,
-  Check, ArrowRight, ChevronDown, Sparkles, Smartphone,
+  ArrowRight, ChevronDown, Sparkles, Smartphone,
 } from 'lucide-react'
 import { useIsCompact } from '../hooks/useViewport'
 
@@ -34,42 +34,6 @@ function Feature({ icon: Icon, title, desc, highlight, badge }: { icon: React.El
       </div>
       <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px' }}>{title}</h3>
       <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>{desc}</p>
-    </div>
-  )
-}
-
-function PriceCol({ name, sub, price, unit, note, feats, cta, ctaAction, popular, disabled }: {
-  name: string; sub: string; price: string; unit?: string; note?: string; feats: string[]
-  cta: string; ctaAction?: () => void; popular?: boolean; disabled?: boolean
-}) {
-  return (
-    <div style={{ ...glass, padding: 34, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', ...(popular ? { border: `1px solid ${AC}` } : {}) }}>
-      {popular && <div style={{ position: 'absolute', top: 0, right: 0, background: AC, color: '#00201d', fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', padding: '5px 14px', borderBottomLeftRadius: 12, textTransform: 'uppercase' }}>แนะนำ</div>}
-      <div style={{ marginBottom: 20 }}>
-        <h3 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>{name}</h3>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>{sub}</p>
-      </div>
-      <div style={{ marginBottom: 22, display: 'flex', alignItems: 'baseline', gap: 6 }}>
-        <span style={{ fontSize: 38, fontWeight: 800, color: popular ? AC : 'var(--text-primary)', fontFamily: 'monospace' }}>{price}</span>
-        {unit && <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>{unit}</span>}
-      </div>
-      {note && <div style={{ fontSize: 11.5, color: AC, marginTop: -14, marginBottom: 18, fontWeight: 700 }}>{note}</div>}
-      <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
-        {feats.map(f => (
-          <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13.5, color: 'var(--text-secondary)' }}>
-            <Check size={17} color={AC} style={{ flexShrink: 0, marginTop: 1 }} />{f}
-          </li>
-        ))}
-      </ul>
-      <button onClick={ctaAction} disabled={disabled}
-        className={disabled ? undefined : 'lp-btn'}
-        style={{
-          width: '100%', padding: '13px 0', borderRadius: 12, fontSize: 14, fontWeight: 800, cursor: disabled ? 'not-allowed' : 'pointer',
-          border: popular ? 'none' : '1px solid rgba(255,255,255,0.14)',
-          background: disabled ? 'var(--navy-800)' : popular ? AC : 'transparent',
-          color: disabled ? 'var(--text-muted)' : popular ? '#00201d' : 'var(--text-primary)',
-          fontFamily: 'inherit',
-        }}>{cta}</button>
     </div>
   )
 }
@@ -164,7 +128,6 @@ export default function LandingPage() {
               <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="lp-navlink" style={{ background: 'none', border: 'none', fontFamily: 'inherit', color: 'var(--cyan)' }}>หน้าแรก</button>
               <button onClick={() => navigate('/features')} className="lp-navlink" style={{ background: 'none', border: 'none', fontFamily: 'inherit' }}>ฟีเจอร์</button>
               <button onClick={() => navigate('/about')} className="lp-navlink" style={{ background: 'none', border: 'none', fontFamily: 'inherit' }}>เกี่ยวกับเรา</button>
-              <a href="#pricing" className="lp-navlink">ราคา</a>
               <button onClick={() => navigate('/tutorials')} className="lp-navlink" style={{ background: 'none', border: 'none', fontFamily: 'inherit' }}>วิดีโอสอนการใช้งาน</button>
             </nav>
           )}
@@ -250,32 +213,6 @@ export default function LandingPage() {
               })
             })()}
           </div>
-        </div>
-      </section>
-
-      {/* ── Pricing ── */}
-      <section id="pricing" style={{ ...wrap, padding: compact ? '60px 20px' : '90px 40px' }}>
-        <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <h2 style={{ fontSize: compact ? 28 : 36, fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.02em' }}>แพ็กเกจที่เหมาะกับคุณ</h2>
-          <p style={{ fontSize: 16, color: 'var(--text-secondary)' }}>เริ่มใช้ฟรีได้ทันที — แพ็กเกจแบบชำระเงินจะเปิดให้บริการเร็ว ๆ นี้</p>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: 20, maxWidth: 380, margin: '0 auto' }}>
-          <PriceCol name="Free" sub="สำหรับเริ่มต้นใช้งาน" price="฿0" unit="/เดือน"
-            feats={['แดชบอร์ด + จัดการข้อมูลลูกค้า', 'ลูกค้าสูงสุด 5 คน', 'ประเมินความเสี่ยงเบื้องต้น']}
-            cta="ทดลองใช้ฟรี" ctaAction={goRegister} />
-          {/* Pro / AI แพ็กเกจ — ซ่อนไว้ก่อน ค่อยเปิดเมื่อระบบชำระเงินพร้อม
-          <PriceCol name="Pro" sub="ทุกเมนู (ไม่รวม AI)" price="฿590" unit="/เดือน" note="เปิดให้บริการเร็ว ๆ นี้"
-            feats={['ทุกเมนูวางแผน 6 ด้าน', 'งบการเงินล่วงหน้า + วางแผนภาษี', 'รายงานฉบับเต็ม + สไลด์นำเสนอ', 'เซ็น PDPA + ส่งออก PDF']}
-            cta="เร็ว ๆ นี้" disabled />
-          <PriceCol name="AI" sub="ทุกเมนู + ผู้ช่วย AI" price="฿890" unit="/เดือน" note="เปิดให้บริการเร็ว ๆ นี้" popular
-            feats={['ทุกฟีเจอร์ในแพ็กเกจ Pro', 'AI Copilot ผู้ช่วยวางแผน', 'วิเคราะห์เชิงลึกรายลูกค้า', 'อัปเดตฟีเจอร์ใหม่ก่อนใคร']}
-            cta="เร็ว ๆ นี้" disabled />
-          */}
-          {/* Enterprise — ซ่อนไว้ก่อน ค่อยเปิดเมื่อพร้อม
-          <PriceCol name="Enterprise" sub="สำหรับทีม/องค์กร (รวม AI)" price="690–490" unit="฿/คน/เดือน" note="ยิ่งทีมใหญ่ ยิ่งถูกต่อคน"
-            feats={['ทุกฟีเจอร์ + AI Copilot', '5–10 คน · 690 ฿/คน', '11–20 คน · 590 ฿/คน', 'มากกว่า 20 คน · 490 ฿/คน', 'ช่วยตั้งค่า/อบรมให้ทีม']}
-            cta="ติดต่อสอบถาม" ctaAction={() => { window.location.href = 'mailto:info@wealthpro.cloud?subject=สอบถามแพ็กเกจ Enterprise WealthPro' }} />
-          */}
         </div>
       </section>
 
