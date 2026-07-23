@@ -9,7 +9,9 @@
     "start": "node dist/index.js",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
-    "encrypt-ids": "ts-node --transpile-only src/scripts/migrate-encrypt-nationalid.ts"
+    "encrypt-ids": "ts-node --transpile-only src/scripts/migrate-encrypt-nationalid.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [],
   "author": "",
@@ -45,7 +47,8 @@
     "pdf-parse": "^2.4.5",
     "prisma": "^5.22.0",
     "ts-node": "^10.9.2",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
   },
   "allowScripts": {
     "@prisma/client@5.22.0": true,

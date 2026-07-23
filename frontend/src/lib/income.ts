@@ -46,7 +46,9 @@ export function migrateIncomeLabel(label?: string): string {
 export function isAnnualIncome(row: { freq?: string; label?: string }): boolean {
   if (row.freq === 'รายปี') return true
   if (row.freq === 'รายเดือน') return false
-  return String(row.label || '').includes('โบนัส')   // ข้อมูลเก่าที่ยังไม่มี freq
+  // ข้อมูลเก่าที่ยังไม่มี freq: เฉพาะ label 'โบนัส' เดิมเท่านั้น = รายปี
+  // (ห้ามใช้ includes เพราะ label หมวดใหม่ 40(1) มีคำว่า "โบนัส" อยู่ในตัว)
+  return String(row.label || '').trim() === 'โบนัส'
 }
 
 /** จำนวนต่อเดือน (สำหรับสรุปกระแสเงินสด) */
