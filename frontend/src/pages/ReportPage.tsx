@@ -6,7 +6,7 @@ import { useIsCompact } from '../hooks/useViewport'
 import { useClient } from '../context/ClientContext'
 import { PageHeader } from '../components/ui'
 import PresentationDeck, { SlideEditor, OverlayLayer, DECK_SLIDES, type SlideEl, type CustomSlide } from './report/PresentationDeck'
-import { PieChart, Pie, Cell, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis, ComposedChart, Line, Area, ReferenceLine, ScatterChart, Scatter, CartesianGrid } from 'recharts'
+import { PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis, ComposedChart, Line, Area, ReferenceLine, ScatterChart, Scatter, CartesianGrid } from 'recharts'
 import { useRetirementReadiness } from '../hooks/useRetirementReadiness'
 import { useInsuranceReadiness } from '../hooks/useInsuranceReadiness'
 import { useEducationReadiness } from '../hooks/useEducationReadiness'
@@ -16,21 +16,19 @@ import { monthlyIncome as incMonthly, annualIncome as incAnnual, isAnnualIncome 
 import { useInsuranceCoverage } from '../components/InsuranceCoverageSummary'
 import { PORTFOLIO_SETS, DEFAULT_ASSETS, DEFAULT_CORR, computePortfolio, applyMarketData, applyCorrelation } from '../lib/portfolioReturns'
 import { mulberry32, toNum } from '@shared/finance/math'
-import { computeChildPlan, levelForAge, type ChildSetting } from './EducationPlanPage'
 import { TEAL, AMBERR, REDR, GREENR, DomainCard } from './report/primitives'
 import { fmt } from './report/format'
 import Acknowledgement from './report/sections/Acknowledgement'
 import Assumptions from './report/sections/Assumptions'
+import type { ReportCtx } from './report/ctx'
+import ServiceAgreement from './report/sections/ServiceAgreement'
+import AdvisorProfile from './report/sections/AdvisorProfile'
+import ActionPlanSummary from './report/sections/ActionPlanSummary'
+import ClientGoals from './report/sections/ClientGoals'
+import RetirementSection from './report/sections/RetirementSection'
+import EducationSection from './report/sections/EducationSection'
 
 
-// สูตรทุนการศึกษาใช้ computeChildPlan ตัวเดียวกับหน้าทุนการศึกษา (คิดระดับชั้นที่ตัดออก +
-// เงินออมที่โตตามอัตราขึ้นเงินเดือน) — เดิมที่นี่มีสูตรของตัวเองที่ตกรุ่น ทำให้ตัวเลขไม่ตรงกัน
-const eduSettingOf = (setting: any): ChildSetting => ({
-  type: setting?.type ?? 'private',
-  savingYears: setting?.savingYears ?? 10,
-  includeMaster: setting?.includeMaster ?? false,
-  excludedLevels: setting?.excludedLevels ?? [],
-})
 
 
 interface Sec { k: string; t: string; lvl: 1 | 2; auto?: string }
@@ -205,102 +203,16 @@ export default function ReportPage() {
 
 
 
+  // ค่าที่หัวข้อรายงาน (ซึ่งแยกไปเป็นคอมโพเนนต์ในโฟลเดอร์ report/sections) ต้องใช้
+  const ctx: ReportCtx = {
+    client, advisor, profile, clientName, today, age, hasSpouse, children,
+    eduPlan, eduCosts, eduInf, eduRet, retR, retRSp,
+    title, secs, setText, signatures, setSignatures, setSigning,
+    actionItems,
+  }
+
   function autoNode(kind: string) {
-    if (kind === 'service') {
-      // หนังสือข้อตกลงการให้บริการ (Letter of Engagement) — บีบให้จบ 1 หน้า A4 พอดี
-      const now = new Date()
-      const dueDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-      const dueTh = dueDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
-      const Blank = ({ w = 120, v }: { w?: number; v?: string }) => v
-        ? <span style={{ fontWeight: 700, color: '#0f172a', borderBottom: '1px dotted #94a3b8', padding: '0 6px' }}>{v}</span>
-        : <span style={{ display: 'inline-block', minWidth: w, borderBottom: '1px dotted #94a3b8', verticalAlign: 'bottom' }}>&nbsp;</span>
-      const clause = (no: number, title: string, body: string) => (
-        <div key={no} style={{ marginBottom: 7 }}>
-          <span style={{ fontSize: 11.5, fontWeight: 800, color: '#0f172a' }}>{no}. {title} — </span>
-          <span style={{ fontSize: 11.5, color: '#334155', lineHeight: 1.6 }}>{body}</span>
-        </div>
-      )
-      const box = '☐'
-      return (
-        <div style={{ fontSize: 11.5, lineHeight: 1.6 }}>
-          <div style={{ textAlign: 'center', marginBottom: 12 }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>หนังสือข้อตกลงการให้บริการวางแผนการเงิน</div>
-            <div style={{ fontSize: 10.5, color: '#94a3b8', letterSpacing: 0.5 }}>Letter of Engagement for Financial Planning Services</div>
-          </div>
-          {/* คู่สัญญา 2 คอลัมน์ */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 10 }}>
-            <div style={{ border: '1px solid #f1f5f9', borderRadius: 10, padding: '10px 14px' }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: TEAL, marginBottom: 6 }}>ผู้ให้บริการ (นักวางแผนการเงิน)</div>
-              <div style={{ fontSize: 11.5, color: '#334155', display: 'grid', gap: 4 }}>
-                <div>ชื่อ: <Blank w={150} v={advisor?.fullName} /></div>
-                <div>ใบอนุญาต/ใบรับรอง: <Blank w={100} v={advisor?.licenseCFP || advisor?.licenseInsurance} /></div>
-                <div>บริษัท/สังกัด: <Blank w={120} v={advisor?.company} /></div>
-                <div>โทรศัพท์: <Blank w={70} v={advisor?.phone} /> อีเมล: <Blank w={80} v={advisor?.email} /></div>
-              </div>
-            </div>
-            <div style={{ border: '1px solid #f1f5f9', borderRadius: 10, padding: '10px 14px' }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: TEAL, marginBottom: 6 }}>ผู้รับบริการ (ลูกค้า)</div>
-              <div style={{ fontSize: 11.5, color: '#334155', display: 'grid', gap: 4 }}>
-                <div>ชื่อ: <Blank w={150} v={clientName !== 'ลูกค้า' ? `คุณ${clientName}` : undefined} /></div>
-                <div>เลขบัตรประชาชน: <Blank w={110} v={client?.nationalId} /></div>
-                <div>ที่อยู่: <Blank w={160} v={client?.address} /></div>
-                <div>โทรศัพท์: <Blank w={70} v={client?.phone} /> อีเมล: <Blank w={80} v={client?.contactEmail} /></div>
-              </div>
-            </div>
-          </div>
-          <p style={{ fontSize: 11.5, color: '#334155', marginBottom: 9 }}>
-            คู่สัญญาทั้งสองฝ่ายตกลงทำหนังสือข้อตกลงการให้บริการวางแผนการเงินฉบับนี้ขึ้น ณ วันที่ <Blank w={30} v={String(now.getDate())} /> เดือน <Blank w={80} v={now.toLocaleDateString('th-TH', { month: 'long' })} /> พ.ศ. <Blank w={45} v={String(now.getFullYear() + 543)} /> โดยมีรายละเอียดดังต่อไปนี้
-          </p>
-          {clause(1, 'ขอบเขตการให้บริการ', 'ผู้ให้บริการตกลงจัดทำแผนการเงินส่วนบุคคลให้แก่ผู้รับบริการ ครอบคลุมการวิเคราะห์ฐานะทางการเงิน การวางแผนเกษียณอายุ การวางแผนภาษี การวางแผนประกันชีวิตและสุขภาพ รวมถึงการวางแผนการลงทุน ทั้งนี้ตามข้อมูลที่ผู้รับบริการให้ไว้เท่านั้น')}
-          <div style={{ marginBottom: 7 }}>
-            <span style={{ fontSize: 11.5, fontWeight: 800, color: '#0f172a' }}>2. ระยะเวลาและการส่งมอบ — </span>
-            <span style={{ fontSize: 11.5, color: '#334155' }}>ผู้ให้บริการจะส่งมอบแผนการเงินฉบับสมบูรณ์ภายใน <Blank w={35} v="7" /> วัน นับจากวันทำสัญญา (ภายในวันที่ <Blank w={90} v={dueTh} />) พร้อมนัดหมายนำเสนอแผนและตอบข้อซักถาม จำนวน 1 ครั้ง</span>
-          </div>
-          {clause(3, 'ความรับผิดชอบและข้อจำกัด', 'แผนการเงินที่จัดทำขึ้นเป็นเพียงคำแนะนำบนพื้นฐานข้อมูลที่ผู้รับบริการให้ไว้ ณ วันที่จัดทำ มิใช่การรับประกันผลตอบแทนหรือการรับประกันความสำเร็จทางการเงิน ผู้ให้บริการไม่รับผิดชอบต่อความเสียหายอันเกิดจากการตัดสินใจของผู้รับบริการ หรือจากการเปลี่ยนแปลงของสภาวะตลาดและกฎหมายที่เกิดขึ้นภายหลัง')}
-          {clause(4, 'การรักษาความลับและคุ้มครองข้อมูลส่วนบุคคล', 'ผู้ให้บริการตกลงเก็บรักษาข้อมูลของผู้รับบริการไว้เป็นความลับ และจะใช้ข้อมูลดังกล่าวเพื่อวัตถุประสงค์ในการจัดทำแผนการเงินเท่านั้น สอดคล้องกับพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA) ผู้รับบริการมีสิทธิขอตรวจสอบ แก้ไข หรือลบข้อมูลของตนได้ตลอดเวลา')}
-          {clause(5, 'การยกเลิกสัญญา', 'คู่สัญญาฝ่ายใดฝ่ายหนึ่งมีสิทธิบอกเลิกสัญญาได้โดยแจ้งเป็นลายลักษณ์อักษรล่วงหน้าไม่น้อยกว่า 7 วัน')}
-          {clause(6, 'การรับทราบและข้อจำกัดของรายงาน', 'ข้อเสนอแนะในรายงานจัดทำขึ้นจากข้อมูลที่ผู้รับบริการให้ไว้และสมมติฐานที่ระบุในหัวข้อ "สมมติฐานที่ใช้ในการวางแผน" หากข้อมูลส่วนบุคคล สถานการณ์ทางการเงิน หรือภาวะตลาดเปลี่ยนแปลงไป ข้อเสนอแนะอาจเปลี่ยนแปลงตาม จึงควรทบทวนแผนอย่างน้อยปีละ 1 ครั้ง ประมาณการต่าง ๆ (รวมถึงผลการจำลอง Monte Carlo) เป็นเพียงการคาดการณ์ตามสมมติฐาน ไม่ใช่การรับประกันผลตอบแทน ผลการดำเนินงานในอดีตไม่ได้ยืนยันถึงผลการดำเนินงานในอนาคต และรายงานนี้ไม่ถือเป็นคำแนะนำด้านกฎหมาย บัญชี หรือภาษีเฉพาะกรณี คู่สัญญาได้อ่านและรับทราบสมมติฐานและข้อจำกัดข้างต้นแล้ว')}
-          <div style={{ border: `1px solid ${TEAL}55`, background: '#f0fdfa', borderRadius: 10, padding: '8px 12px', margin: '10px 0' }}>
-            <div style={{ fontSize: 11.5, fontWeight: 800, color: '#0f172a', marginBottom: 3 }}>การยินยอมใช้ข้อมูลส่วนบุคคล (PDPA Consent)</div>
-            <div onClick={() => setSignatures(s => s.pdpa_consent ? (() => { const n = { ...s }; delete n.pdpa_consent; return n })() : { ...s, pdpa_consent: '1' })}
-              title="คลิกเพื่อติ๊ก/ยกเลิกความยินยอม" style={{ fontSize: 11.5, color: '#334155', cursor: 'pointer', userSelect: 'none' }}>
-              <span style={{ fontWeight: 800, color: signatures.pdpa_consent ? GREENR : '#334155' }}>{signatures.pdpa_consent ? '☑' : box}</span> ข้าพเจ้าให้ความยินยอมในการเก็บรวบรวม ใช้ และเปิดเผยข้อมูลส่วนบุคคลของข้าพเจ้าเพื่อวัตถุประสงค์ในการจัดทำแผนการเงินเท่านั้น และรับทราบสิทธิของข้าพเจ้าตาม PDPA แล้ว
-            </div>
-          </div>
-          <p style={{ fontSize: 11.5, color: '#334155', marginBottom: 12 }}>คู่สัญญาทั้งสองฝ่ายได้อ่านและเข้าใจข้อความในหนังสือข้อตกลงฉบับนี้โดยตลอดแล้ว จึงลงลายมือชื่อไว้เป็นหลักฐาน</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, marginTop: 6 }}>
-            {([['sig_advisor', 'ผู้ให้บริการ / นักวางแผนการเงิน', advisor?.fullName || ''], ['sig_client', 'ผู้รับบริการ / ลูกค้า', clientName !== 'ลูกค้า' ? `คุณ${clientName}` : '']] as const).map(([k, role, name]) => (
-              <div key={k} style={{ textAlign: 'center', fontSize: 11.5, color: '#334155' }}>
-                <div onClick={() => setSigning(k)} title="คลิกเพื่อลงนามบนหน้าจอ"
-                  style={{ height: 54, margin: '0 auto 4px', maxWidth: 230, borderBottom: '1px dotted #94a3b8', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', cursor: 'pointer' }}>
-                  {signatures[k]
-                    ? <img src={signatures[k]} alt="" style={{ maxHeight: 52, maxWidth: '100%' }} />
-                    : <span className="no-print" style={{ fontSize: 10, color: '#cbd5e1', paddingBottom: 4 }}>คลิกเพื่อลงนาม</span>}
-                </div>
-                <div>ลงชื่อ {name ? <span style={{ fontWeight: 700, color: '#0f172a' }}>({name})</span> : '(.................................................)'}</div>
-                <div style={{ marginTop: 3 }}>({role})</div>
-                <div style={{ marginTop: 3 }}>วันที่ {today}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ fontSize: 11, color: '#64748b', textAlign: 'center', marginTop: 12, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 8 }}>
-            <span>พยาน: ลงชื่อ</span>
-            <span onClick={() => setSigning('sig_witness')} title="คลิกเพื่อลงนามบนหน้าจอ"
-              style={{ display: 'inline-flex', alignItems: 'flex-end', justifyContent: 'center', width: 150, height: 38, borderBottom: '1px dotted #94a3b8', cursor: 'pointer' }}>
-              {signatures.sig_witness
-                ? <img src={signatures.sig_witness} alt="" style={{ maxHeight: 36, maxWidth: '100%' }} />
-                : <span className="no-print" style={{ fontSize: 10, color: '#cbd5e1', paddingBottom: 3 }}>คลิกเพื่อลงนาม</span>}
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'flex-end' }}>
-              (<input value={signatures.witness_name || ''} onChange={e => setSignatures(s => ({ ...s, witness_name: e.target.value }))}
-                placeholder="พิมพ์ชื่อพยาน" title="พิมพ์ชื่อ-นามสกุลพยาน"
-                style={{ width: 170, border: 'none', borderBottom: '1px dotted #94a3b8', outline: 'none', background: 'transparent', textAlign: 'center', fontSize: 11, fontFamily: 'inherit', color: '#0f172a', fontWeight: 700, padding: '0 2px' }} />)
-            </span>
-            <span>วันที่ {today}</span>
-          </div>
-        </div>
-      )
-    }
+    if (kind === 'service') return <ServiceAgreement ctx={ctx} />
     if (kind === 'ack2') return <Acknowledgement />
     if (kind === 'taxfull') {
       // ── การวิเคราะห์ภาษีเงินได้ — จำลองหน้าวางแผนภาษีต่อคน ──
@@ -760,103 +672,7 @@ export default function ReportPage() {
         </div>
       )
     }
-    if (kind === 'advprofile') {
-      // ── หน้า Profile นักวางแผน (หน้าสุดท้าย) — ข้อมูลจากตั้งค่าผู้ใช้ · ข้อความ/รูปแก้ไขได้ในหน้า ──
-      const bio = (secs['advprofile']?.text ?? '') !== '' ? secs['advprofile']!.text : (advisor?.bio || '')
-      const photo = signatures.advpage_photo || advisor?.photo || ''
-      const onPickPhoto = (file?: File | null) => {
-        if (!file) return
-        const reader = new FileReader()
-        reader.onload = () => {
-          const img = new Image()
-          img.onload = () => {
-            let { width, height } = img
-            const max = 900
-            if (width > height && width > max) { height = height * max / width; width = max }
-            else if (height > max) { width = width * max / height; height = max }
-            const cv = document.createElement('canvas')
-            cv.width = width; cv.height = height
-            cv.getContext('2d')!.drawImage(img, 0, 0, width, height)
-            setSignatures(sg => ({ ...sg, advpage_photo: cv.toDataURL('image/jpeg', 0.85) }))
-          }
-          img.src = reader.result as string
-        }
-        reader.readAsDataURL(file)
-      }
-      const addr = advisor?.address || [advisor?.addrHouseNo, advisor?.addrSubdistrict && `ต.${advisor.addrSubdistrict}`, advisor?.addrDistrict && `อ.${advisor.addrDistrict}`, advisor?.addrProvince && `จ.${advisor.addrProvince}`, advisor?.addrZipcode].filter(Boolean).join(' ')
-      const creds = [
-        advisor?.licenseCFP && `คุณวุฒินักวางแผนการเงิน CFP เลขที่ ${advisor.licenseCFP}`,
-        advisor?.licenseFChFP && `คุณวุฒิที่ปรึกษาการเงินมืออาชีพ (FChFP) เลขที่ ${advisor.licenseFChFP}`,
-        advisor?.licenseAFPT && `คุณวุฒิที่ปรึกษาการเงิน AFPT เลขที่ ${advisor.licenseAFPT}`,
-        advisor?.licenseInsurance && `ใบอนุญาตตัวแทน/นายหน้าประกันชีวิต เลขที่ ${advisor.licenseInsurance}`,
-      ].filter(Boolean) as string[]
-      const Contact = ({ icon, text }: { icon: string; text: string }) => (
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
-          <div style={{ width: 34, height: 34, borderRadius: 999, background: TEAL, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>{icon}</div>
-          <div style={{ fontSize: 13.5, color: '#334155', lineHeight: 1.6, paddingTop: 6 }}>{text}</div>
-        </div>
-      )
-      return (
-        <div style={{ margin: '-8px 0 0', display: 'flex', flexDirection: 'column', minHeight: 900 }}>
-          {/* แถบ hero ด้านบน (print-safe gradient ธีม WealthPro) */}
-          <div style={{ position: 'relative', height: 170, borderRadius: 14, overflow: 'hidden', background: 'linear-gradient(135deg, #0f172a 0%, #134e4a 55%, #00cfc1 130%)', marginBottom: 24 }}>
-            <div style={{ position: 'absolute', right: -60, top: -60, width: 220, height: 220, borderRadius: '50%', background: 'rgba(0,207,193,0.16)' }} />
-            <div style={{ position: 'absolute', left: -40, bottom: -70, width: 200, height: 200, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.12)' }} />
-            <div style={{ position: 'absolute', left: 30, bottom: 26 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 3, color: 'rgba(255,255,255,0.55)' }}>YOUR FINANCIAL PLANNER</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', marginTop: 4 }}>นักวางแผนการเงินของคุณ</div>
-            </div>
-            <div style={{ position: 'absolute', right: 26, bottom: 22, fontSize: 15, fontWeight: 800 }}>
-              <span style={{ color: '#fff' }}>Wealth</span><span style={{ color: '#00cfc1' }}>Pro</span>
-            </div>
-          </div>
-
-          {/* คำแนะนำตัว (พิมพ์แก้ได้) */}
-          <textarea value={bio} onChange={e => setText('advprofile', e.target.value)}
-            placeholder={'พิมพ์ข้อความแนะนำตัว/ประสบการณ์ของนักวางแผนการเงิน...'}
-            rows={Math.max(5, bio.split('\n').length + 1)}
-            style={{ width: '100%', border: 'none', outline: 'none', resize: 'none', background: 'transparent', fontFamily: 'inherit', fontSize: 14, color: '#1e293b', lineHeight: 2, fontStyle: 'italic', marginBottom: 8 }} />
-          {creds.length > 0 && (
-            <div style={{ marginBottom: 10 }}>
-              {creds.map(c2 => (
-                <div key={c2} style={{ display: 'flex', gap: 8, fontSize: 13, color: '#334155', lineHeight: 1.9 }}>
-                  <span style={{ color: TEAL, fontWeight: 800 }}>✓</span>{c2}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* ชื่อ + ติดต่อ | รูป */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.15fr 1fr', gap: 36, marginTop: 'auto', paddingTop: 20 }}>
-            <div>
-              <div style={{ width: 190, height: 4, background: '#0f172a', marginBottom: 16 }} />
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a' }}>{advisor?.fullName || 'นักวางแผนการเงิน'}{advisor?.licenseCFP ? ', CFP' : ''}</div>
-              {advisor?.position && <div style={{ fontSize: 15, color: '#475569', marginTop: 4 }}>{advisor.position}</div>}
-              {advisor?.company && <div style={{ fontSize: 13.5, color: '#64748b', marginTop: 2 }}>{advisor.company}</div>}
-              <div style={{ marginTop: 24 }}>
-                {advisor?.phone && <Contact icon="✆" text={advisor.phone} />}
-                {advisor?.email && <Contact icon="✉" text={advisor.email} />}
-                {addr && <Contact icon="⌂" text={addr} />}
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-              <label style={{ cursor: 'pointer', width: '100%' }} title="คลิกเพื่อเปลี่ยนรูป">
-                {photo
-                  ? <img src={photo} alt="" style={{ width: '100%', maxHeight: 330, objectFit: 'cover', borderRadius: 14, border: `1.5px solid ${TEAL}55` }} />
-                  : <div style={{ width: '100%', height: 300, borderRadius: 14, border: '1.5px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: '#94a3b8' }}>คลิกเพื่อใส่รูปนักวางแผน</div>}
-                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { onPickPhoto(e.target.files?.[0]); e.target.value = '' }} />
-              </label>
-              {photo && <span className="no-print" style={{ fontSize: 10.5, color: '#94a3b8' }}>คลิกที่รูปเพื่อเปลี่ยน</span>}
-            </div>
-          </div>
-
-          {/* แถบปิดท้าย */}
-          <div style={{ height: 60, borderRadius: 14, marginTop: 28, background: 'linear-gradient(90deg, #0f172a 0%, #134e4a 60%, #00cfc1 140%)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2.5, color: 'rgba(255,255,255,0.85)' }}>WEALTHPRO · FINANCIAL PLANNING</span>
-          </div>
-        </div>
-      )
-    }
+    if (kind === 'advprofile') return <AdvisorProfile ctx={ctx} />
     if (kind === 'assumptions') {
       return <Assumptions profile={profile} client={client} retPlan={retPlan} portRet={portRet} eduInf={eduInf} eduRet={eduRet} eduCosts={eduCosts} />
     }
@@ -973,164 +789,8 @@ export default function ReportPage() {
         </div>
       )
     }
-    if (kind === 'actionplan') {
-      // ── สรุปแผนดำเนินการ (หน้าใหม่) + ไทม์ไลน์ — ดึงจากแผนปฏิบัติการ ──
-      const ownerTh = (o: string) => o === 'client' ? 'ลูกค้า' : o === 'advisor' ? 'ที่ปรึกษา' : o === 'spouse' ? 'คู่สมรส' : (o || '')
-      const PR_LBL: Record<string, string> = { high: 'สูง', medium: 'กลาง', low: 'ต่ำ' }
-      type Ln = { plan: string; amount: number; schedule: string; owner: string; priority: string; done: boolean }
-      const lines: Ln[] = []
-      for (const it of actionItems) {
-        const rows: any[] = Array.isArray(it.subPlan) ? it.subPlan : []
-        const done = it.status === 'done' || !!it.completedAt
-        if (!rows.length) { lines.push({ plan: it.title, amount: toNum(it.target), schedule: it.dueDate || '', owner: ownerTh(it.owner), priority: PR_LBL[it.priority] ?? '', done }); continue }
-        for (const r of rows) {
-          const plan = String(r?.desc || r?.method || r?.who || '').trim()
-          const amount = toNum(r?.amount ?? r?.premium)
-          if (!plan && amount <= 0 && !r?.schedule) continue
-          lines.push({ plan: plan || it.title, amount, schedule: r?.schedule || '', owner: String(r?.owner || '').trim() || ownerTh(it.owner), priority: String(r?.priority || '') || (PR_LBL[it.priority] ?? ''), done: !!r?.done || done })
-        }
-      }
-      const PR_ORD: Record<string, number> = { 'สูง': 0, 'กลาง': 1, 'ต่ำ': 2 }
-      const PR_CLR: Record<string, string> = { 'สูง': REDR, 'กลาง': AMBERR, 'ต่ำ': '#64748b' }
-      lines.sort((a, b) => (PR_ORD[a.priority] ?? 3) - (PR_ORD[b.priority] ?? 3))
-      const fmtDate = (x: string) => { const d = new Date(x); return isNaN(d.getTime()) ? x : d.toLocaleDateString('th-TH', { year: '2-digit', month: 'short', day: 'numeric' }) }
-      const thS: React.CSSProperties = { padding: '5px 8px', fontSize: 10.5, fontWeight: 700, color: '#64748b', textAlign: 'left' }
-      const tdS: React.CSSProperties = { padding: '6px 8px', fontSize: 12, color: '#1e293b' }
-      // ไทม์ไลน์: sub-plan ทุกรายการที่มี "กำหนดการ" เรียงตามวันที่
-      const CAT_ACCENT: Record<string, string> = { liquidity: '#06b6d4', insurance: '#3b82f6', retirement: '#00cfc1', education: '#f59e0b', estate: '#8b5cf6' }
-      const CAT_LABEL: Record<string, string> = { liquidity: 'สภาพคล่อง', insurance: 'ประกัน', retirement: 'เกษียณ', education: 'การศึกษา', estate: 'มรดก' }
-      const tl: { date: Date; title: string; desc: string; amount: number; accent: string; cat: string }[] = []
-      for (const a of actionItems) {
-        const rows: any[] = Array.isArray(a.subPlan) ? a.subPlan : []
-        for (const r of rows) {
-          if (!r?.schedule) continue
-          const d = new Date(r.schedule); if (isNaN(d.getTime())) continue
-          tl.push({ date: d, title: a.title, desc: String(r.desc || r.method || r.who || '').trim(), amount: toNum(r.amount ?? r.premium ?? r.sumInsured ?? 0), accent: CAT_ACCENT[a.category] ?? '#64748b', cat: CAT_LABEL[a.category] ?? (a.category || '') })
-        }
-      }
-      tl.sort((x, y) => x.date.getTime() - y.date.getTime())
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-          {/* ตารางสรุป */}
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>สรุปแผนดำเนินการ</div>
-            {lines.length === 0
-              ? <div style={{ fontSize: 12, color: '#94a3b8' }}>ยังไม่มีรายการในแผนปฏิบัติการ</div>
-              : <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1.5px solid #cbd5e1' }}>
-                      <th style={{ ...thS, width: 24 }} />
-                      <th style={thS}>แผนดำเนินการ</th>
-                      <th style={{ ...thS, textAlign: 'right' }}>จำนวนเงิน</th>
-                      <th style={thS}>กำหนดการ</th>
-                      <th style={thS}>ผู้รับผิดชอบ</th>
-                      <th style={thS}>ความสำคัญ</th>
-                    </tr>
-                  </thead>
-                  <tbody>{lines.map((l, i2) => (
-                    <tr key={i2} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ ...tdS, fontSize: 13, color: l.done ? GREENR : '#94a3b8' }}>{l.done ? '☑' : '☐'}</td>
-                      <td style={{ ...tdS, color: l.done ? '#94a3b8' : '#1e293b', textDecoration: l.done ? 'line-through' : 'none' }}>{l.plan}</td>
-                      <td style={{ ...tdS, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: l.amount > 0 ? '#0f172a' : '#94a3b8' }}>{l.amount > 0 ? fmt(l.amount) : '—'}</td>
-                      <td style={{ ...tdS, color: '#475569' }}>{l.schedule ? fmtDate(l.schedule) : '—'}</td>
-                      <td style={{ ...tdS, color: '#475569' }}>{l.owner || '—'}</td>
-                      <td style={{ ...tdS, fontWeight: 700, color: PR_CLR[l.priority] || '#94a3b8' }}>{l.priority || '—'}</td>
-                    </tr>
-                  ))}</tbody>
-                </table>}
-          </div>
-          {/* ไทม์ไลน์แผนดำเนินการ */}
-          {tl.length > 0 && (
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 12 }}>ไทม์ไลน์แผนดำเนินการ</div>
-              <div>
-                {tl.map((t, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 12 }}>
-                    {/* เส้น + จุด */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-                      <div style={{ width: 12, height: 12, borderRadius: 999, background: t.accent, marginTop: 3, boxShadow: `0 0 0 3px ${t.accent}22` }} />
-                      {i < tl.length - 1 && <div style={{ width: 2, flex: 1, background: '#e2e8f0', margin: '2px 0' }} />}
-                    </div>
-                    {/* เนื้อหา */}
-                    <div style={{ flex: 1, minWidth: 0, paddingBottom: i < tl.length - 1 ? 14 : 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 11.5, fontWeight: 800, color: t.accent }}>{t.date.toLocaleDateString('th-TH', { year: '2-digit', month: 'short', day: 'numeric' })} · {t.cat}</span>
-                        {t.amount > 0 && <span style={{ fontSize: 12, fontFamily: 'monospace', fontWeight: 700, color: '#0f172a' }}>{fmt(t.amount)} บาท</span>}
-                      </div>
-                      <div style={{ fontSize: 12.5, fontWeight: 700, color: '#1e293b', marginTop: 1 }}>{t.title}</div>
-                      {t.desc && <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 1, overflowWrap: 'anywhere' }}>{t.desc}</div>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )
-    }
-    if (kind === 'goals') {
-      // ── เป้าหมายทางการเงินที่ลูกค้ากรอก: 3 ด้าน (ประกัน/การศึกษา/เกษียณ) + 3 ระยะเวลา ──
-      const GG = [
-        { k: 'insurance',  label: 'ความเสี่ยง & ประกัน', color: '#e11d48' },
-        { k: 'education',  label: 'ทุนการศึกษาบุตร',      color: '#d97706' },
-        { k: 'retirement', label: 'การเกษียณ',            color: '#0891b2' },
-        { k: 'short',      label: 'ระยะสั้น (≤3 ปี)',     color: '#059669' },
-        { k: 'medium',     label: 'ระยะกลาง (3–7 ปี)',    color: '#0ea5e9' },
-        { k: 'long',       label: 'ระยะยาว (>7 ปี)',      color: '#7c3aed' },
-      ]
-      const fg = client?.financialGoals || {}
-      const pick = (o: 'self' | 'spouse') => (fg.self || fg.spouse) ? fg[o] : (o === 'self' ? fg : null)
-      const collect = (g: any) => {
-        const out: { area: string; color: string; name: string; when: string; amount: number }[] = []
-        if (!g) return out
-        GG.forEach(grp => (g[grp.k] ?? []).forEach((r: any) => {
-          if (!r?.name?.trim()) return
-          const td = r.targetDate ? String(r.targetDate).trim() : ''
-          out.push({ area: grp.label, color: grp.color, name: r.name, when: td ? (/^\d+$/.test(td) ? `ภายใน ${td} ปี` : td) : '—', amount: toNum(r.targetAmount) })
-        }))
-        return out
-      }
-      const selfNameG = `คุณ${client?.firstName || 'ลูกค้า'}`
-      const spouseNameG = client?.spouseProfile?.firstName ? `คุณ${client.spouseProfile.firstName}` : 'คู่สมรส'
-      const ppl = [{ name: selfNameG, rows: collect(pick('self')) }, ...(hasSpouse ? [{ name: spouseNameG, rows: collect(pick('spouse')) }] : [])].filter(p2 => p2.rows.length)
-      const th: React.CSSProperties = { padding: '9px 12px', fontSize: 12, fontWeight: 700, color: '#64748b', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }
-      const td: React.CSSProperties = { padding: '8px 12px', fontSize: 12.5, color: '#1e293b', borderBottom: '1px solid #f1f5f9' }
-      if (ppl.length === 0) return <div style={{ fontSize: 13, color: '#64748b' }}>ยังไม่มีเป้าหมายที่บันทึกไว้ — กรอกที่หน้าเป้าหมายทางการเงิน</div>
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          {ppl.map((p2, idx) => {
-            const total = p2.rows.reduce((s, r) => s + r.amount, 0)
-            return (
-              <div key={idx}>
-                {hasSpouse && <div style={{ fontSize: 13.5, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>เป้าหมายของ {p2.name}</div>}
-                <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
-                  <thead><tr style={{ background: '#f8fafc' }}>
-                    <th style={th}>ด้าน / ระยะเวลา</th>
-                    <th style={th}>เป้าหมาย</th>
-                    <th style={th}>ระยะเวลาที่ต้องการ</th>
-                    <th style={{ ...th, textAlign: 'right' }}>จำนวนเงิน (บาท)</th>
-                  </tr></thead>
-                  <tbody>
-                    {p2.rows.map((r, i) => (
-                      <tr key={i}>
-                        <td style={td}><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 999, background: r.color, marginRight: 7 }} />{r.area}</td>
-                        <td style={{ ...td, fontWeight: 600 }}>{r.name}</td>
-                        <td style={{ ...td, color: '#64748b' }}>{r.when}</td>
-                        <td style={{ ...td, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700 }}>{fmt(r.amount)}</td>
-                      </tr>
-                    ))}
-                    <tr style={{ background: '#f0fdfa' }}>
-                      <td style={{ ...td, fontWeight: 800, color: '#0f172a', borderBottom: 'none' }} colSpan={3}>รวมเป้าหมายทั้งหมด</td>
-                      <td style={{ ...td, textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: TEAL, borderBottom: 'none' }}>{fmt(total)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )
-          })}
-        </div>
-      )
-    }
+    if (kind === 'actionplan') return <ActionPlanSummary ctx={ctx} />
+    if (kind === 'goals') return <ClientGoals ctx={ctx} />
 
     if (kind === 'basicinfo') {
       // ── วิเคราะห์ข้อมูลพื้นฐาน: ครอบครัว + งาน/สวัสดิการ (ข้อมูลชุดเดียวกับสไลด์ family/work ของเด็ค) ──
@@ -1768,141 +1428,8 @@ export default function ReportPage() {
         </div>
       )
     }
-    if (kind === 'education') {
-      if (!children.length) return <div style={{ fontSize: 12.5, color: '#94a3b8', marginBottom: 12 }}>ยังไม่มีข้อมูลบุตร</div>
-      const nowYearBE = new Date().getFullYear() + 543
-      const eduGrowth = toNum(client?.salaryIncreaseRate)
-      const planOf = (c: any, i2: number) => computeChildPlan(toNum(c.age), eduSettingOf(eduPlan?.[i2]), eduCosts, eduInf, eduRet, eduGrowth)
-      const totalAll = children.reduce((acc, c, i2) => {
-        const e = planOf(c, i2)
-        return { nominal: acc.nominal + e.totalNominal, pv: acc.pv + e.totalPV, monthly: acc.monthly + e.monthlySaving }
-      }, { nominal: 0, pv: 0, monthly: 0 })
-      const Stat = ({ l, v, c, unit = 'บาท' }: { l: string; v: string; c: string; unit?: string }) => (
-        <div style={{ border: '1px solid #f1f5f9', borderLeft: `4px solid ${c}`, borderRadius: 10, padding: '10px 14px' }}>
-          <div style={{ fontSize: 11, color: '#94a3b8' }}>{l}</div>
-          <div style={{ fontSize: 19, fontWeight: 800, fontFamily: 'monospace', color: c, marginTop: 2 }}>{v}</div>
-          <div style={{ fontSize: 10, color: '#cbd5e1' }}>{unit}</div>
-        </div>
-      )
-      return (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', borderLeft: `5px solid ${TEAL}`, paddingLeft: 10, marginBottom: 12 }}>ทุนการศึกษาบุตรที่ต้องการ</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 18 }}>
-            <Stat l="จำนวนบุตร" v={String(children.length)} c="#0f172a" unit="คน" />
-            <Stat l="ค่าเล่าเรียนรวม (อนาคต)" v={fmt(totalAll.nominal)} c={AMBERR} />
-            <Stat l="เงินก้อนวันนี้ (PV)" v={fmt(totalAll.pv)} c={TEAL} />
-            <Stat l="ต้องออม/เดือน" v={fmt(totalAll.monthly)} c={GREENR} />
-          </div>
-          {children.map((c, ci) => {
-            const setting = eduSettingOf(eduPlan?.[ci])
-            const type = setting.type
-            const includeMaster = setting.includeMaster
-            const ageNow = toNum(c.age)
-            // แสดงเฉพาะระดับชั้นที่เลือกไว้ในหน้าทุนการศึกษา (ที่ตัดออกไม่นับทั้งในตารางและยอดรวม)
-            const rows: { age: number; year: number; lvl: string; cur: number; fut: number }[] = []
-            for (let a = Math.max(ageNow, 3); a <= 23; a++) {
-              const lvl = levelForAge(a); if (!lvl) continue
-              if (lvl.key === 'master' && !includeMaster) continue
-              if (setting.excludedLevels?.includes(lvl.key)) continue
-              const base = toNum(eduCosts?.[lvl.key]?.[type]); if (base <= 0) continue
-              rows.push({ age: a, year: nowYearBE + (a - ageNow), lvl: lvl.label, cur: base, fut: base * Math.pow(1 + eduInf / 100, a - ageNow) })
-            }
-            if (!rows.length) return null
-            const tdE: React.CSSProperties = { padding: '4px 10px', fontSize: 11.5, color: '#334155' }
-            return (
-              <div key={ci} style={{ border: '1px solid #f1f5f9', borderRadius: 12, overflow: 'hidden', marginBottom: 12, breakInside: 'avoid' }}>
-                <div style={{ padding: '7px 12px', background: '#f8fafc', fontSize: 12.5, fontWeight: 800, color: '#0f172a' }}>
-                  {c.name || `บุตรคนที่ ${ci + 1}`} · อายุปัจจุบัน {ageNow} ปี <span style={{ color: '#94a3b8', fontWeight: 600 }}>({type === 'private' ? 'เอกชน' : type === 'inter' ? 'นานาชาติ' : 'รัฐบาล'}{includeMaster ? ' · รวมปริญญาโท' : ''})</span>
-                </div>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      {['อายุ', 'ปี พ.ศ.', 'ระดับ', 'ค่าเล่าเรียน (ปัจจุบัน)', 'ปรับเงินเฟ้อแล้ว'].map((h, i2) => (
-                        <th key={h} style={{ padding: '5px 10px', fontSize: 10, fontWeight: 700, color: '#64748b', textAlign: i2 >= 3 ? 'right' : 'left' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map(r => (
-                      <tr key={r.age} style={{ borderBottom: '1px solid #f8fafc' }}>
-                        <td style={tdE}>{r.age}</td>
-                        <td style={tdE}>{r.year}</td>
-                        <td style={tdE}>{r.lvl}</td>
-                        <td style={{ ...tdE, textAlign: 'right', fontFamily: 'monospace' }}>{fmt(r.cur)}</td>
-                        <td style={{ ...tdE, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: '#0f172a' }}>{fmt(r.fut)}</td>
-                      </tr>
-                    ))}
-                    <tr style={{ borderTop: '1.5px solid #cbd5e1' }}>
-                      <td colSpan={4} style={{ ...tdE, fontWeight: 800, color: '#0f172a' }}>รวม (ตามราคาอนาคต)</td>
-                      <td style={{ ...tdE, textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: AMBERR }}>{fmt(rows.reduce((x, r) => x + r.fut, 0))}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )
-          })}
-          <p style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.7 }}>* เงินเฟ้อค่าการศึกษา {eduInf}% ต่อปี · ผลตอบแทนกองทุนเพื่อการศึกษา {eduRet}% ต่อปี (จากหน้าสมมติฐาน)</p>
-        </div>
-      )
-    }
-    if (kind === 'retirement') {
-      const persons = [
-        { name: `คุณ${client?.firstName || 'ลูกค้า'}`, r: retR, tint: TEAL },
-        ...(hasSpouse ? [{ name: client?.spouseProfile?.firstName ? `คุณ${client.spouseProfile.firstName}` : 'คู่สมรส', r: retRSp, tint: '#8b5cf6' }] : []),
-      ].filter(p => p.r)
-      if (!persons.length) return <div style={{ fontSize: 12.5, color: '#94a3b8', marginBottom: 12 }}>ยังไม่มีข้อมูลแผนเกษียณ</div>
-      const Stat = ({ l, v, c }: { l: string; v: number; c: string }) => (
-        <div style={{ border: '1px solid #f1f5f9', borderLeft: `4px solid ${c}`, borderRadius: 10, padding: '8px 12px' }}>
-          <div style={{ fontSize: 10, color: '#94a3b8' }}>{l}</div>
-          <div style={{ fontSize: 14.5, fontWeight: 800, fontFamily: 'monospace', color: c, marginTop: 2 }}>{fmt(v)}</div>
-        </div>
-      )
-      return (
-        <div style={{ marginBottom: 16 }}>
-          {persons.map(p => {
-            const R3 = p.r!
-            const noSaveByAge = new Map<number, number>((R3.projectionRowsNoSave ?? []).map((row: any) => [row.age, Math.round(row.phase === 'accumulation' ? (row.totalAccum ?? 0) : (row.closeBalance ?? 0))]))
-            const chart = (R3.projectionRows ?? []).map((row: any) => ({
-              age: row.age,
-              มูลค่ารวม: Math.round(row.phase === 'accumulation' ? (row.totalAccum ?? 0) : (row.closeBalance ?? 0)),
-              ไม่ออมเพิ่ม: Math.max(0, noSaveByAge.get(row.age) ?? 0),
-              ค่าใช้จ่าย: row.phase === 'retirement' ? Math.round((row.withdrawalLiving ?? 0) + (row.withdrawalGoals ?? 0)) : 0,
-            }))
-            return (
-              <div key={p.name} style={{ marginBottom: 20, breakInside: 'avoid' }}>
-                <div style={{ fontSize: 15, fontWeight: 800, color: p.tint, borderLeft: `5px solid ${p.tint}`, paddingLeft: 10, marginBottom: 10 }}>เงินเกษียณที่ต้องการ · {p.name} (เกษียณอายุ {R3.retireAge} ปี)</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 12 }}>
-                  <Stat l="เงินเกษียณที่ต้องการ" v={R3.needed} c="#0f172a" />
-                  <Stat l="มูลค่าสินทรัพย์ที่มี" v={R3.have} c={GREENR} />
-                  <Stat l="ส่วนที่ยังขาด" v={R3.gap} c={R3.gap > 0 ? REDR : GREENR} />
-                  <Stat l="ต้องออมเพิ่ม (เท่ากันทุกปี)" v={R3.annualSavings} c="#0284c7" />
-                  <Stat l="ออมเพิ่มขึ้นทุกปี (ปีแรก)" v={R3.gradFirst} c="#8b5cf6" />
-                </div>
-                {chart.length > 0 && (
-                  <div style={{ background: '#f8fafc', borderRadius: 12, padding: '10px 12px 4px' }}>
-                    <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 0.6, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 4 }}>การคาดการณ์มูลค่าเงินในอนาคต (สะสม → ใช้เงินหลังเกษียณ)</div>
-                    <div style={{ height: 190 }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={chart} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
-                          <XAxis dataKey="age" tick={{ fontSize: 9.5, fill: '#94a3b8' }} interval={4} />
-                          <YAxis tickFormatter={(v: any) => `${(v / 1e6).toFixed(0)}M`} tick={{ fontSize: 9.5, fill: '#94a3b8' }} width={34} />
-                          <Tooltip formatter={(v: any) => `${fmt(v)} บาท`} labelFormatter={(l: any) => `อายุ ${l} ปี`} />
-                          <Legend wrapperStyle={{ fontSize: 10.5 }} />
-                          <ReferenceLine x={R3.retireAge} stroke={p.tint} strokeDasharray="4 3" />
-                          <Bar isAnimationActive={false} dataKey="ค่าใช้จ่าย" barSize={4} fill="#f59e0bb0" />
-                          <Line isAnimationActive={false} dataKey="ไม่ออมเพิ่ม" name="มูลค่ารวม (กรณีไม่ออมเพิ่ม)" stroke={REDR} strokeWidth={1.8} strokeDasharray="6 4" dot={false} />
-                          <Line isAnimationActive={false} dataKey="มูลค่ารวม" name="มูลค่ารวม (ออมตามแผน)" stroke={p.tint} strokeWidth={2} dot={false} />
-                        </ComposedChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )
-    }
+    if (kind === 'education') return <EducationSection ctx={ctx} />
+    if (kind === 'retirement') return <RetirementSection ctx={ctx} />
     if (kind === 'portfolio_reco') {
       // พอร์ตแนะนำ 3 ระดับความเสี่ยง — ทางเลือกที่ Sharpe สูงสุดของแต่ละชุด (ข้อมูลตลาดล่าสุดถ้ามี)
       const assets = applyMarketData(DEFAULT_ASSETS, marketData)
