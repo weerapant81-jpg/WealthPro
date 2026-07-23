@@ -2,7 +2,7 @@
 import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { Save, CheckCircle, User, TrendingUp, GraduationCap, Percent, Shield, SlidersHorizontal, ChartPie } from 'lucide-react'
+import { Save, CheckCircle, User, TrendingUp, GraduationCap, Percent, Shield, SlidersHorizontal, ChartPie, Landmark } from 'lucide-react'
 import { MoneyInput as MoneyInputBase } from '../components/MoneyInput'
 import { PageHeader } from '../components/ui'
 import { TableExcelButton } from '../components/exportable'
@@ -55,6 +55,53 @@ function InflationReference({ catKey, current, onUse }: { catKey: string; curren
         {cat.latest && chip(`ปี ${cat.latest.year + 543}`, cat.latest.value, 'ปีล่าสุด — ปีเดียวแกว่งมาก ไม่แนะนำใช้วางแผน')}
       </div>
     </div>
+  )
+}
+
+/* ── อัตราดอกเบี้ยการออมอ้างอิงจาก ธปท. — แสดงอย่างเดียว แก้ไม่ได้ ── */
+type RateRow = { key: string; label: string; value: number | null; detail: string; note?: string }
+type SavingRatesRef = { source: string; sourceUrl: string; asOf: string | null; rows: RateRow[] }
+
+function SavingRatesCard() {
+  const { data } = useQuery<SavingRatesRef>({
+    queryKey: ['reference-saving-rates'],
+    queryFn: () => api.get('/reference/saving-rates').then(r => r.data),
+    staleTime: 24 * 60 * 60 * 1000,
+    retry: false,
+  })
+  if (!data?.rows?.length) return null   // ดึงไม่ได้ → ไม่แสดงการ์ดเลย
+  const beDate = (iso: string | null) => {
+    if (!iso) return null
+    const [y, m, d] = iso.split('-')
+    return y && m && d ? `${d}/${m}/${Number(y) + 543}` : iso
+  }
+  return (
+    <Section icon={<Landmark size={16} />} title="อัตราดอกเบี้ยการออม (อ้างอิงตลาด)">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {data.rows.map(r => (
+          <div key={r.key} style={{
+            display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12,
+            padding: '8px 0', borderBottom: '1px solid var(--card-border)',
+          }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{r.label}</div>
+              {(r.detail || r.note) && (
+                <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginTop: 2, lineHeight: 1.5 }}>
+                  {r.detail || r.note}
+                </div>
+              )}
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'monospace', whiteSpace: 'nowrap', color: r.value === null ? 'var(--text-secondary)' : 'var(--text-primary)' }}>
+              {r.value === null ? '—' : `${r.value.toFixed(2)}%`}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginTop: 8, lineHeight: 1.6 }}>
+        ข้อมูลอ้างอิงเท่านั้น ไม่ถูกนำไปคำนวณในแผน · ที่มา: {data.source}
+        {data.asOf ? ` · ข้อมูล ณ ${beDate(data.asOf)}` : ''}
+      </div>
+    </Section>
   )
 }
 
@@ -370,6 +417,9 @@ export default function SettingsPage() {
               <NumInput value={form.carLoanRate} onChange={v => set('carLoanRate', v)} unit="%/ปี" step={0.1} />
             </Row>
           </Section>
+
+          {/* อัตราดอกเบี้ยการออมอ้างอิงจาก ธปท. — แสดงอย่างเดียว */}
+          <SavingRatesCard />
 
           {/* กองทุนประกันสังคม */}
           <Section icon={<Shield size={16} />} title="กองทุนประกันสังคม">

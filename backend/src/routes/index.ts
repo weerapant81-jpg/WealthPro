@@ -37,6 +37,7 @@ import { getInvestmentProfile, upsertInvestmentProfile } from '../controllers/in
 import { getMarketReturns, getAssetReturn } from '../controllers/marketreturns.controller'
 import { quoteSymbol, annualReturn } from '../controllers/settrade.controller'
 import { getThaiInflationRef } from '../lib/inflation'
+import { getSavingRatesRef } from '../lib/savingRates'
 import { chatCopilot } from '../controllers/copilot.controller'
 import { createCheckout, createPortal } from '../controllers/billing.controller'
 import { listTutorials, createTutorial, updateTutorial, deleteTutorial } from '../controllers/tutorial.controller'
@@ -161,6 +162,12 @@ r.put('/profile', authenticate, upsertProfile)
 r.get('/reference/inflation', authenticate, async (_req, res) => {
   const data = await getThaiInflationRef()
   if (!data) return res.status(503).json({ error: 'INFLATION_REF_UNAVAILABLE' })
+  res.json(data)
+})
+// อัตราดอกเบี้ยการออมอ้างอิง (ธปท.) — แสดงอย่างเดียว ไม่ผูกกับลูกค้า
+r.get('/reference/saving-rates', authenticate, async (_req, res) => {
+  const data = await getSavingRatesRef()
+  if (!data) return res.status(503).json({ error: 'SAVING_RATES_UNAVAILABLE' })
   res.json(data)
 })
 r.get('/assumption-defaults', authenticate, requireAdmin, getAssumptionDefaults)
