@@ -382,8 +382,7 @@ export default function SettingsPage() {
         alignItems: 'stretch',
       }}>
 
-          {/* อัตราเงินเฟ้อ — การ์ดสูงสุด กินสองแถวในคอลัมน์เดียว ให้การ์ดเตี้ยเรียงซ้อนข้าง ๆ ได้ 2 ชั้น */}
-          <div style={{ gridRow: 'span 2', display: 'grid' }}>
+          {/* อัตราเงินเฟ้อ — การ์ดสูงสุดของหน้า */}
           <Section icon={<Percent size={16} />} title="อัตราเงินเฟ้อ">
             <Row label="ทั่วไป">
               <NumInput value={form.inflationRate} onChange={v => set('inflationRate', v)} unit="%/ปี" step={0.1} />
@@ -403,7 +402,6 @@ export default function SettingsPage() {
             <InflationReference catKey="medical" current={form.medicalInflation} onUse={v => set('medicalInflation', v)} />
             <InflationSourceNote />
           </Section>
-          </div>
 
           {/* ผลตอบแทนที่คาดหวัง */}
           <Section icon={<TrendingUp size={16} />} title="ผลตอบแทนที่คาดหวัง">
@@ -443,6 +441,20 @@ export default function SettingsPage() {
             </Row>
           </Section>
 
+          {/* กองทุนประกันสังคม — วางใต้การ์ดเงินเฟ้อ (คอลัมน์แรกของแถวที่สอง) */}
+          <Section icon={<Shield size={16} />} title="กองทุนประกันสังคม">
+            <Row label="ผลตอบแทนเฉลี่ย 5 ปี" hint="ใช้ในแท็บ 'มูลค่ากองทุนประกันสังคม'">
+              <NumInput value={form.ssoReturnRate} onChange={v => set('ssoReturnRate', v)} unit="%/ปี" step={0.01} />
+            </Row>
+            <div style={{ marginTop: 6 }}>
+              <div style={{ fontSize: 13, color: 'var(--text-primary)', marginBottom: 6 }}>ข้อมูล ณ</div>
+              <input value={form.ssoReturnAsOf} onChange={e => set('ssoReturnAsOf', e.target.value)} style={inp} placeholder="เช่น เฉลี่ย 5 ปี (ก.พ. 2568)" />
+            </div>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.5 }}>
+              อัปเดตจากเว็บประกันสังคม (sso.go.th) — แนะนำตรวจสอบ/แก้ไขทุกเดือน
+            </p>
+          </Section>
+
           {/* อัตราดอกเบี้ยการออมอ้างอิงจาก ธปท. — แสดงอย่างเดียว */}
           <SavingRatesCard />
 
@@ -462,21 +474,6 @@ export default function SettingsPage() {
             </Row>
           </Section>
 
-          {/* กองทุนประกันสังคม — เป็นการ์ดที่เหลือใบสุดท้ายของแถว ให้กินเต็มความกว้าง จะได้ไม่มีช่องโหว่ข้าง ๆ */}
-          <div style={{ gridColumn: '1 / -1', display: 'grid' }}>
-          <Section icon={<Shield size={16} />} title="กองทุนประกันสังคม">
-            <Row label="ผลตอบแทนเฉลี่ย 5 ปี" hint="ใช้ในแท็บ 'มูลค่ากองทุนประกันสังคม'">
-              <NumInput value={form.ssoReturnRate} onChange={v => set('ssoReturnRate', v)} unit="%/ปี" step={0.01} />
-            </Row>
-            <div style={{ marginTop: 6 }}>
-              <div style={{ fontSize: 13, color: 'var(--text-primary)', marginBottom: 6 }}>ข้อมูล ณ</div>
-              <input value={form.ssoReturnAsOf} onChange={e => set('ssoReturnAsOf', e.target.value)} style={inp} placeholder="เช่น เฉลี่ย 5 ปี (ก.พ. 2568)" />
-            </div>
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.5 }}>
-              อัปเดตจากเว็บประกันสังคม (sso.go.th) — แนะนำตรวจสอบ/แก้ไขทุกเดือน
-            </p>
-          </Section>
-          </div>
           {/* กองทุนสำรองเลี้ยงชีพ — ย้ายไปกรอกที่หน้าข้อมูลส่วนบุคคล (สวัสดิการที่มี) แล้ว */}
 
         {/* ── ค่าใช้จ่ายด้านการศึกษา — เต็มความกว้าง (ตารางกว้าง ใส่ในคอลัมน์เดียวไม่พอ) ── */}
