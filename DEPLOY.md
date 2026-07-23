@@ -44,6 +44,29 @@ Export จากโลโก้ WealthPro แล้ววางใน `frontend/
   ```
 - ได้ URL เช่น `https://wealthpro-api.onrender.com`
 
+## 2.5 Staging — ทดสอบก่อนขึ้นจริง (แนะนำอย่างยิ่ง)
+ตอนนี้ push ขึ้น `main` = ขึ้น production ทันที ไม่มีที่ให้ลองก่อน
+วิธีทำ staging โดยไม่แตะฐานข้อมูลจริง:
+
+1. **สร้าง branch `staging`** — `git switch -c staging && git push -u origin staging`
+   Vercel จะสร้าง preview deployment ให้อัตโนมัติที่ URL คงที่ เช่น
+   `https://wealth-pro-git-staging-<team>.vercel.app`
+2. **สร้างฐานข้อมูลแยก** — ที่ Neon กด **Branch** จาก production (ได้ข้อมูลชุดเดียวกันมาลองโดยไม่กระทบตัวจริง)
+3. **สร้าง Render service ตัวที่สอง** — ตั้งค่าเหมือนตัวจริง แต่:
+   - Branch = `staging`
+   - `DATABASE_URL` = ของ Neon branch ที่เพิ่งสร้าง
+   - `FRONTEND_URL` = URL preview ของ Vercel (ข้อ 1)
+   - ใช้ Stripe **test mode** key ไม่ใช่ live
+4. **ที่ Vercel → Settings → Environment Variables** เพิ่มเฉพาะ scope **Preview**:
+   ```
+   VITE_API_URL = https://<staging-api>.onrender.com
+   ```
+   > ⚠️ ข้อนี้สำคัญที่สุด — ถ้าไม่ตั้ง หน้า preview จะยิงเข้า **API ตัวจริง** เพราะ `vercel.json`
+   > rewrite `/api` ไป production แบบตายตัว เท่ากับทดสอบบนข้อมูลลูกค้าจริง
+   > (โค้ดฝั่งหน้าเว็บรองรับตัวแปรนี้แล้วที่ `frontend/src/lib/api.ts`)
+
+จากนั้นเปลี่ยนวิธีทำงานเป็น: push → `staging` → ทดสอบ → merge เข้า `main` เมื่อผ่าน
+
 ## 3. Frontend — Vercel (Import repo, root = `frontend/`)
 > ⚠️ frontend import โมดูลกลาง `shared/` ผ่าน alias `@shared` ซึ่งอยู่นอก root directory
 > ที่ Vercel → Settings → Build & Deployment ต้องเปิด **"Include files outside of the Root Directory"** (ค่าเริ่มต้นเปิดอยู่)
