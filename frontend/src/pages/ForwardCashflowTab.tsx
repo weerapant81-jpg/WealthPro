@@ -9,9 +9,9 @@ import { useNavigate } from 'react-router-dom'
 import { ResponsiveContainer, ComposedChart, Bar, Line as RLine, XAxis, YAxis, Tooltip, CartesianGrid, Legend, Cell, ReferenceLine } from 'recharts'
 import { ChartFrame, ExcelButton, type ExcelSheet } from '../components/exportable'
 import { useRetirementBalances } from '../hooks/useRetirementBalances'
+import { toNum } from '@shared/finance/math'
 
 /* ── helpers ── */
-const toNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
 const fmt0 = (n: number) => (isFinite(n) ? Math.round(n) : 0).toLocaleString('th-TH')
 const toMonthly = (amount: number, freq: string) => freq === 'QUARTERLY' ? amount / 3 : freq === 'ANNUALLY' ? amount / 12 : amount
 const uid = () => Math.random().toString(36).slice(2, 9)

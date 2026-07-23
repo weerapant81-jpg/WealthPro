@@ -6,34 +6,12 @@ import {
   ResponsiveContainer, Legend, ReferenceLine,
 } from 'recharts'
 import { ChartFrame } from './exportable'
+import { annualizedReturn, mulberry32, percentile, toNum } from '@shared/finance/math'
 
 /* กราฟจำลองมูลค่าสินทรัพย์ลงทุนในอนาคต (Monte Carlo) — ใช้ตรรกะเดียวกับแท็บ "มูลค่าสินทรัพย์ลงทุน"
    (นับทุกรายการ ไม่มีปุ่มตัดออก) เพื่อนำไปแสดงในแดชบอร์ด/หน้าอื่นได้ */
 
-const toNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
 const fmtFull = (n: number) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', maximumFractionDigits: 0 }).format(n)
-function annualizedReturn(cost: number, value: number, investDate: string): number | null {
-  if (cost <= 0 || value <= 0 || !investDate) return null
-  const start = new Date(investDate)
-  if (isNaN(start.getTime())) return null
-  const years = (Date.now() - start.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
-  if (years < 1 / 365.25) return null
-  return (Math.pow(value / cost, 1 / years) - 1) * 100
-}
-function mulberry32(seed: number) {
-  return function () {
-    seed |= 0; seed = (seed + 0x6D2B79F5) | 0
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-}
-function percentile(sorted: number[], p: number): number {
-  if (sorted.length === 0) return 0
-  const idx = (sorted.length - 1) * p
-  const lo = Math.floor(idx), hi = Math.ceil(idx)
-  return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo)
-}
 type Row = { age: number; year: number; p10: number; p50: number; p90: number; band: [number, number] }
 
 const C_LOW = '#fb7185', C_MID = '#06b6d4', C_HIGH = '#10b981'

@@ -5,13 +5,13 @@ import { Scale } from 'lucide-react'
 import { useIsCompact } from '../../hooks/useViewport'
 import { card } from '../../styles/dark'
 import { TableExcelButton } from '../../components/exportable'
+import { toNum } from '@shared/finance/math'
 
 /* ── helpers ── */
 const fmt = (n: number, d = 2) =>
   isFinite(n) && !isNaN(n)
     ? n.toLocaleString('th-TH', { minimumFractionDigits: d, maximumFractionDigits: d })
     : '-'
-const toNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
 
 /* ค่าชดเชยตาม พ.ร.บ.คุ้มครองแรงงาน (มาตรา 118) */
 const TIERS = [

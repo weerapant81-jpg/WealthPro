@@ -5,6 +5,7 @@ import { card, inp, sel, btn } from '../styles/dark'
 import { MoneyInputStr as NumInput } from '../components/MoneyInput'
 import { Plus, Trash2, Clock, CheckCircle, Loader, TrendingUp, Home, Briefcase, AlertTriangle, PiggyBank, CreditCard } from 'lucide-react'
 import { TableExcelButton } from '../components/exportable'
+import { annualizedReturn } from '@shared/finance/math'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -243,14 +244,6 @@ function fmtNum(v: string) {
 }
 
 // อัตราผลตอบแทนต่อปีแบบทบต้น (CAGR) จากเงินลงทุน → มูลค่าปัจจุบัน ตามระยะเวลาที่ลงทุนจริง (ปีชนปี)
-function annualizedReturn(cost: number, value: number, investDate: string): number | null {
-  if (cost <= 0 || value <= 0 || !investDate) return null
-  const start = new Date(investDate)
-  if (isNaN(start.getTime())) return null
-  const years = (Date.now() - start.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
-  if (years < 1 / 365.25) return null // ลงทุนยังไม่ถึง 1 วัน
-  return (Math.pow(value / cost, 1 / years) - 1) * 100
-}
 
 function emptyPersonalAsset(): PersonalAsset {
   return { assetType: 'บ้านอยู่อาศัย', customLabel: '', currentValue: '', yearsHeld: '', debtRemaining: '' }

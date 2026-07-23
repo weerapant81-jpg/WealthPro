@@ -3,8 +3,8 @@ import { api } from '../lib/api'
 import { computeInsurance, defaultPlan, type PersonPlan } from '../pages/InsurancePlanPage'
 import { calc as calcTaxPlan, defaultState as defaultTaxState } from '../lib/tax'
 import { monthlyIncome } from '../lib/income'
+import { toNum } from '@shared/finance/math'
 
-const toNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
 
 /** ความคุ้มครองประกันชีวิต — reuse สูตรกลาง computeInsurance + auto-pull เดียวกับหน้าวางแผนประกัน (กัน drift)
  *  "ทุนที่ควรมี" = ตามวิธีที่เลือก (selectedMethod: HLV หรือ Needs-Based)

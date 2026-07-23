@@ -9,32 +9,10 @@ import { ChartFrame } from '../../components/exportable'
 import { card } from '../../styles/dark'
 import { SlidersHorizontal, Check, Info } from 'lucide-react'
 import { PORTFOLIO_SETS, DEFAULT_ASSETS, DEFAULT_CORR, computePortfolio, applyMarketData, applyCorrelation } from '../../lib/portfolioReturns'
+import { annualizedReturn, mulberry32, percentile, toNum } from '@shared/finance/math'
 
 const fmt = (n: number) => new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(Math.round(n))
-const toNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
 
-function annualizedReturn(cost: number, value: number, investDate: string): number | null {
-  if (cost <= 0 || value <= 0 || !investDate) return null
-  const start = new Date(investDate)
-  if (isNaN(start.getTime())) return null
-  const years = (Date.now() - start.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
-  if (years < 1 / 365.25) return null
-  return (Math.pow(value / cost, 1 / years) - 1) * 100
-}
-function mulberry32(seed: number) {
-  return function () {
-    seed |= 0; seed = (seed + 0x6D2B79F5) | 0
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-}
-function percentile(sorted: number[], p: number): number {
-  if (sorted.length === 0) return 0
-  const idx = (sorted.length - 1) * p
-  const lo = Math.floor(idx), hi = Math.ceil(idx)
-  return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo)
-}
 /** จำลอง Monte Carlo → median (และ p10/p90) ราย "อายุ" */
 function simulate(startValue: number, muPct: number, sdPct: number, years: number, seed: number) {
   const mu = muPct / 100, sd = sdPct / 100

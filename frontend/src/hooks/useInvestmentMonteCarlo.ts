@@ -1,35 +1,13 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { annualizedReturn, mulberry32, percentile, toNum } from '@shared/finance/math'
 
 /* ค่ากลาง (median / P50) ของ "มูลค่าสินทรัพย์ลงทุนในอนาคต" ราย "อายุ" ตามแบบจำลอง Monte Carlo
    — ใช้ตรรกะเดียวกับหน้า "มูลค่าสินทรัพย์ลงทุน" (ProjectionInvestmentTab) แบบนับทุกรายการ (ไม่มีปุ่มตัดออก)
    คืน Map<อายุ, median> · ว่างเปล่าถ้าไม่มีข้อมูลพอคำนวณ */
 
-const toNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
 
-function mulberry32(seed: number) {
-  return function () {
-    seed |= 0; seed = (seed + 0x6D2B79F5) | 0
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-}
-function percentile(sorted: number[], p: number): number {
-  if (sorted.length === 0) return 0
-  const idx = (sorted.length - 1) * p
-  const lo = Math.floor(idx), hi = Math.ceil(idx)
-  return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo)
-}
-function annualizedReturn(cost: number, value: number, investDate: string): number | null {
-  if (cost <= 0 || value <= 0 || !investDate) return null
-  const start = new Date(investDate)
-  if (isNaN(start.getTime())) return null
-  const years = (Date.now() - start.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
-  if (years < 1 / 365.25) return null
-  return (Math.pow(value / cost, 1 / years) - 1) * 100
-}
 
 export function useInvestmentMedianByAge(isSelf: boolean): Map<number, number> {
   const { data: invProfile } = useQuery({ queryKey: ['investment-profile'], queryFn: () => api.get('/investment-profile').then(r => r.data), retry: false })

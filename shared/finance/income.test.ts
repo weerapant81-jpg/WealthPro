@@ -2,18 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   INCOME_40, INCOME_40_LABELS, taxCodeOf, migrateIncomeLabel,
   isAnnualIncome, monthlyIncome, annualIncome,
-  toNum, sumMonthlyIncome, findSalaryRow,
+  sumMonthlyIncome, findSalaryRow,
 } from './income'
-
-describe('toNum', () => {
-  it('รองรับตัวเลขที่มีลูกน้ำ และไม่คืน NaN', () => {
-    expect(toNum('1,234,567')).toBe(1234567)
-    expect(toNum(500)).toBe(500)
-    expect(toNum('')).toBe(0)
-    expect(toNum(null)).toBe(0)
-    expect(toNum('abc')).toBe(0)
-  })
-})
 
 describe('sumMonthlyIncome', () => {
   it('รวมทุกแหล่งเป็นต่อเดือน โดยข้ามแถวยอด ≤ 0', () => {

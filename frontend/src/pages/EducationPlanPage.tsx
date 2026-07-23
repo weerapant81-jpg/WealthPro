@@ -5,11 +5,11 @@ import { GraduationCap, Check, Loader2, LineChart as LineChartIcon, ChevronDown 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { ChartFrame, TableExcelButton } from '../components/exportable'
 import { usePortfolioReturns, type PortfolioReturn } from '../lib/portfolioReturns'
+import { toNum, growAnnuityFactor } from '@shared/finance/math'
 
 /* ── helpers ── */
 const fmt = (n: number, d = 0) =>
   isFinite(n) && !isNaN(n) ? n.toLocaleString('th-TH', { minimumFractionDigits: d, maximumFractionDigits: d }) : '-'
-const toNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
 
 export const LEVELS = [
   { key: 'kindergarten', label: 'อนุบาล', ages: [3, 4, 5] },
@@ -25,14 +25,8 @@ const TYPES = [
 ]
 export function levelForAge(age: number) { return LEVELS.find(l => l.ages.includes(age)) || null }
 
-// ตัวคูณ annuity แบบ "ออมเพิ่มขึ้นทุกปี" อัตรา g (growing annuity, จ่ายปลายงวด m งวด, คิดลด r)
-// PV = S × factor โดย S = เงินออมปีแรก, งวดที่ k = S × (1+g)^(k-1)
-export function growAnnuityFactor(r: number, g: number, m: number) {
-  if (m <= 0) return 0
-  const q = (1 + g) / (1 + r)
-  if (Math.abs(q - 1) < 1e-9) return m / (1 + g)
-  return (1 / (1 + r)) * (1 - Math.pow(q, m)) / (1 - q)
-}
+// นิยามอยู่ที่โมดูลกลาง shared/finance/math.ts — คง export ไว้ให้ไฟล์ที่ import จากที่นี่ใช้ได้ต่อ
+export { growAnnuityFactor }
 
 const card: React.CSSProperties = { background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, padding: '18px 20px' }
 

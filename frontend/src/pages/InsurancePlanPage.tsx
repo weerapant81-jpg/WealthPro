@@ -7,11 +7,11 @@ import { monthlyIncome } from '../lib/income'
 import { useIsCompact } from '../hooks/useViewport'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, LabelList } from 'recharts'
 import { ChartFrame } from '../components/exportable'
+import { toNum } from '@shared/finance/math'
 
 /* ── helpers ── */
 const fmt = (n: number, d = 0) =>
   isFinite(n) && !isNaN(n) ? n.toLocaleString('th-TH', { minimumFractionDigits: d, maximumFractionDigits: d }) : '-'
-const toNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
 export function pvAnnuity(rate: number, n: number, pmt: number) {
   if (rate === 0) return pmt * n
   return pmt * (1 - Math.pow(1 + rate, -n)) / rate

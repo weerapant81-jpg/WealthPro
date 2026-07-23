@@ -7,10 +7,10 @@ import { calc, defaultState, BRACKETS, expenseFor, type TaxState, type ExpenseKe
 import { MoneyInput } from '../components/MoneyInput'
 import { hasSpouseInfo } from '../lib/spouse'
 import { annualIncome, taxCodeOf } from '../lib/income'
+import { toNum } from '@shared/finance/math'
 
 /* ── helpers ── */
 const fmt = (n: number) => (isFinite(n) ? Math.round(n) : 0).toLocaleString('th-TH')
-const toNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
 
 /* ── UI bits ── */
 const card: React.CSSProperties = { background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, padding: '16px 18px' }

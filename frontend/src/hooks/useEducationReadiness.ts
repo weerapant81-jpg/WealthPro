@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { levelForAge, growAnnuityFactor, type ChildSetting } from '../pages/EducationPlanPage'
+import { toNum } from '@shared/finance/math'
 
-const toNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
 const defaultSetting = (): ChildSetting => ({ type: 'private', savingYears: 10, includeMaster: false, excludedLevels: [] })
 
 /** ทุนการศึกษาบุตร — reuse การคำนวณเดียวกับหน้าทุนการศึกษา (ใช้ผลตอบแทนกองทุนจากตั้งค่าเป็นค่าคงที่)

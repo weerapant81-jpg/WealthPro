@@ -9,6 +9,7 @@ import { ChartFrame, TableExcelButton } from '../../components/exportable'
 import { Briefcase, Check, Loader2 } from 'lucide-react'
 import { useIsCompact } from '../../hooks/useViewport'
 import { card } from '../../styles/dark'
+import { toNum } from '@shared/finance/math'
 
 /* ── helpers ── */
 const fmt = (n: number, d = 2) =>
@@ -16,7 +17,6 @@ const fmt = (n: number, d = 2) =>
     ? n.toLocaleString('th-TH', { minimumFractionDigits: d, maximumFractionDigits: d })
     : '-'
 const fmtK = (v: number) => v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : `${(v / 1e3).toFixed(0)}K`
-const toNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
 
 interface Row {
   age: number
