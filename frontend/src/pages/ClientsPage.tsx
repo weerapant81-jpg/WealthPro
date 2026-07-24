@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useClient, type ClientInfo } from '../context/ClientContext'
-import { Search, UserCircle, Phone, Mail, ArrowRight, UserPlus, X, Pencil, Trash2, Download, ShieldCheck, Check } from 'lucide-react'
+import { Search, UserCircle, Phone, Mail, ArrowRight, UserPlus, X, Pencil, Trash2, Download, ShieldCheck, Check, Send } from 'lucide-react'
 
 export default function ClientsPage() {
   const [q, setQ] = useState('')
@@ -71,6 +71,20 @@ export default function ClientsPage() {
     mutationFn: (id: string) => api.delete(`/clients/${id}`).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['clients'] }),
   })
+
+  // เชิญลูกค้าเข้า client portal (ส่งลิงก์ตั้งรหัสผ่านทางอีเมล) — เฉพาะแพ็ก Pro/AI
+  const [inviting, setInviting] = useState<string | null>(null)
+  async function inviteClient(c: ClientInfo) {
+    setInviting(c.id)
+    try {
+      await api.post(`/clients/${c.id}/invite`)
+      alert(`ส่งคำเชิญเข้าใช้งานไปที่อีเมลของ ${c.name} แล้ว`)
+    } catch (e: any) {
+      alert(e?.response?.data?.error === 'PLAN_REQUIRED'
+        ? 'การเชิญลูกค้าเข้า portal ใช้ได้เฉพาะแพ็กเกจ Pro ขึ้นไป'
+        : (e?.response?.data?.error || 'ส่งคำเชิญไม่สำเร็จ'))
+    } finally { setInviting(null) }
+  }
 
   // PDPA: ดาวน์โหลดข้อมูลลูกค้า (สิทธิ์เข้าถึง/พกพา)
   const [exporting, setExporting] = useState<string | null>(null)
@@ -201,6 +215,13 @@ export default function ClientsPage() {
                   onMouseEnter={e => { e.currentTarget.style.color = '#10b981'; e.currentTarget.style.borderColor = '#10b981' }}
                   onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--card-border)' }}>
                   <Download size={15} />
+                </button>
+                <button title="เชิญเข้าใช้งาน (ส่งลิงก์ตั้งรหัสผ่านทางอีเมล)" disabled={inviting === c.id}
+                  onClick={() => inviteClient(c)}
+                  style={{ display: 'flex', padding: 8, borderRadius: 8, border: '1px solid var(--card-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--cyan)'; e.currentTarget.style.borderColor = 'var(--cyan)' }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--card-border)' }}>
+                  <Send size={15} />
                 </button>
                 <button title="แก้ไข" onClick={() => openEdit(c)}
                   style={{ display: 'flex', padding: 8, borderRadius: 8, border: '1px solid var(--card-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}

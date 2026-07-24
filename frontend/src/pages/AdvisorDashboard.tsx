@@ -7,7 +7,7 @@ import { Landmark, Wallet, Users, CheckCircle2, ChevronRight, Search, Circle, X,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useIsCompact } from '../hooks/useViewport'
-import { AppointmentsWidget, TasksWidget, NewsWidget } from '../components/AdvisorWidgets'
+import { AppointmentsWidget, TasksWidget, NewsWidget, ClientRequestsWidget } from '../components/AdvisorWidgets'
 
 const fmt = (n: number) => new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(Math.round(n || 0))
 
@@ -111,6 +111,9 @@ export default function AdvisorDashboard() {
         <AppointmentsWidget />
         <TasksWidget />
       </div>
+
+      {/* คำแจ้งจากลูกค้า (client portal) */}
+      <ClientRequestsWidget />
 
       {/* ข่าวสารจากผู้ให้บริการ */}
       <NewsWidget />

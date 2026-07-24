@@ -419,3 +419,61 @@ export function NewsWidget() {
     </div>
   )
 }
+
+// กล่องคำแจ้งจากลูกค้า (client portal) — FA เห็นคำแจ้งใหม่ + กดรับทราบ/ดำเนินการแล้ว
+const REQ_CAT: Record<string, string> = {
+  job: 'เปลี่ยนงาน', income: 'รายได้เปลี่ยน', marital: 'สถานะครอบครัว', child: 'มีบุตร',
+  home: 'ซื้อบ้าน/อสังหาฯ', review: 'ขอนัดทบทวนแผน', other: 'อื่น ๆ',
+}
+export function ClientRequestsWidget() {
+  const qc = useQueryClient()
+  const { data: reqs = [] } = useQuery<any[]>({ queryKey: ['advisor-client-requests'], queryFn: () => api.get('/advisor/client-requests').then(r => r.data), retry: false })
+  const patch = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) => api.patch(`/advisor/client-requests/${id}`, { status }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['advisor-client-requests'] }),
+  })
+  const open = reqs.filter(r => r.status !== 'resolved')
+  if (!reqs.length) return null
+
+  return (
+    <div style={{ ...card, marginTop: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <BellRing size={18} color="var(--cyan)" />
+        <span style={{ fontSize: 15, fontWeight: 800 }}>คำแจ้งจากลูกค้า</span>
+        {open.filter(r => r.status === 'new').length > 0 && (
+          <span style={{ background: '#f43f5e', color: '#fff', fontSize: 11, fontWeight: 800, borderRadius: 20, padding: '1px 9px' }}>
+            {open.filter(r => r.status === 'new').length} ใหม่
+          </span>
+        )}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {reqs.slice(0, 20).map(r => (
+          <div key={r.id} style={{ border: '1px solid var(--card-border)', borderRadius: 10, padding: 12,
+            background: r.status === 'new' ? 'rgba(0,207,193,0.06)' : 'transparent' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 14, fontWeight: 700 }}>{r.client?.name ?? 'ลูกค้า'}</span>
+              <span style={{ fontSize: 12.5, color: 'var(--cyan)', fontWeight: 700 }}>· {REQ_CAT[r.category] ?? r.category}</span>
+              <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'var(--text-muted)' }}>
+                {new Date(r.createdAt).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })}
+              </span>
+            </div>
+            {r.message && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6 }}>{r.message}</div>}
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              {r.status === 'new' && (
+                <button onClick={() => patch.mutate({ id: r.id, status: 'seen' })}
+                  style={{ fontSize: 12, fontWeight: 700, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--card-border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>รับทราบ</button>
+              )}
+              {r.status !== 'resolved' && (
+                <button onClick={() => patch.mutate({ id: r.id, status: 'resolved' })}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, padding: '6px 12px', borderRadius: 8, border: 'none', background: 'var(--cyan)', color: '#00201d', cursor: 'pointer' }}>
+                  <Check size={13} /> ดำเนินการแล้ว
+                </button>
+              )}
+              {r.status === 'resolved' && <span style={{ fontSize: 12, color: '#10b981', fontWeight: 700 }}>✓ ดำเนินการแล้ว</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

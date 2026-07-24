@@ -7,6 +7,7 @@ import EnvBadge from './components/EnvBadge'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ClientProvider, useClient } from './context/ClientContext'
 import Layout from './components/Layout'
+import ClientPortalLayout from './components/ClientPortalLayout'
 // LoginPage โหลดทันที (หน้าแรกของผู้ยังไม่ล็อกอิน) — ที่เหลือ lazy แยกเป็น chunk ต่อหน้า
 import LoginPage from './pages/LoginPage'
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'))
@@ -42,6 +43,11 @@ const InstallGuidePage = lazy(() => import('./pages/InstallGuidePage'))
 const FeaturesPage = lazy(() => import('./pages/FeaturesPage'))
 const AboutPage = lazy(() => import('./pages/AboutPage'))
 const TutorialsPage = lazy(() => import('./pages/TutorialsPage'))
+// Client portal (ฝั่งลูกค้า role USER)
+const PortalHome = lazy(() => import('./pages/portal/PortalHome'))
+const PortalPlan = lazy(() => import('./pages/portal/PortalPlan'))
+const PortalNotify = lazy(() => import('./pages/portal/PortalNotify'))
+const PortalProfile = lazy(() => import('./pages/portal/PortalProfile'))
 
 const qc = new QueryClient({
   defaultOptions: {
@@ -62,11 +68,24 @@ function PageLoader() {
   return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>กำลังโหลด...</div>
 }
 
+// ลูกค้า (role USER) ไม่ควรเข้าหน้าฝั่ง FA — เด้งกลับ portal ของตัวเอง
+const isClientRole = (role?: string) => role === 'USER'
+
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">กำลังโหลด...</div>
   if (!user) return <Navigate to="/login" replace />
+  if (isClientRole(user.role)) return <Navigate to="/portal" replace />
   return <Layout>{children}</Layout>
+}
+
+// เปลือกฝั่งลูกค้า — ต้องล็อกอิน + เป็น role USER (FA ที่หลงเข้ามา → กลับหน้าหลัก FA)
+function ClientOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth()
+  if (loading) return <PageLoader />
+  if (!user) return <Navigate to="/login" replace />
+  if (!isClientRole(user.role)) return <Navigate to="/" replace />
+  return <ClientPortalLayout>{children}</ClientPortalLayout>
 }
 
 // เปิดจากแอปที่ติดตั้งลงหน้าจอโฮม (PWA standalone) หรือไม่
@@ -79,6 +98,7 @@ function HomeRoute() {
   const { user, loading } = useAuth()
   if (loading) return <PageLoader />
   if (!user) return isInstalledApp() ? <Navigate to="/login" replace /> : <LandingPage />
+  if (isClientRole(user.role)) return <Navigate to="/portal" replace />
   return <Layout><DashboardPage /></Layout>
 }
 
@@ -110,6 +130,7 @@ function ClientRoute({ children }: { children: React.ReactNode }) {
   const { selectedClient } = useClient()
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">กำลังโหลด...</div>
   if (!user) return <Navigate to="/login" replace />
+  if (isClientRole(user.role)) return <Navigate to="/portal" replace />
   if (isAdvisor(user.role) && !selectedClient) return <Navigate to="/clients" replace />
   return <Layout>{children}</Layout>
 }
@@ -123,6 +144,7 @@ function PlanRoute({ children, feature = 'pro' }: { children: React.ReactNode; f
   const { selectedClient } = useClient()
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">กำลังโหลด...</div>
   if (!user) return <Navigate to="/login" replace />
+  if (isClientRole(user.role)) return <Navigate to="/portal" replace />
   const full = user.role === 'SUPER_ADMIN' || user.role === 'USER'
   const plan = full ? 'ai' : (user.plan || 'free')
   const ok = feature === 'ai' ? plan === 'ai' : (plan === 'pro' || plan === 'ai')
@@ -196,7 +218,13 @@ export default function App() {
               <Route path="/about" element={<AboutPage />} />
               <Route path="/tutorials" element={<TutorialsRoute />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/set-password" element={<ResetPasswordPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />
+              {/* Client portal (ฝั่งลูกค้า) */}
+              <Route path="/portal" element={<ClientOnlyRoute><PortalHome /></ClientOnlyRoute>} />
+              <Route path="/portal/plan" element={<ClientOnlyRoute><PortalPlan /></ClientOnlyRoute>} />
+              <Route path="/portal/notify" element={<ClientOnlyRoute><PortalNotify /></ClientOnlyRoute>} />
+              <Route path="/portal/profile" element={<ClientOnlyRoute><PortalProfile /></ClientOnlyRoute>} />
               <Route path="/" element={<HomeRoute />} />
               {/* หน้าขายแบบตายตัว — แสดงเสมอไม่ว่าจะล็อกอินอยู่หรือไม่ (ต่างจาก "/" ที่ล็อกอินแล้วจะเป็นแดชบอร์ด)
                   ใช้ส่งลิงก์ให้คนอื่นดู หรือให้ทีมตรวจหน้าขายโดยไม่ต้องออกจากระบบ */}

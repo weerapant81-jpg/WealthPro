@@ -99,7 +99,7 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
   const { email } = req.body
   const user = email ? await prisma.user.findUnique({ where: { email } }) : null
   // ตอบเหมือนกันเสมอเพื่อไม่เปิดเผยว่ามีบัญชีนี้หรือไม่ (เฉพาะ FA/ผู้ให้บริการเท่านั้นที่ตั้งรหัสได้)
-  if (user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN')) {
+  if (user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' || (user.role === 'USER' && user.portalEnabled))) {
     const resetToken = genToken()
     await prisma.user.update({
       where: { id: user.id },
@@ -130,7 +130,11 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
   const hashed = await bcrypt.hash(password, 12)
   await prisma.user.update({
     where: { id: user.id },
-    data: { password: hashed, resetPasswordToken: null, resetPasswordExpires: null },
+    data: {
+      password: hashed, resetPasswordToken: null, resetPasswordExpires: null,
+      // ลูกค้าตั้งรหัสจากลิงก์เชิญ = ยืนยันตัวตน + เปิดสิทธิ์ portal ในตัว
+      ...(user.role === 'USER' ? { portalEnabled: true, isEmailVerified: true } : {}),
+    },
   })
   res.json({ message: 'ตั้งรหัสผ่านใหม่สำเร็จ กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่' })
 }
@@ -146,9 +150,10 @@ export async function login(req: Request, res: Response): Promise<void> {
     res.status(401).json({ error: 'Invalid credentials' })
     return
   }
-  // เฉพาะนักวางแผน (ADMIN) และผู้ให้บริการ (SUPER_ADMIN) เท่านั้น — ลูกค้า (USER) เป็นข้อมูลที่ FA ดูแล ไม่มีสิทธิ์ login
-  if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
-    res.status(403).json({ error: 'บัญชีนี้ไม่มีสิทธิ์เข้าใช้งาน (สำหรับนักวางแผนการเงินเท่านั้น)' })
+  // นักวางแผน (ADMIN) และผู้ให้บริการ (SUPER_ADMIN) ล็อกอินได้ · ลูกค้า (USER) ล็อกอินได้เฉพาะที่ FA เชิญเข้า client portal แล้ว (portalEnabled)
+  const isAdvisor = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN'
+  if (!isAdvisor && !(user.role === 'USER' && user.portalEnabled)) {
+    res.status(403).json({ error: 'บัญชีนี้ยังไม่ได้เปิดสิทธิ์เข้าใช้งาน กรุณาติดต่อนักวางแผนการเงินของคุณ' })
     return
   }
   // ต้องยืนยันอีเมลก่อน

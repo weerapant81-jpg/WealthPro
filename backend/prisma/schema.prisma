@@ -30,6 +30,7 @@ model User {
   resetPasswordExpires DateTime?
   isApproved         Boolean   @default(false)
   archivedAt         DateTime? // นำนักวางแผนออกจากรายการ (ลาออก/ไม่ชำระเงิน) — บล็อกล็อกอินแต่ยังเก็บข้อมูลไว้
+  portalEnabled      Boolean   @default(false) // ลูกค้า (USER) ที่ FA เชิญเข้า client portal แล้ว → ล็อกอินเองได้
   // ── Subscription / แพ็กเกจ (เฉพาะบัญชี FA) ──
   plan                 String    @default("free") // free | pro | ai
   planExpiresAt        DateTime? // หมดอายุ → ตกกลับ free (null = ไม่หมดอายุ เช่น SUPER_ADMIN ตั้งเอง)
@@ -60,6 +61,27 @@ model User {
   goals               Goal[]
   lifeInsurances      LifeInsurancePolicy[]
   propertyInsurances  PropertyInsurance[]
+  requestsSent        ClientRequest[] @relation("ClientRequestClient")   // คำแจ้งที่ลูกค้ารายนี้ส่ง
+  requestsReceived    ClientRequest[] @relation("ClientRequestAdvisor") // คำแจ้งที่ FA รายนี้ได้รับ
+}
+
+// คำแจ้งจากลูกค้าถึง FA (client portal) — เหตุการณ์สำเร็จรูป + ข้อความ
+model ClientRequest {
+  id         String    @id @default(cuid())
+  clientId   String    // ลูกค้า (User role USER) ที่ส่งคำแจ้ง
+  advisorId  String    // FA ที่ดูแล (= createdById ของลูกค้า) ผู้รับคำแจ้ง
+  category   String    // job | income | marital | child | home | review | other
+  message    String?   // ข้อความเพิ่มเติมจากลูกค้า
+  status     String    @default("new") // new | seen | resolved
+  createdAt  DateTime  @default(now())
+  seenAt     DateTime?
+  resolvedAt DateTime?
+
+  client   User @relation("ClientRequestClient", fields: [clientId], references: [id], onDelete: Cascade)
+  advisor  User @relation("ClientRequestAdvisor", fields: [advisorId], references: [id], onDelete: Cascade)
+
+  @@index([advisorId, status])
+  @@index([clientId])
 }
 
 model ClientProfile {

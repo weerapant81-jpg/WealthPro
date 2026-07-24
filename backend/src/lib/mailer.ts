@@ -58,3 +58,13 @@ export async function sendResetPasswordEmail(to: string, name: string, url: stri
   )
   await send(to, 'ตั้งรหัสผ่านใหม่ — WealthPro', html, `ตั้งรหัสผ่านใหม่ที่: ${url}`)
 }
+
+// เชิญลูกค้าเข้าใช้ client portal — ตั้งรหัสผ่านครั้งแรก
+export async function sendClientInviteEmail(to: string, name: string, advisorName: string, url: string): Promise<void> {
+  const html = wrap(
+    'เชิญเข้าใช้งาน WealthPro',
+    `สวัสดีคุณ ${name}, ${advisorName} เชิญคุณเข้าใช้งาน WealthPro เพื่อดูแผนการเงินของคุณได้ทุกที่ทุกเวลา กดปุ่มด้านล่างเพื่อตั้งรหัสผ่านและเริ่มใช้งาน (ลิงก์มีอายุ 24 ชั่วโมง)`,
+    'ตั้งรหัสผ่าน & เริ่มใช้งาน', url,
+  )
+  await send(to, 'เชิญเข้าใช้งาน WealthPro', html, `ตั้งรหัสผ่านที่: ${url}`)
+}

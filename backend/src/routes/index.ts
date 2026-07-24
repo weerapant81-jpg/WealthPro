@@ -1,7 +1,8 @@
 ﻿import { Router } from 'express'
 import { register, login, googleAuth, appleAuth, refresh, me, verifyEmail, resendVerify, forgotPassword, resetPassword, getAdvisorProfile, saveAdvisorProfile } from '../controllers/auth.controller'
 import { getClientProfile, upsertClientProfile } from '../controllers/client.controller'
-import { listUsers, approveUser, rejectUser, archiveUser, unarchiveUser, listClients, getAdvisorSummary, getPlanReviews, createClient, updateClient, deleteClient, setUserPlan } from '../controllers/admin.controller'
+import { listUsers, approveUser, rejectUser, archiveUser, unarchiveUser, listClients, getAdvisorSummary, getPlanReviews, createClient, updateClient, deleteClient, setUserPlan, inviteClient } from '../controllers/admin.controller'
+import { createClientRequest, listMyRequests, listAdvisorRequests, updateAdvisorRequest } from '../controllers/clientrequest.controller'
 import {
   getAppointments, createAppointment, updateAppointment, deleteAppointment,
   getTasks, createTask, updateTask, deleteTask,
@@ -113,6 +114,13 @@ r.get('/clients', authenticate, requireAdmin, listClients)
 r.post('/clients', authenticate, requireAdmin, validate(clientSchema), createClient)
 r.put('/clients/:id', authenticate, requireAdmin, validate(clientSchema), updateClient)
 r.delete('/clients/:id', authenticate, requireAdmin, deleteClient)
+r.post('/clients/:id/invite', authenticate, requireAdmin, proOnly, inviteClient)   // เชิญเข้า client portal (เฉพาะ Pro/AI)
+
+// ── Client portal: ลูกค้าส่ง/ดูคำแจ้งถึง FA · FA ดู/อัปเดตสถานะ ──
+r.post('/client/requests', authenticate, createClientRequest)
+r.get('/client/requests', authenticate, listMyRequests)
+r.get('/advisor/client-requests', authenticate, requireAdmin, listAdvisorRequests)
+r.patch('/advisor/client-requests/:id', authenticate, requireAdmin, updateAdvisorRequest)
 // PDPA: สิทธิ์เข้าถึง/พกพา (export) + ความยินยอม (consent)
 r.get('/clients/:id/export', authenticate, requireAdmin, exportClient)
 r.get('/clients/:id/consent', authenticate, requireAdmin, getConsent)

@@ -1,9 +1,11 @@
 ﻿import { Response } from 'express'
+import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
 import { prisma } from '../lib/prisma'
 import { AuthRequest } from '../middleware/auth'
 import { decryptField } from '../lib/crypto'
 import { effectivePlan, FREE_CLIENT_LIMIT } from '../lib/plan'
+import { sendClientInviteEmail } from '../lib/mailer'
 
 // FA/Admin: สร้าง "ลูกค้า" (User role USER) — เป็น data record ที่ FA ดูแล ไม่ต้อง login เอง
 export async function createClient(req: AuthRequest, res: Response): Promise<void> {
@@ -94,6 +96,29 @@ export async function updateClient(req: AuthRequest, res: Response): Promise<voi
     }),
   ])
   res.json(client)
+}
+
+// FA/Admin: เชิญลูกค้าเข้า client portal — ส่งลิงก์ตั้งรหัสผ่านทางอีเมล
+// gate ด้วย requirePlan('pro') ที่ชั้น route → เฉพาะ FA แพ็ก Pro/AI แจก portal ได้
+export async function inviteClient(req: AuthRequest, res: Response): Promise<void> {
+  const id = req.params.id as string
+  const target = await prisma.user.findUnique({ where: { id } })
+  if (!target || target.role !== 'USER' || target.createdById !== req.userId) {
+    res.status(404).json({ error: 'ไม่พบลูกค้ารายนี้' })
+    return
+  }
+  if (!target.email) { res.status(400).json({ error: 'ลูกค้ารายนี้ยังไม่มีอีเมล กรุณาเพิ่มอีเมลก่อนเชิญ' }); return }
+  const token = crypto.randomBytes(32).toString('hex')
+  await prisma.user.update({
+    where: { id },
+    data: { resetPasswordToken: token, resetPasswordExpires: new Date(Date.now() + 24 * 60 * 60 * 1000) }, // 24 ชม.
+  })
+  const advisor = await prisma.user.findUnique({ where: { id: req.userId }, select: { name: true } })
+  const frontend = (process.env.FRONTEND_URL || 'https://wealthpro.cloud').split(',')[0].trim()
+  try {
+    await sendClientInviteEmail(target.email, target.name, advisor?.name || 'นักวางแผนการเงินของคุณ', `${frontend}/set-password?token=${token}`)
+  } catch { /* ยังตอบสำเร็จ — FA ขอส่งซ้ำได้ */ }
+  res.json({ message: 'ส่งคำเชิญไปยังอีเมลของลูกค้าแล้ว' })
 }
 
 // FA/Admin: ลบลูกค้า (cascade ลบข้อมูลทั้งหมดของลูกค้า)
