@@ -7,8 +7,8 @@ const promoEnd = PROMO_FREE_UNTIL.getTime()
 describe('PLANS / limits', () => {
   it('ราคาแพ็กเกจตรงกับที่ประกาศขาย', () => {
     expect(PLANS.free.price).toBe(0)
-    expect(PLANS.pro.price).toBe(590)
-    expect(PLANS.ai.price).toBe(890)
+    expect(PLANS.pro.price).toBe(490)
+    expect(PLANS.ai.price).toBe(690)
   })
   it('Free จำกัดลูกค้า 5 คน', () => {
     expect(FREE_CLIENT_LIMIT).toBe(5)
