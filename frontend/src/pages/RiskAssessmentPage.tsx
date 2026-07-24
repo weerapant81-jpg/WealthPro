@@ -480,7 +480,7 @@ export default function RiskAssessmentPage() {
           {saved ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
               <div style={{ color: '#22c55e', fontSize: 14 }}>✓ บันทึกผลการประเมินแล้ว</div>
-              <button onClick={() => navigate('/financial-plan')}
+              <button onClick={() => navigate('/settings')}
                 style={{ ...s.btn(), padding: '12px 32px', fontSize: 14, gap: 8 }}>
                 เริ่มต้นวางแผนการเงิน <ArrowRight size={16} />
               </button>
