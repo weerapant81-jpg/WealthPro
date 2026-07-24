@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import {
   ScrollText, Users, Heart, Baby, UserRound, Scale, Wallet,
-  Info, AlertTriangle, Landmark, FileText, Gavel, Receipt, Plus, Trash2, CheckCircle,
+  Info, AlertTriangle, Landmark, FileText, Gavel, Receipt, Plus, Trash2, CheckCircle, ShieldCheck,
 } from 'lucide-react'
 
 type Person = 'self' | 'spouse'
@@ -106,6 +106,8 @@ export default function EstatePlanPage({ person = 'self' }: { person?: Person })
     queryFn: () => api.get(`/financial-ratios?person=${ratioPerson}`).then(r => r.data),
   })
   const { data: savedPlan } = useQuery({ queryKey: ['estate-plan'], queryFn: () => api.get('/estate-plan').then(r => r.data) })
+  const { data: lifePolicies } = useQuery({ queryKey: ['life-insurances'], queryFn: () => api.get('/life-insurances').then(r => r.data), retry: false })
+  const { data: allBenefs } = useQuery({ queryKey: ['all-beneficiaries'], queryFn: () => api.get('/all-beneficiaries').then(r => r.data), retry: false })
 
   // ---- ข้อมูลครอบครัวที่ดึงมา ----
   const sp = cp?.spouseProfile || {}
@@ -122,6 +124,38 @@ export default function EstatePlanPage({ person = 'self' }: { person?: Person })
     [cp],
   )
   const netWorth = ratios?.summary?.netWorth ?? 0
+
+  // ---- ทุนประกันชีวิตของผู้เสียชีวิต → กระจายตามสัดส่วนผู้รับผลประโยชน์ในกรมธรรม์ ----
+  const insurance = useMemo(() => {
+    const norm = (s?: string) => (s || '').trim().toLowerCase()
+    const dn = norm(deceasedName)
+    const first = dn.split(/\s+/)[0] || ''
+    // จับคู่กรมธรรม์กับผู้เสียชีวิต: ไม่ระบุผู้เอาประกัน = ถือเป็นลูกค้าหลัก (self)
+    const mine = (ins?: string) => {
+      const a = norm(ins)
+      if (!a) return person === 'self'
+      return a === dn || (first.length > 1 && a.includes(first)) || dn.includes(a)
+    }
+    const policies = (lifePolicies ?? []).filter((p: any) => mine(p.insuredPerson))
+    const totalSum = policies.reduce((s: number, p: any) => s + (Number(p.sumAssured) || 0), 0)
+    const map = new Map<string, { name: string; rel: string; amount: number }>()
+    let unallocated = 0
+    for (const p of policies) {
+      const sa = Number(p.sumAssured) || 0
+      if (sa <= 0) continue
+      const bens = (allBenefs ?? []).filter((b: any) => b.policyId === p.id)
+      const totalShare = bens.reduce((s: number, b: any) => s + (Number(b.sharePercent) || 0), 0)
+      if (!bens.length || totalShare <= 0) { unallocated += sa; continue }   // ไม่ระบุผู้รับ → ตกเป็นกองมรดก
+      for (const b of bens) {
+        const amt = sa * ((Number(b.sharePercent) || 0) / totalShare)
+        const key = (b.name || 'ไม่ระบุชื่อ').trim() || 'ไม่ระบุชื่อ'
+        const cur = map.get(key) || { name: key, rel: b.relationship || '', amount: 0 }
+        cur.amount += amt
+        map.set(key, cur)
+      }
+    }
+    return { policies, totalSum, unallocated, rows: [...map.values()].sort((a, b) => b.amount - a.amount) }
+  }, [lifePolicies, allBenefs, deceasedName, person])
 
   // ---- inputs (autosave) ----
   const [inputs, setInputs] = useState<EstateInputs>(defaultInputs())
@@ -543,6 +577,50 @@ export default function EstatePlanPage({ person = 'self' }: { person?: Person })
             </div>
           )}
         </div>
+      </div>
+
+      {/* ── ส่วน 7: ทุนประกันชีวิต — สินไหมถึงผู้รับผลประโยชน์ ── */}
+      <div style={card()}>
+        <SectionTitle icon={ShieldCheck}
+          title="7 · ทุนประกันชีวิต (สินไหมถึงผู้รับผลประโยชน์)"
+          sub={`ทุนประกันของ${deceasedName} จ่ายตรงให้ผู้รับผลประโยชน์ตามสัดส่วนที่ระบุในกรมธรรม์ — โดยหลักไม่รวมในกองมรดก`}
+          accent="#10b981" />
+        {insurance.policies.length === 0 ? (
+          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>ยังไม่มีข้อมูลกรมธรรม์ประกันชีวิตของ{deceasedName} — เพิ่มได้ที่หน้า “ข้อมูลการประกัน”</div>
+        ) : (
+          <>
+            <div style={{ marginBottom: 12 }}>
+              <MiniStat label="ทุนประกันชีวิตรวม" value={fmt(insurance.totalSum)} color="#10b981" sub={`${insurance.policies.length} กรมธรรม์`} />
+            </div>
+            {insurance.rows.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 90px 130px', gap: 8, fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, padding: '0 4px' }}>
+                  <span>ผู้รับผลประโยชน์</span><span>ความสัมพันธ์</span><span style={{ textAlign: 'right' }}>สัดส่วน</span><span style={{ textAlign: 'right' }}>จำนวนเงิน (บาท)</span>
+                </div>
+                {insurance.rows.map((r, i) => {
+                  const pct = insurance.totalSum > 0 ? (r.amount / insurance.totalSum) * 100 : 0
+                  return (
+                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 90px 130px', gap: 8, alignItems: 'center', padding: '8px 4px', borderBottom: '1px solid var(--divider)', fontSize: 13 }}>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{r.name}</span>
+                      <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{r.rel || '—'}</span>
+                      <span style={{ fontFamily: 'monospace', textAlign: 'right', color: 'var(--text-secondary)' }}>{pct.toFixed(1)}%</span>
+                      <span style={{ fontFamily: 'monospace', textAlign: 'right', fontWeight: 700, color: '#10b981' }}>{fmt(r.amount)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            {insurance.unallocated > 0 && (
+              <div style={{ display: 'flex', gap: 9, marginTop: 12, padding: '10px 13px', borderRadius: 10, background: '#f59e0b12', border: '1px solid #f59e0b40', fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                <AlertTriangle size={16} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 1 }} />
+                <span>มีทุนประกัน <b>{fmt(insurance.unallocated)}</b> บาท ที่ยังไม่ได้ระบุผู้รับผลประโยชน์ — จะตกเป็น<b>กองมรดก</b>และถูกแบ่งตามกฎหมาย/พินัยกรรม ควรระบุผู้รับผลประโยชน์ในกรมธรรม์</span>
+              </div>
+            )}
+            <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 10, lineHeight: 1.6 }}>
+              หมายเหตุ: สินไหมประกันชีวิตที่ระบุผู้รับผลประโยชน์แล้วจะจ่ายตรงให้ผู้รับ ไม่นำมารวมเป็นกองมรดก (ตามหลักกฎหมายประกันภัย) · หากผู้รับผลประโยชน์เป็นทายาท เงินก้อนนี้ช่วยเติม<b>สภาพคล่อง</b>สำหรับจ่ายภาษีมรดก/หนี้สินตกทอดได้
+            </div>
+          </>
+        )}
       </div>
 
       {/* ธงเตือนเบื้องต้น */}

@@ -29,7 +29,7 @@ import {
   getFinancialRatios,
   getLifeInsurances, createLifeInsurance, updateLifeInsurance, deleteLifeInsurance,
   getAllRiders, getRiders, createRider, updateRider, deleteRider,
-  getBeneficiaries, createBeneficiary, updateBeneficiary, deleteBeneficiary,
+  getAllBeneficiaries, getBeneficiaries, createBeneficiary, updateBeneficiary, deleteBeneficiary,
   getPropertyInsurances, createPropertyInsurance, updatePropertyInsurance, deletePropertyInsurance, getRebalancePlan, saveRebalancePlan
 } from '../controllers/finance.controller'
 import { getProjection } from '../controllers/projection.controller'
@@ -238,6 +238,7 @@ r.put('/life-insurances/:id', authenticate, validate(lifeInsuranceSchema), updat
 r.delete('/life-insurances/:id', authenticate, deleteLifeInsurance)
 
 r.get('/all-riders', authenticate, getAllRiders)
+r.get('/all-beneficiaries', authenticate, getAllBeneficiaries)
 r.get('/life-insurances/:policyId/riders', authenticate, getRiders)
 r.post('/life-insurances/:policyId/riders', authenticate, validate(jsonBlobSchema), createRider)
 r.put('/riders/:riderId', authenticate, validate(jsonBlobSchema), updateRider)
