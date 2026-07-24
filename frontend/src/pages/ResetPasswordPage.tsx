@@ -23,7 +23,7 @@ export default function ResetPasswordPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    if (pw.length < 6) { setError('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'); return }
+    if (pw.length < 8) { setError('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'); return }
     if (pw !== pw2) { setError('รหัสผ่านทั้งสองช่องไม่ตรงกัน'); return }
     setLoading(true)
     try {
