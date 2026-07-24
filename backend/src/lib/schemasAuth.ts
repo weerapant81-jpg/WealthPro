@@ -10,6 +10,10 @@ import { z } from './validate'
 // ── ชิ้นส่วนที่ใช้ซ้ำ ──
 const txt = (max = 500) => z.string().max(max)
 const rate = z.number().finite().min(-100).max(1000)   // อัตรา % ต่อปี
+const age = z.number().finite().min(0).max(150)        // อายุ (ปี)
+// ช่องตัวเลขในหน้าสมมติฐานที่ผู้ใช้ล้างค่าได้ (หรือลูกค้าไม่มีคู่สมรส → ช่องอายุคู่สมรสว่าง)
+// ฟอร์มอาจส่ง '' หรือ null มา = "ไม่ระบุ" — แปลงเป็น undefined ก่อน ไม่ให้ช่องเดียวทำทั้งหน้าบันทึกไม่ได้
+const optNum = (base: z.ZodType) => z.preprocess(v => (v === '' || v === null ? undefined : v), base.optional())
 const dateish = z.union([z.string().max(40), z.date(), z.null()])
 const flexNum = z.union([z.number().finite(), z.string().max(30), z.null()])  // ฟอร์มบางหน้าส่งตัวเลขมาเป็นข้อความ
 
@@ -97,18 +101,16 @@ export const assetReturnSchema = z.looseObject({
 
 /** อัตราสมมติฐาน — ต้องอยู่ในช่วงที่เป็นไปได้ กันพิมพ์ผิดจนแผนเพี้ยน */
 export const profileSchema = z.looseObject({
-  inflationRate: rate.optional(), educationInflation: rate.optional(),
-  rentInflation: rate.optional(), medicalInflation: rate.optional(),
-  creditCardRate: rate.optional(), cashAdvanceRate: rate.optional(), personalLoanRate: rate.optional(),
-  homeLoanRate: rate.optional(), carLoanRate: rate.optional(),
-  educationFundReturn: rate.optional(), educationReturnDuring: rate.optional(),
-  preRetirementReturn: rate.optional(), postRetirementReturn: rate.optional(),
-  expectedReturn: rate.optional(), pvdReturnRate: rate.nullable().optional(), ssoReturnRate: rate.nullable().optional(),
-  // ยอมรับ 0 ด้วย — ช่องกรอกส่ง Number('') = 0 มาเมื่อผู้ใช้ลบค่าจนว่าง
-  // ถ้าปฏิเสธ 0 การบันทึกหน้าสมมติฐานทั้งหน้าจะล้มเพราะช่องเดียว
-  retirementAgeSelf: z.number().finite().min(0).max(150).nullable().optional(),
-  retirementAgeSpouse: z.number().finite().min(0).max(150).nullable().optional(),
-  lifeExpectancySelf: z.number().finite().min(0).max(150).nullable().optional(),
-  lifeExpectancySpouse: z.number().finite().min(0).max(150).nullable().optional(),
+  inflationRate: optNum(rate), educationInflation: optNum(rate),
+  rentInflation: optNum(rate), medicalInflation: optNum(rate),
+  creditCardRate: optNum(rate), cashAdvanceRate: optNum(rate), personalLoanRate: optNum(rate),
+  homeLoanRate: optNum(rate), carLoanRate: optNum(rate),
+  educationFundReturn: optNum(rate), educationReturnDuring: optNum(rate),
+  preRetirementReturn: optNum(rate), postRetirementReturn: optNum(rate),
+  expectedReturn: optNum(rate), pvdReturnRate: optNum(rate), ssoReturnRate: optNum(rate),
+  // อายุ: ยอมรับว่าง/null (ลูกค้าไม่มีคู่สมรส) และ 0 (ช่องส่ง Number('')=0 เมื่อล้างค่า)
+  // ถ้าปฏิเสธค่าเหล่านี้ การบันทึกหน้าสมมติฐานทั้งหน้าจะล้มเพราะช่องเดียว
+  retirementAgeSelf: optNum(age), retirementAgeSpouse: optNum(age),
+  lifeExpectancySelf: optNum(age), lifeExpectancySpouse: optNum(age),
 })
 
