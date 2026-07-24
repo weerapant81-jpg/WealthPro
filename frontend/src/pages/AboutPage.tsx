@@ -49,7 +49,6 @@ export default function AboutPage() {
               <span onClick={() => navigate('/')} className="lp-navlink">หน้าแรก</span>
               <span onClick={() => navigate('/features')} className="lp-navlink">ฟีเจอร์</span>
               <span className="lp-navlink" style={{ color: AC }}>เกี่ยวกับเรา</span>
-              <span onClick={() => navigate('/#pricing')} className="lp-navlink">ราคา</span>
               <span onClick={() => navigate('/tutorials')} className="lp-navlink">วิดีโอสอนการใช้งาน</span>
             </nav>
           )}

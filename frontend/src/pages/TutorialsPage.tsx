@@ -249,7 +249,6 @@ export default function TutorialsPage() {
               <span onClick={() => navigate('/')} className="lp-navlink">หน้าแรก</span>
               <span onClick={() => navigate('/features')} className="lp-navlink">ฟีเจอร์</span>
               <span onClick={() => navigate('/about')} className="lp-navlink">เกี่ยวกับเรา</span>
-              <span onClick={() => navigate('/#pricing')} className="lp-navlink">ราคา</span>
               <span className="lp-navlink" style={{ color: AC }}>วิดีโอสอนการใช้งาน</span>
             </nav>
           )}
