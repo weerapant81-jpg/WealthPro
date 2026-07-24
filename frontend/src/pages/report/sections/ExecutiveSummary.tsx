@@ -7,7 +7,7 @@ import AdviceBox from '../AdviceBox'
 import type { ReportCtx } from '../ctx'
 
 export default function ExecutiveSummary({ ctx }: { ctx: ReportCtx }) {
-  const { client, ratios, retR, insR, eduR, secs, setText, setPos, sm, hasSpouse } = ctx
+  const { client, ratios, retR, insR, eduR, secs, setText, sm, hasSpouse } = ctx
     // ── บทสรุปผู้บริหาร: สถานะการเงิน + เป้าหมาย + ผลวิเคราะห์ (สรุปอัตโนมัติจากข้อมูลจริง) + ช่องคอมเมนต์ ──
     return (
       <div style={{ marginBottom: 16 }}>
@@ -115,8 +115,7 @@ export default function ExecutiveSummary({ ctx }: { ctx: ReportCtx }) {
           <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748b', margin: '10px 0 4px' }}>ความเห็น/หมายเหตุเพิ่มเติม (ที่ปรึกษา)</div>
           <AdviceBox title="บทสรุปผู้บริหาร" heading={false} minHeight={70}
             placeholder="คลิกเพื่อพิมพ์บทสรุป/ข้อเสนอแนะภาพรวมจากการวิเคราะห์..."
-            value={secs['exs2_analysis']?.text ?? ''} onSave={v => setText('exs2_analysis', v)}
-            pos={secs['exs2_analysis']?.pos} onMove={p => setPos('exs2_analysis', p)} />
+            value={secs['exs2_analysis']?.text ?? ''} onSave={v => setText('exs2_analysis', v)} />
         </div>
       </div>
     )
