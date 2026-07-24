@@ -7,8 +7,8 @@ export type Feature = 'pro' | 'copilot'
 
 export const PLANS: Record<Plan, { label: string; price: number }> = {
   free: { label: 'Free', price: 0 },
-  pro:  { label: 'Pro',  price: 590 },
-  ai:   { label: 'AI',   price: 890 },
+  pro:  { label: 'Pro',  price: 490 },
+  ai:   { label: 'AI',   price: 690 },
 }
 
 /** จำนวนลูกค้าสูงสุดของแพ็กเกจ Free (Pro/AI = ไม่จำกัด) */

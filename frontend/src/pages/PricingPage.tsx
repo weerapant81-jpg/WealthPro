@@ -22,9 +22,9 @@ type Tier = {
 const TIERS: Tier[] = [
   { key: 'free', name: 'Free', sub: 'สำหรับเริ่มต้นใช้งาน', price: '฿0', unit: '/เดือน',
     feats: ['แดชบอร์ด + จัดการข้อมูลลูกค้า', 'ลูกค้าสูงสุด 5 คน', 'ประเมินความเสี่ยงเบื้องต้น'] },
-  { key: 'pro', name: 'Pro', sub: 'ทุกเมนูวางแผน (ไม่รวม AI)', price: '฿590', unit: '/เดือน', icon: Crown,
+  { key: 'pro', name: 'Pro', sub: 'ทุกเมนูวางแผน (ไม่รวม AI)', price: '฿490', unit: '/เดือน', icon: Crown,
     feats: ['ทุกเมนูวางแผน 6 ด้าน', 'งบการเงินล่วงหน้า + วางแผนภาษี', 'รายงานฉบับเต็ม + สไลด์นำเสนอ', 'เซ็น PDPA + ส่งออก PDF'] },
-  { key: 'ai', name: 'AI', sub: 'ทุกเมนู + ผู้ช่วย AI', price: '฿890', unit: '/เดือน', popular: true, icon: Sparkles,
+  { key: 'ai', name: 'AI', sub: 'ทุกเมนู + ผู้ช่วย AI', price: '฿690', unit: '/เดือน', popular: true, icon: Sparkles,
     feats: ['ทุกฟีเจอร์ในแพ็กเกจ Pro', 'AI Copilot ผู้ช่วยวางแผน', 'วิเคราะห์เชิงลึกรายลูกค้า', 'อัปเดตฟีเจอร์ใหม่ก่อนใคร'] },
 ]
 
