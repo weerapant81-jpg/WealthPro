@@ -115,10 +115,13 @@ export async function inviteClient(req: AuthRequest, res: Response): Promise<voi
   })
   const advisor = await prisma.user.findUnique({ where: { id: req.userId }, select: { name: true } })
   const frontend = (process.env.FRONTEND_URL || 'https://wealthpro.cloud').split(',')[0].trim()
+  const inviteUrl = `${frontend}/set-password?token=${token}`
+  let emailSent = true
   try {
-    await sendClientInviteEmail(target.email, target.name, advisor?.name || 'นักวางแผนการเงินของคุณ', `${frontend}/set-password?token=${token}`)
-  } catch { /* ยังตอบสำเร็จ — FA ขอส่งซ้ำได้ */ }
-  res.json({ message: 'ส่งคำเชิญไปยังอีเมลของลูกค้าแล้ว' })
+    await sendClientInviteEmail(target.email, target.name, advisor?.name || 'นักวางแผนการเงินของคุณ', inviteUrl)
+  } catch { emailSent = false /* ยังตอบสำเร็จ — FA คัดลอกลิงก์ส่งเองได้ */ }
+  // คืนลิงก์ให้ FA คัดลอกส่งเองทาง LINE/แชท (เผื่ออีเมลไม่ถึง) — FA เป็นผู้ดูแลลูกค้ารายนี้อยู่แล้ว
+  res.json({ message: emailSent ? 'ส่งคำเชิญทางอีเมลแล้ว' : 'สร้างลิงก์เชิญแล้ว (อีเมลส่งไม่สำเร็จ)', inviteUrl, email: target.email, emailSent })
 }
 
 // FA/Admin: ลบลูกค้า (cascade ลบข้อมูลทั้งหมดของลูกค้า)

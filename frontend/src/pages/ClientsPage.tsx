@@ -77,8 +77,11 @@ export default function ClientsPage() {
   async function inviteClient(c: ClientInfo) {
     setInviting(c.id)
     try {
-      await api.post(`/clients/${c.id}/invite`)
-      alert(`ส่งคำเชิญเข้าใช้งานไปที่อีเมลของ ${c.name} แล้ว`)
+      const { data } = await api.post(`/clients/${c.id}/invite`)
+      // คัดลอกลิงก์ให้อัตโนมัติ — FA ส่งให้ลูกค้าทาง LINE/แชทได้ (เผื่ออีเมลไม่ถึง)
+      try { await navigator.clipboard.writeText(data.inviteUrl) } catch { /* คลิปบอร์ดไม่ได้ ก็ยังโชว์ลิงก์ให้ก๊อปเอง */ }
+      const emailNote = data.emailSent ? `ส่งอีเมลเชิญไปที่ ${data.email} แล้ว` : `⚠️ อีเมลส่งไม่สำเร็จ`
+      alert(`${emailNote}\n\n📋 คัดลอกลิงก์เชิญให้แล้ว — ส่งให้ลูกค้าทาง LINE/แชทได้เลย (ลิงก์มีอายุ 24 ชม.):\n\n${data.inviteUrl}`)
     } catch (e: any) {
       alert(e?.response?.data?.error === 'PLAN_REQUIRED'
         ? 'การเชิญลูกค้าเข้า portal ใช้ได้เฉพาะแพ็กเกจ Pro ขึ้นไป'
