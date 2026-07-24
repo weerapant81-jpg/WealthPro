@@ -1,8 +1,8 @@
 ﻿import { useState, useEffect, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { Save, CheckCircle, User, TrendingUp, GraduationCap, Percent, Shield, SlidersHorizontal, ChartPie, Landmark } from 'lucide-react'
+import { Save, CheckCircle, User, TrendingUp, GraduationCap, Percent, Shield, SlidersHorizontal, ChartPie, Landmark, ArrowRight } from 'lucide-react'
 import { MoneyInput as MoneyInputBase } from '../components/MoneyInput'
 import { PageHeader } from '../components/ui'
 import { TableExcelButton } from '../components/exportable'
@@ -245,6 +245,7 @@ export default function SettingsPage() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [saved, setSaved] = useState(false)
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [tab, setTab] = useState<'assumptions' | 'portfolio'>(searchParams.get('tab') === 'portfolio' ? 'portfolio' : 'assumptions')
   useEffect(() => { const t = searchParams.get('tab'); if (t === 'portfolio' || t === 'assumptions') setTab(t) }, [searchParams])
 
@@ -511,6 +512,15 @@ export default function SettingsPage() {
               </table>
             </div>
           </Section>
+        </div>
+
+        {/* ปุ่มถัดไป — พาไปขั้นตอนถัดไปของการวางแผน (มูลค่าสินทรัพย์ลงทุน) */}
+        <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+          <button onClick={() => navigate('/financial-plan?tab=investment')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 24px', borderRadius: 10, border: 'none', cursor: 'pointer',
+              background: 'var(--cyan)', color: '#00201d', fontSize: 14, fontWeight: 700, fontFamily: 'inherit' }}>
+            ถัดไป: มูลค่าสินทรัพย์ลงทุน <ArrowRight size={16} />
+          </button>
         </div>
 
       </div>
