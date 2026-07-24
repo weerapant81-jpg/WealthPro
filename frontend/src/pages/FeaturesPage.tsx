@@ -1,14 +1,38 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Wallet, TrendingUp, ShieldCheck, PiggyBank, Receipt, Landmark,
+  Wallet, TrendingUp, ShieldCheck, PiggyBank, Receipt, LayoutDashboard,
   PenLine, BarChart3, LineChart, Bot, ClipboardCheck, ArrowRight,
-  Tablet, Download, Users, LogIn, RefreshCw, Headset, Check, FileText,
+  Tablet, Download, Users, LogIn, RefreshCw, Headset, Check, FileText, X, Maximize2,
 } from 'lucide-react'
 import { useIsCompact } from '../hooks/useViewport'
 
 /* หน้าฟีเจอร์ (deep-dive) สาธารณะ — ธีมมืดตามแอป · ไม่ดึง CDN ภายนอก */
 
 const AC = 'var(--cyan)'
+
+/* กล่องแสดงภาพตัวอย่างหน้าโปรแกรมเมื่อคลิกการ์ด — คลิกพื้นหลัง/กด Esc เพื่อปิด */
+function ScreenshotModal({ img, title, onClose }: { img: string; title: string; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  return (
+    <div onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 'clamp(16px,4vw,48px)' }}>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: '100%', maxWidth: 1180 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <span style={{ fontSize: 15, fontWeight: 800, color: '#fff' }}>ตัวอย่างหน้า{title}</span>
+          <button onClick={onClose} aria-label="ปิด"
+            style={{ display: 'flex', background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 10, padding: 8, cursor: 'pointer', color: '#fff' }}><X size={20} /></button>
+        </div>
+        <img src={img} alt={`ตัวอย่างหน้า${title}`}
+          style={{ width: '100%', height: 'auto', borderRadius: 14, boxShadow: '0 30px 80px -20px rgba(0,0,0,0.7)' }} />
+      </div>
+    </div>
+  )
+}
 const glass: React.CSSProperties = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18 }
 
 function Bento({ span, icon: Icon, title, desc, wide, chips, big }: {
@@ -39,9 +63,15 @@ export default function FeaturesPage() {
   const cols = compact ? 1 : 3
   const span = (n: number) => Math.min(n, cols)   // จอแคบ → span เต็มแถว
 
+  const [shot, setShot] = useState<{ img: string; t: string } | null>(null)
+
   const pillars = [
-    { icon: Wallet, t: 'สภาพคล่อง' }, { icon: TrendingUp, t: 'การลงทุน' }, { icon: ShieldCheck, t: 'ประกัน' },
-    { icon: PiggyBank, t: 'เกษียณ' }, { icon: Receipt, t: 'ภาษี' }, { icon: Landmark, t: 'มรดก' },
+    { icon: Wallet, t: 'สภาพคล่อง', img: '/features/liquidity.webp' },
+    { icon: TrendingUp, t: 'การลงทุน', img: '/features/investment.webp' },
+    { icon: ShieldCheck, t: 'ประกัน', img: '/features/insurance.webp' },
+    { icon: PiggyBank, t: 'เกษียณ', img: '/features/retirement.webp' },
+    { icon: Receipt, t: 'ภาษี', img: '/features/tax.webp' },
+    { icon: LayoutDashboard, t: 'ภาพรวม', img: '/features/overview.webp' },
   ]
   const extras = [
     { icon: Tablet, t: 'รองรับการใช้งานบน iPad เต็มรูปแบบ (ติดตั้งลงหน้าจอโฮมได้)' },
@@ -113,9 +143,12 @@ export default function FeaturesPage() {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${compact ? 140 : 160}px, 1fr))`, gap: 16 }}>
           {pillars.map(p => (
-            <div key={p.t} className="lp-card" style={{ ...glass, padding: '26px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, textAlign: 'center' }}>
+            <div key={p.t} onClick={() => setShot({ img: p.img, t: p.t })} title={`ดูตัวอย่างหน้า${p.t}`}
+              className="lp-card" style={{ ...glass, padding: '26px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, textAlign: 'center', cursor: 'pointer', position: 'relative' }}>
+              <Maximize2 size={13} style={{ position: 'absolute', top: 12, right: 12, color: 'var(--text-muted)' }} />
               <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--navy-800)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><p.icon size={25} color={AC} /></div>
               <span style={{ fontSize: 15, fontWeight: 800 }}>{p.t}</span>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: AC }}>ดูตัวอย่าง</span>
             </div>
           ))}
         </div>
@@ -176,6 +209,8 @@ export default function FeaturesPage() {
           </div>
         </div>
       </footer>
+
+      {shot && <ScreenshotModal img={shot.img} title={shot.t} onClose={() => setShot(null)} />}
     </div>
   )
 }
