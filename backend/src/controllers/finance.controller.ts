@@ -166,6 +166,15 @@ export async function getAllRiders(req: AuthRequest, res: Response): Promise<voi
   })
   res.json(data)
 }
+
+// ผู้รับผลประโยชน์ของทุกกรมธรรม์ (รวม) — ใช้ในหน้ามรดกเพื่อกระจายทุนประกันตามสัดส่วน
+export async function getAllBeneficiaries(req: AuthRequest, res: Response): Promise<void> {
+  const data = await prisma.lifeInsuranceBeneficiary.findMany({
+    where: { policy: { userId: req.effectiveUserId! } },
+    orderBy: { createdAt: 'asc' },
+  })
+  res.json(data)
+}
 export async function getRiders(req: AuthRequest, res: Response): Promise<void> {
   const policyId = String(req.params.policyId)
   // verify policy belongs to user
