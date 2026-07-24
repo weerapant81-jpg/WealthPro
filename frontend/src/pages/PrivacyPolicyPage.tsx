@@ -25,7 +25,7 @@ export default function PrivacyPolicyPage() {
 
       <div style={{ ...card, background: 'var(--cyan-dim)', border: '1px solid var(--cyan)' }}>
         <p style={{ fontSize: 13.5, color: 'var(--text-primary)', lineHeight: 1.8, margin: 0 }}>
-          WealthPro ให้บริการโดย <b>บริษัท อัลติเมท ไลฟ์ แอดไวเซอร์ จำกัด (Ultimate Life Advisor Co., Ltd.)</b> ("บริษัท")
+          WealthPro ให้บริการโดย <b>บริษัท อัลติเมทไลฟ์ แอ็ดไวเซอร์ จำกัด (Ultimate Life Advisor Co., Ltd.)</b> ("บริษัท")
           เราเคารพความเป็นส่วนตัวและคุ้มครองข้อมูลส่วนบุคคลของท่านตาม
           <b> พระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)</b>
         </p>
@@ -81,7 +81,7 @@ export default function PrivacyPolicyPage() {
 
       <Section no="7." title="ติดต่อเรา">
         หากมีคำถามหรือต้องการใช้สิทธิเกี่ยวกับข้อมูลส่วนบุคคล ติดต่อ<br />
-        <b>บริษัท อัลติเมท ไลฟ์ แอดไวเซอร์ จำกัด</b><br />
+        <b>บริษัท อัลติเมทไลฟ์ แอ็ดไวเซอร์ จำกัด</b><br />
         อีเมล: <span style={{ color: 'var(--cyan)' }}>privacy@wealthpro.cloud</span>
       </Section>
 

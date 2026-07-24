@@ -190,7 +190,7 @@ export default function LoginPage() {
     catch { setError('ส่งอีเมลยืนยันใหม่ไม่สำเร็จ') }
   }
 
-  const appleSoon = () => setInfo('การเข้าสู่ระบบด้วย Apple จะเปิดให้บริการเร็วๆ นี้')
+  const appleSoon = () => setInfo('การเข้าสู่ระบบด้วย Apple จะเปิดให้บริการเร็ว ๆ นี้')
   const googleNotReady = () => setInfo('ยังไม่ได้ตั้งค่า Google Sign-In (ผู้ดูแลระบบต้องกำหนด Client ID ก่อน)')
 
   return (

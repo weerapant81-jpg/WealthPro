@@ -74,8 +74,8 @@ function PillarCarousel({ items, onOpen }: { items: Pillar[]; onOpen: (p: Pillar
       <div style={{ overflow: 'hidden', borderRadius: 18, border: '1px solid rgba(255,255,255,0.08)', background: 'var(--navy-950)' }}>
         <div ref={trackRef} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => { drag.current = null }}
           style={{ display: 'flex', transform: `translateX(${-i * 100}%)`, transition: 'transform .38s cubic-bezier(.22,.61,.36,1)', touchAction: 'pan-y', cursor: 'grab' }}>
-          {items.map(p => (
-            <div key={p.t} style={{ flex: '0 0 100%', position: 'relative' }}>
+          {items.map((p, idx) => (
+            <div key={p.t} style={{ flex: '0 0 100%', position: 'relative' }} aria-hidden={idx !== i}>
               <img src={p.img} alt={`ตัวอย่างหน้า${p.t}`} draggable={false}
                 style={{ width: '100%', height: 'auto', display: 'block', userSelect: 'none' }} />
               {/* ป้ายชื่อด้านล่างภาพ */}
@@ -83,7 +83,11 @@ function PillarCarousel({ items, onOpen }: { items: Pillar[]; onOpen: (p: Pillar
                 background: 'linear-gradient(to top, rgba(10,12,16,0.9), transparent)' }}>
                 <div style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(0,207,193,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><p.icon size={18} color={AC} /></div>
                 <span style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>{p.t}</span>
-                <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}><Maximize2 size={13} /> ดูเต็มจอ</span>
+                {/* ปุ่มจริง — เปิดดูเต็มจอด้วยคีย์บอร์ดได้ (Tab/Enter) · สไลด์ที่ไม่ได้แสดงถอดออกจาก tab order */}
+                <button onClick={() => onOpen(p)} tabIndex={idx === i ? 0 : -1} aria-label={`ดูตัวอย่างหน้า${p.t} แบบเต็มจอ`}
+                  style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.85)', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <Maximize2 size={13} /> ดูเต็มจอ
+                </button>
               </div>
             </div>
           ))}
@@ -191,7 +195,7 @@ export default function FeaturesPage() {
         <div style={{ ...wrap, padding: compact ? '52px 20px 60px' : '84px 40px 90px', position: 'relative', textAlign: 'center' }}>
           <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.14em', color: AC, marginBottom: 16 }}>ฟีเจอร์ทั้งหมด</div>
           <h1 style={{ fontSize: compact ? 32 : 44, fontWeight: 800, lineHeight: 1.2, letterSpacing: '-0.02em', margin: '0 auto 20px', maxWidth: 780 }}>
-            รายงานและสไลด์นำเสนอระดับพรีเมียม <span style={{ color: AC }}>จบงานได้ในแอพเดียว</span>
+            รายงานและสไลด์นำเสนอระดับพรีเมียม <span style={{ color: AC }}>จบงานได้ในแอปเดียว</span>
           </h1>
           <p style={{ fontSize: 16.5, color: 'var(--text-secondary)', lineHeight: 1.75, maxWidth: 620, margin: '0 auto 32px' }}>
             สร้างรายงานฉบับเต็มและสไลด์นำเสนอกว่า 20 หน้าที่สวยงามเป็นมืออาชีพ พร้อมส่งมอบให้ลูกค้าทันที — ไม่ต้องเสียเวลาทำเองใน PowerPoint หรือ Excel
