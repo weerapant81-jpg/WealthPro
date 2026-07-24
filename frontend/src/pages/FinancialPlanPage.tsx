@@ -8,7 +8,7 @@ import RetirementPlanPage from './RetirementPlanPage'
 import EstatePlanPage from './EstatePlanPage'
 import TaxPlanningPage from './TaxPlanningPage'
 import { PageHeader } from '../components/ui'
-import { WizardNav } from '../components/WizardNav'
+import { WizardNav, PLANNING_STEPS } from '../components/WizardNav'
 import { useClient } from '../context/ClientContext'
 import { hasSpouseInfo } from '../lib/spouse'
 import EducationPlanPage from './EducationPlanPage'
@@ -45,9 +45,9 @@ const TABS = [
   { key: 'social', label: 'กองทุนประกันสังคม', icon: Shield, Comp: ProjectionSocialSecurityTab, proj: true, hasPerson: true },
   { key: 'pvd', label: 'กองทุนสำรองเลี้ยงชีพ', icon: Briefcase, Comp: ProjectionPVDTab, proj: true, hasPerson: true },
   { key: 'severance', label: 'เงินชดเชยเกษียณอายุ', icon: Scale, Comp: ProjectionSeveranceTab, proj: true, hasPerson: true },
+  { key: 'retirement', label: 'วางแผนเกษียณ', icon: Target, Comp: RetirementPlanPage, proj: false, hasPerson: true },
   { key: 'education', label: 'ทุนการศึกษาบุตร', icon: GraduationCap, Comp: EducationPlanPage, proj: false, hasPerson: false },
   { key: 'insurance', label: 'วางแผนประกัน', icon: HeartPulse, Comp: InsurancePlanPage, proj: false, hasPerson: true },
-  { key: 'retirement', label: 'วางแผนเกษียณ', icon: Target, Comp: RetirementPlanPage, proj: false, hasPerson: true },
   { key: 'tax', label: 'วางแผนภาษี', icon: Receipt, Comp: TaxPlanningPage, proj: false, hasPerson: false },
   { key: 'estate', label: 'วางแผนมรดก', icon: ScrollText, Comp: EstatePlanPage, proj: false, hasPerson: true },
 ] as const
@@ -55,9 +55,8 @@ const TABS = [
 const TAB_KEYS = TABS.map(t => t.key) as string[]
 
 export default function FinancialPlanPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const urlTab = searchParams.get('tab')
-  const goTab = (key: string) => { setSearchParams({ tab: key }); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   const [tab, setTab] = useState<string>(urlTab && TAB_KEYS.includes(urlTab) ? urlTab : 'investment')
   const [person, setPerson] = useState<Person>('self')
   // ขับแท็บจาก URL (?tab=) — เมนูย่อยใน sidebar ลิงก์มาที่นี่
@@ -105,8 +104,8 @@ export default function FinancialPlanPage() {
           ? <Active key={clientKey} person={person} />
           : <Active key={clientKey} />}
 
-      {/* นำทางวางแผนทีละหน้า — ก่อนหน้า / ถัดไป */}
-      <WizardNav steps={TABS.map(t => ({ key: t.key, label: t.label }))} current={tab} onGo={goTab} />
+      {/* นำทางวางแผนทีละหน้า — ก่อนหน้า / ถัดไป (ลำดับกลาง PLANNING_STEPS ตรงกับ sidebar) */}
+      <WizardNav steps={PLANNING_STEPS} current={tab} />
     </div>
   )
 }
