@@ -30,9 +30,9 @@ const FINANCIAL_TABS: SubTab[] = [
   { tab: 'social', icon: Shield, label: 'กองทุนประกันสังคม' },
   { tab: 'pvd', icon: Briefcase, label: 'กองทุนสำรองเลี้ยงชีพ' },
   { tab: 'severance', icon: Scale, label: 'เงินชดเชยเกษียณอายุ' },
+  { tab: 'retirement', icon: Target, label: 'วางแผนเกษียณ' },
   { tab: 'education', icon: GraduationCap, label: 'ทุนการศึกษาบุตร' },
   { tab: 'insurance', icon: HeartPulse, label: 'วางแผนประกัน' },
-  { tab: 'retirement', icon: Target, label: 'วางแผนเกษียณ' },
   { tab: 'tax', icon: Receipt, label: 'วางแผนภาษี' },
   { tab: 'estate', icon: ScrollText, label: 'วางแผนมรดก' },
 ]
