@@ -261,7 +261,14 @@ export default function TutorialsPage() {
       <div style={{ ...wrap, padding: compact ? '28px 20px 64px' : '36px 40px 72px' }}>{content}</div>
       <footer style={{ borderTop: '1px solid rgba(255,255,255,0.07)', background: 'var(--navy-950)' }}>
         <div style={{ ...wrap, padding: '32px 40px', display: 'flex', flexDirection: compact ? 'column' : 'row', justifyContent: 'space-between', alignItems: 'center', gap: 18 }}>
-          <div style={{ fontSize: 18, fontWeight: 800 }}>Wealth<span style={{ color: AC }}>Pro</span></div>
+          <div style={{ textAlign: compact ? 'center' : 'left' }}>
+            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 6 }}>Wealth<span style={{ color: AC }}>Pro</span></div>
+            <div style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.7 }}>
+              บริษัท อัลติเมทไลฟ์ แอ็ดไวเซอร์ จำกัด<br />
+              199/78 ซ.มิตรภาพ 4 ต.ในเมือง อ.เมือง จ.นครราชสีมา 30000<br />
+              <a href="tel:0994588787" className="lp-navlink" style={{ fontSize: 12.5 }}>099-4588787</a>, <a href="mailto:info@wealthpro.cloud" className="lp-navlink" style={{ fontSize: 12.5 }}>info@wealthpro.cloud</a>
+            </div>
+          </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 22, justifyContent: 'center' }}>
             <a href="/features" className="lp-navlink">ฟีเจอร์</a>
             <a href="/privacy" className="lp-navlink">นโยบายความเป็นส่วนตัว</a>

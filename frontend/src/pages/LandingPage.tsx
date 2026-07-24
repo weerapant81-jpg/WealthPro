@@ -261,6 +261,11 @@ export default function LandingPage() {
         <div style={{ ...wrap, padding: '36px 40px', display: 'flex', flexDirection: compact ? 'column' : 'row', justifyContent: 'space-between', alignItems: 'center', gap: 20 }}>
           <div style={{ textAlign: compact ? 'center' : 'left' }}>
             <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 6 }}>Wealth<span style={{ color: AC }}>Pro</span></div>
+            <div style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: 8 }}>
+              บริษัท อัลติเมทไลฟ์ แอ็ดไวเซอร์ จำกัด<br />
+              199/78 ซ.มิตรภาพ 4 ต.ในเมือง อ.เมือง จ.นครราชสีมา 30000<br />
+              <a href="tel:0994588787" className="lp-navlink" style={{ fontSize: 12.5 }}>099-4588787</a>, <a href="mailto:info@wealthpro.cloud" className="lp-navlink" style={{ fontSize: 12.5 }}>info@wealthpro.cloud</a>
+            </div>
             <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>© {new Date().getFullYear()} Ultimate Life Advisor Co., Ltd. · สงวนลิขสิทธิ์</div>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 22, justifyContent: 'center' }}>
