@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Wallet, TrendingUp, ShieldCheck, PiggyBank, Receipt, Landmark,
   PenLine, BarChart3, LineChart, Bot, ClipboardCheck, ArrowRight,
-  Tablet, Download, Users, LogIn, RefreshCw, Headset, Check,
+  Tablet, Download, Users, LogIn, RefreshCw, Headset, Check, FileText,
 } from 'lucide-react'
 import { useIsCompact } from '../hooks/useViewport'
 
@@ -94,6 +94,10 @@ export default function FeaturesPage() {
             สร้างรายงานฉบับเต็มและสไลด์นำเสนอกว่า 20 หน้าที่สวยงามเป็นมืออาชีพ พร้อมส่งมอบให้ลูกค้าทันที — ไม่ต้องเสียเวลาทำเองใน PowerPoint หรือ Excel
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, justifyContent: 'center' }}>
+            <a href="/report-sample.pdf" target="_blank" rel="noopener noreferrer" className="lp-btn"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'transparent', color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 12, padding: '15px 28px', fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'none' }}>
+              <FileText size={18} /> ตัวอย่างรายงาน
+            </a>
             <button onClick={goRegister} className="lp-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: AC, color: '#00201d', border: 'none', borderRadius: 12, padding: '15px 28px', fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
               ทดลองใช้ฟรี <ArrowRight size={18} />
             </button>
