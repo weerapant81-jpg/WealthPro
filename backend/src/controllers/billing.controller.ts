@@ -25,6 +25,15 @@ export async function createCheckout(req: AuthRequest, res: Response): Promise<v
     const customer = await stripe.customers.create({ email: user.email, name: user.name, metadata: { userId: user.id } })
     customerId = customer.id
     await prisma.user.update({ where: { id: user.id }, data: { stripeCustomerId: customerId } })
+  } else {
+    // กันสมัครซ้อน/จ่ายซ้ำ: ถ้ามี subscription ที่ยังใช้งานอยู่แล้ว ห้ามเปิด checkout ใหม่
+    // (กดปุ่มรัว ๆ / เปิดหลายแท็บ / ยิง API ตรง) — ให้ไปเปลี่ยนแผน/ยกเลิกผ่าน Customer Portal แทน
+    const subs = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 5 })
+    const hasLive = subs.data.some(s => ['active', 'trialing', 'past_due', 'unpaid'].includes(s.status))
+    if (hasLive) {
+      res.status(409).json({ error: 'คุณมีแพ็กเกจที่ใช้งานอยู่แล้ว หากต้องการเปลี่ยนแผนหรือยกเลิก กรุณาใช้ปุ่ม “จัดการการชำระเงิน”' })
+      return
+    }
   }
 
   // VAT: ถ้าตั้ง STRIPE_TAX_RATE (txr_... แบบ inclusive 7%) → แนบเข้า subscription เพื่อให้ใบเสร็จแยกบรรทัด VAT
@@ -105,7 +114,16 @@ export async function handleWebhook(req: Request, res: Response): Promise<void> 
         const s = event.data.object
         const subId = s.subscription
         if (subId) {
-          const sub = await getStripe().subscriptions.retrieve(String(subId))
+          const stripe = getStripe()
+          // กันจ่ายซ้อน: ถ้ามี checkout สำเร็จหลายอัน (เปิดหลายแท็บ) ให้เหลือ subscription เดียว
+          // ยกเลิกตัวอื่นที่ยัง active ของลูกค้ารายนี้ทันที เก็บไว้เฉพาะตัวที่เพิ่งสมัคร
+          if (s.customer) {
+            const existing = await stripe.subscriptions.list({ customer: String(s.customer), status: 'active', limit: 20 })
+            for (const o of existing.data) {
+              if (o.id !== String(subId)) { try { await stripe.subscriptions.cancel(o.id) } catch (e) { console.error('[stripe cancel dup]', e) } }
+            }
+          }
+          const sub = await stripe.subscriptions.retrieve(String(subId))
           // เก็บ userId จาก session ไว้ใน sub.metadata ให้ applySubscription หาเจอ
           ;(sub as any).metadata = { ...(sub as any).metadata, userId: s.metadata?.userId }
           await applySubscription(sub)
