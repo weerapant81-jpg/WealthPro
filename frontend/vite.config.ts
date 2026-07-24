@@ -29,8 +29,10 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // อย่า cache /api — ให้ผ่านตรงไป backend เสมอ (ข้อมูลสด)
-        navigateFallbackDenylist: [/^\/api/],
+        // navigateFallback ส่ง index.html ให้ทุก navigation (สำหรับ client-side routing)
+        // แต่ต้องยกเว้น /api และไฟล์จริงที่มีนามสกุล (.pdf .jpg .webp ฯลฯ) —
+        // ไม่งั้นการเปิด /report-sample.pdf ในแท็บใหม่จะได้หน้าแอปแทนไฟล์
+        navigateFallbackDenylist: [/^\/api/, /\.[a-zA-Z0-9]+$/],
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
       },
     }),
