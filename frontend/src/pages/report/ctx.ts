@@ -50,8 +50,9 @@ export type ReportCtx = {
 
   // สถานะเอกสาร
   title: string
-  secs: Record<string, { include: boolean; text: string }>
+  secs: Record<string, { include: boolean; text: string; pos?: { x: number; y: number } }>
   setText: (k: string, v: string) => void
+  setPos: (k: string, v: { x: number; y: number }) => void   // ตำแหน่งกล่องคำแนะนำที่ลากย้าย
   signatures: Record<string, string>
   setSignatures: React.Dispatch<React.SetStateAction<Record<string, string>>>
   setSigning: (k: string | null) => void

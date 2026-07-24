@@ -8,7 +8,7 @@ import AdviceBox from '../AdviceBox'
 import type { ReportCtx } from '../ctx'
 
 export default function CurrentStatus({ kind, ctx }: { kind: string; ctx: ReportCtx }) {
-  const { client, ratios, profile, retPlan, expensesQ, ratiosSp, secs, setText, age, allocation, PIE_COLORS, totalInv, portRet, hasSpouse, invAssetsSp, totalInvSp, portRetSp } = ctx
+  const { client, ratios, profile, retPlan, expensesQ, ratiosSp, secs, setText, setPos, age, allocation, PIE_COLORS, totalInv, portRet, hasSpouse, invAssetsSp, totalInvSp, portRetSp } = ctx
     // ── บทสรุปผู้บริหารตามเอกสารตัวอย่าง: 4 ส่วน ซ้าย=ภาพข้อมูล (จากงานนำเสนอ) ขวา=กล่องข้อเสนอแนะ · มีเวอร์ชันคู่สมรส ──
     const isSp = kind === 'exec_spouse'
     if (isSp && !hasSpouse) return null
@@ -85,7 +85,8 @@ export default function CurrentStatus({ kind, ctx }: { kind: string; ctx: Report
         <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>{title}</div>
         <div style={{ display: 'grid', gridTemplateColumns: '330px 1fr', gap: 18, alignItems: 'stretch' }}>
           <div>{children}</div>
-          <AdviceBox title={title} value={secs[adviceKey]?.text ?? ''} onSave={v => setText(adviceKey, v)} />
+          <AdviceBox title={title} value={secs[adviceKey]?.text ?? ''} onSave={v => setText(adviceKey, v)}
+            pos={secs[adviceKey]?.pos} onMove={p => setPos(adviceKey, p)} />
         </div>
       </div>
     )

@@ -71,7 +71,7 @@ const TEXT_HANDLED = new Set(['exec', 'exec_spouse', 'advprofile'])
 
 
 
-type SecData = { include: boolean; text: string }
+type SecData = { include: boolean; text: string; pos?: { x: number; y: number } }   // pos = ตำแหน่งที่ลากย้ายกล่องคำแนะนำ
 
 export default function ReportPage() {
   const compact = useIsCompact()
@@ -172,6 +172,9 @@ export default function ReportPage() {
 
   const setText = (k: string, v: string) => setSecs(p => ({ ...p, [k]: { ...p[k], text: v } }))
   const setInc = (k: string, v: boolean) => setSecs(p => ({ ...p, [k]: { ...p[k], include: v } }))
+  // ตำแหน่งกล่องคำแนะนำที่ผู้ใช้ลากย้าย — เก็บรวมกับ secs จึงถูกบันทึกอัตโนมัติเหมือนข้อความ
+  const setPos = (k: string, v: { x: number; y: number }) =>
+    setSecs(p => ({ ...p, [k]: { include: p[k]?.include ?? true, text: p[k]?.text ?? '', pos: v.x || v.y ? v : undefined } }))
 
   const clientName = [client?.firstName, client?.lastName].filter(Boolean).join(' ') || 'ลูกค้า'
   const age = client?.birthDate ? new Date().getFullYear() - new Date(client.birthDate).getFullYear() : null
@@ -213,7 +216,7 @@ export default function ReportPage() {
     eduPlan, eduCosts, eduInf, eduRet, retR, retRSp, insR, insRSp, eduR, covSelf, covSp,
     ratios, ratiosSp, sm, taxPlanQ, estatePlanQ, marketData, rebalQ, expensesQ, domainAdvice,
     invProfile, retPlan, allocation, PIE_COLORS, totalInv, portRet, invAssetsSp, totalInvSp, portRetSp,
-    title, secs, setText, signatures, setSignatures, setSigning,
+    title, secs, setText, setPos, signatures, setSignatures, setSigning,
     actionItems,
   }
 
