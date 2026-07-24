@@ -1,11 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Wallet, TrendingUp, ShieldCheck, PiggyBank, Receipt, LayoutDashboard,
   PenLine, BarChart3, LineChart, Bot, ClipboardCheck, ArrowRight,
   Tablet, Download, Users, LogIn, RefreshCw, Headset, Check, FileText, X, Maximize2,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { useIsCompact } from '../hooks/useViewport'
+
+type Pillar = { icon: React.ElementType; t: string; img: string }
 
 /* หน้าฟีเจอร์ (deep-dive) สาธารณะ — ธีมมืดตามแอป · ไม่ดึง CDN ภายนอก */
 
@@ -29,6 +32,76 @@ function ScreenshotModal({ img, title, onClose }: { img: string; title: string; 
         </div>
         <img src={img} alt={`ตัวอย่างหน้า${title}`}
           style={{ width: '100%', height: 'auto', borderRadius: 14, boxShadow: '0 30px 80px -20px rgba(0,0,0,0.7)' }} />
+      </div>
+    </div>
+  )
+}
+
+/* สไลด์ภาพหน้าโปรแกรม — ปัดซ้าย/ขวา (นิ้วหรือเมาส์) · ปุ่มลูกศร · จุดบอกตำแหน่ง · คลิกภาพเพื่อดูเต็มจอ */
+function PillarCarousel({ items, onOpen }: { items: Pillar[]; onOpen: (p: Pillar) => void }) {
+  const [i, setI] = useState(0)
+  const n = items.length
+  const trackRef = useRef<HTMLDivElement>(null)
+  const drag = useRef<{ x: number; moved: boolean } | null>(null)
+  const go = (idx: number) => setI(Math.max(0, Math.min(n - 1, idx)))
+
+  const onDown = (e: React.PointerEvent) => {
+    drag.current = { x: e.clientX, moved: false }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+  const onMove = (e: React.PointerEvent) => {
+    const d = drag.current
+    if (!d || !trackRef.current) return
+    const dx = e.clientX - d.x
+    if (Math.abs(dx) > 5) d.moved = true
+    trackRef.current.style.transition = 'none'
+    trackRef.current.style.transform = `translateX(calc(${-i * 100}% + ${dx}px))`
+  }
+  const onUp = (e: React.PointerEvent) => {
+    const d = drag.current
+    drag.current = null
+    if (!d) return
+    e.currentTarget.releasePointerCapture(e.pointerId)
+    const dx = e.clientX - d.x
+    if (trackRef.current) trackRef.current.style.transition = ''
+    if (Math.abs(dx) > 60) go(i + (dx < 0 ? 1 : -1))          // ปัดเกิน 60px = เปลี่ยนสไลด์
+    else { if (trackRef.current) trackRef.current.style.transform = `translateX(${-i * 100}%)`
+           if (!d.moved) onOpen(items[i]) }                    // แตะเฉย ๆ = เปิดเต็มจอ
+  }
+
+  return (
+    <div style={{ position: 'relative', maxWidth: 940, margin: '0 auto' }}>
+      <div style={{ overflow: 'hidden', borderRadius: 18, border: '1px solid rgba(255,255,255,0.08)', background: 'var(--navy-950)' }}>
+        <div ref={trackRef} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => { drag.current = null }}
+          style={{ display: 'flex', transform: `translateX(${-i * 100}%)`, transition: 'transform .38s cubic-bezier(.22,.61,.36,1)', touchAction: 'pan-y', cursor: 'grab' }}>
+          {items.map(p => (
+            <div key={p.t} style={{ flex: '0 0 100%', position: 'relative' }}>
+              <img src={p.img} alt={`ตัวอย่างหน้า${p.t}`} draggable={false}
+                style={{ width: '100%', height: 'auto', display: 'block', userSelect: 'none' }} />
+              {/* ป้ายชื่อด้านล่างภาพ */}
+              <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '28px 20px 16px', display: 'flex', alignItems: 'center', gap: 10,
+                background: 'linear-gradient(to top, rgba(10,12,16,0.9), transparent)' }}>
+                <div style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(0,207,193,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><p.icon size={18} color={AC} /></div>
+                <span style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>{p.t}</span>
+                <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}><Maximize2 size={13} /> ดูเต็มจอ</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ปุ่มลูกศร */}
+      <button onClick={() => go(i - 1)} disabled={i === 0} aria-label="ก่อนหน้า"
+        style={{ position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', width: 42, height: 42, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(10,12,16,0.7)', backdropFilter: 'blur(6px)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: i === 0 ? 'default' : 'pointer', opacity: i === 0 ? 0.3 : 1 }}><ChevronLeft size={22} /></button>
+      <button onClick={() => go(i + 1)} disabled={i === n - 1} aria-label="ถัดไป"
+        style={{ position: 'absolute', top: '50%', right: 10, transform: 'translateY(-50%)', width: 42, height: 42, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(10,12,16,0.7)', backdropFilter: 'blur(6px)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: i === n - 1 ? 'default' : 'pointer', opacity: i === n - 1 ? 0.3 : 1 }}><ChevronRight size={22} /></button>
+
+      {/* จุดบอกตำแหน่ง */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 9, marginTop: 18 }}>
+        {items.map((p, idx) => (
+          <button key={p.t} onClick={() => go(idx)} aria-label={p.t}
+            style={{ width: idx === i ? 26 : 9, height: 9, borderRadius: 5, border: 'none', padding: 0, cursor: 'pointer', transition: 'all .25s', background: idx === i ? AC : 'rgba(255,255,255,0.22)' }} />
+        ))}
       </div>
     </div>
   )
@@ -141,17 +214,8 @@ export default function FeaturesPage() {
           <h2 style={{ fontSize: compact ? 26 : 32, fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.02em' }}>วางแผนครบ 6 ด้าน ในที่เดียว</h2>
           <p style={{ fontSize: 15.5, color: 'var(--text-secondary)', maxWidth: 640, margin: '0 auto' }}>เชื่อมโยงข้อมูลทั้ง 6 ด้านเข้าด้วยกันอัตโนมัติ กรอกครั้งเดียว คำนวณให้ทั้งระบบ</p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${compact ? 140 : 160}px, 1fr))`, gap: 16 }}>
-          {pillars.map(p => (
-            <div key={p.t} onClick={() => setShot({ img: p.img, t: p.t })} title={`ดูตัวอย่างหน้า${p.t}`}
-              className="lp-card" style={{ ...glass, padding: '26px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, textAlign: 'center', cursor: 'pointer', position: 'relative' }}>
-              <Maximize2 size={13} style={{ position: 'absolute', top: 12, right: 12, color: 'var(--text-muted)' }} />
-              <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--navy-800)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><p.icon size={25} color={AC} /></div>
-              <span style={{ fontSize: 15, fontWeight: 800 }}>{p.t}</span>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: AC }}>ดูตัวอย่าง</span>
-            </div>
-          ))}
-        </div>
+        <PillarCarousel items={pillars} onOpen={p => setShot({ img: p.img, t: p.t })} />
+        <p style={{ textAlign: 'center', fontSize: 12.5, color: 'var(--text-muted)', marginTop: 14 }}>ปัดซ้าย–ขวาเพื่อดูแต่ละด้าน · แตะภาพเพื่อดูเต็มจอ</p>
       </section>
 
       {/* Bento features */}
