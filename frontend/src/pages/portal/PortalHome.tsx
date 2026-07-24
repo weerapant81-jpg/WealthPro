@@ -39,17 +39,19 @@ export default function PortalHome() {
   const healthLabel: string = ratio?.healthLabel ?? '—'
   const firstName = profile?.firstName ? `คุณ${profile.firstName}` : 'สวัสดี'
 
-  // ความคืบหน้าแผนปฏิบัติการ — นับจากแถวย่อย (subPlan) ที่ทำเสร็จ
+  // ความคืบหน้าแผนปฏิบัติการ — /action-items คืน { items, planReviewDate, advice } (ไม่ใช่ array)
+  const actionItems = Array.isArray(actions?.items) ? actions.items : []
   let done = 0, total = 0
-  for (const it of (actions ?? [])) {
-    const rows = Array.isArray(it.subPlan) ? it.subPlan : []
+  for (const it of actionItems) {
+    const rows = Array.isArray(it?.subPlan) ? it.subPlan : []
     if (rows.length) { total += rows.length; done += rows.filter((r: any) => r?.done).length }
-    else { total += 1; if (it.status === 'done') done += 1 }
+    else { total += 1; if (it?.status === 'done') done += 1 }
   }
   const pct = total ? Math.round((done / total) * 100) : 0
 
-  const reviewDate = assumptions?.planReviewDate
-    ? new Date(assumptions.planReviewDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+  const reviewRaw = actions?.planReviewDate ?? assumptions?.planReviewDate
+  const reviewDate = reviewRaw
+    ? new Date(reviewRaw).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
     : null
 
   return (
