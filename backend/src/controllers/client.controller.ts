@@ -28,20 +28,24 @@ export async function upsertClientProfile(req: AuthRequest, res: Response): Prom
   if (profileData.spouseProfile && typeof profileData.spouseProfile === 'object' && profileData.spouseProfile.nationalId)
     profileData.spouseProfile = { ...profileData.spouseProfile, nationalId: encryptField(profileData.spouseProfile.nationalId) }
 
-  const profile = await prisma.clientProfile.upsert({
-    where: { userId: req.effectiveUserId! },
-    update: profileData,
-    create: { ...profileData, userId: req.effectiveUserId! },
-  })
-
-  if (Array.isArray(children)) {
-    await prisma.child.deleteMany({ where: { clientProfileId: profile.id } })
-    if (children.length > 0) {
-      await prisma.child.createMany({
-        data: children.map((c: any) => ({ ...c, clientProfileId: profile.id })),
-      })
+  // อัปเดตโปรไฟล์ + แทนที่รายชื่อบุตร (ลบเก่า → ใส่ใหม่) แบบ atomic
+  // ถ้าใส่บุตรใหม่พลาดหลังลบไปแล้ว จะ rollback ทั้งหมด ไม่ให้ข้อมูลบุตรหายเปล่า
+  const profile = await prisma.$transaction(async (tx) => {
+    const p = await tx.clientProfile.upsert({
+      where: { userId: req.effectiveUserId! },
+      update: profileData,
+      create: { ...profileData, userId: req.effectiveUserId! },
+    })
+    if (Array.isArray(children)) {
+      await tx.child.deleteMany({ where: { clientProfileId: p.id } })
+      if (children.length > 0) {
+        await tx.child.createMany({
+          data: children.map((c: any) => ({ ...c, clientProfileId: p.id })),
+        })
+      }
     }
-  }
+    return p
+  })
 
   const result = await prisma.clientProfile.findUnique({
     where: { id: profile.id },

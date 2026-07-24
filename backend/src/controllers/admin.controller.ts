@@ -36,6 +36,9 @@ export async function createClient(req: AuthRequest, res: Response): Promise<voi
     return
   }
   const randomPass = await bcrypt.hash(`${Math.random()}${Date.now()}`, 12)
+  const parts = String(name).trim().split(/\s+/)
+  // สร้าง User + ClientProfile พร้อมกันแบบ nested — Prisma ครอบเป็น transaction เดียว
+  // ถ้าสร้างโปรไฟล์พลาด User จะไม่ถูกสร้างค้าง (กันลูกค้าที่ไม่มีโปรไฟล์)
   const client = await prisma.user.create({
     data: {
       name: String(name).trim(), email: finalEmail, password: randomPass,
@@ -43,19 +46,16 @@ export async function createClient(req: AuthRequest, res: Response): Promise<voi
       birthDate: birthDate ? new Date(birthDate) : null,
       role: 'USER', isApproved: true, isEmailVerified: true,
       createdById: req.userId,
+      clientProfile: {
+        create: {
+          firstName: (firstName && String(firstName).trim()) || parts[0] || '',
+          lastName: (lastName && String(lastName).trim()) || parts.slice(1).join(' ') || '',
+          phone: String(phone).trim(),
+          contactEmail: finalEmail,
+        },
+      },
     },
     select: { id: true, name: true, email: true, phone: true },
-  })
-  // สร้างโปรไฟล์ลูกค้าพร้อมข้อมูลที่กรอกไว้ → หน้า "ข้อมูลส่วนบุคคล" ดึงมาแสดงอัตโนมัติ
-  const parts = String(name).trim().split(/\s+/)
-  await prisma.clientProfile.create({
-    data: {
-      userId: client.id,
-      firstName: (firstName && String(firstName).trim()) || parts[0] || '',
-      lastName: (lastName && String(lastName).trim()) || parts.slice(1).join(' ') || '',
-      phone: String(phone).trim(),
-      contactEmail: finalEmail,
-    },
   })
   res.status(201).json(client)
 }
@@ -80,17 +80,19 @@ export async function updateClient(req: AuthRequest, res: Response): Promise<voi
   const parts = String(name).trim().split(/\s+/)
   const fn = (firstName && String(firstName).trim()) || parts[0] || ''
   const ln = (lastName && String(lastName).trim()) || parts.slice(1).join(' ') || ''
-  const client = await prisma.user.update({
-    where: { id },
-    data: { name: String(name).trim(), email: finalEmail, phone: String(phone).trim() },
-    select: { id: true, name: true, email: true, phone: true },
-  })
-  // อัปเดตหน้า "ข้อมูลส่วนบุคคล" ให้ตรงกัน
-  await prisma.clientProfile.upsert({
-    where: { userId: id },
-    update: { firstName: fn, lastName: ln, phone: String(phone).trim(), contactEmail: finalEmail },
-    create: { userId: id, firstName: fn, lastName: ln, phone: String(phone).trim(), contactEmail: finalEmail },
-  })
+  // อัปเดต User + ClientProfile ให้ตรงกันแบบ atomic — ไม่ให้ชื่อ/อีเมล 2 ที่หลุดจากกันถ้าพลาดกลางทาง
+  const [client] = await prisma.$transaction([
+    prisma.user.update({
+      where: { id },
+      data: { name: String(name).trim(), email: finalEmail, phone: String(phone).trim() },
+      select: { id: true, name: true, email: true, phone: true },
+    }),
+    prisma.clientProfile.upsert({
+      where: { userId: id },
+      update: { firstName: fn, lastName: ln, phone: String(phone).trim(), contactEmail: finalEmail },
+      create: { userId: id, firstName: fn, lastName: ln, phone: String(phone).trim(), contactEmail: finalEmail },
+    }),
+  ])
   res.json(client)
 }
 
