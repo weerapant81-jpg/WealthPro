@@ -17,8 +17,8 @@ export const FREE_CLIENT_LIMIT = 5
 // ── โปรโมชันเปิดตัว: ใช้ฟรีทุกเมนู (launch grace period) ──
 // ถึงสิ้นสุดช่วงนี้ FA ที่ได้รับอนุมัติทุกคน = สิทธิ์เต็ม (ai) ไม่จำกัดลูกค้า
 // หลังจากนั้นตกกลับ plan จริง (default free) แล้วเปิดระบบขายตามปกติ
-// ปรับวันได้ผ่าน env PROMO_FREE_UNTIL (ISO) — ค่าเริ่มต้น 31 ส.ค. 2026 (สิ้นวัน เวลาไทย)
-export const PROMO_FREE_UNTIL = new Date(process.env.PROMO_FREE_UNTIL || '2026-08-31T23:59:59+07:00')
+// ปรับวันได้ผ่าน env PROMO_FREE_UNTIL (ISO) — ค่าเริ่มต้น 30 ก.ย. 2026 (สิ้นวัน เวลาไทย)
+export const PROMO_FREE_UNTIL = new Date(process.env.PROMO_FREE_UNTIL || '2026-09-30T23:59:59+07:00')
 export const isPromoFreeActive = (now: number = Date.now()): boolean =>
   !isNaN(PROMO_FREE_UNTIL.getTime()) && now <= PROMO_FREE_UNTIL.getTime()
 

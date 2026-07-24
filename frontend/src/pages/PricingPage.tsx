@@ -107,7 +107,7 @@ export default function PricingPage() {
         <div style={{ borderRadius: 14, border: '1px solid #059669', background: 'rgba(5,150,105,0.08)', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <Sparkles size={17} style={{ color: '#059669' }} />
           <span style={{ fontSize: 13.5, color: 'var(--text-primary)' }}>
-            🎉 <b>ช่วงเปิดตัว</b> — เปิดให้ใช้งาน<b>ทุกเมนูฟรี</b>ถึงวันที่ <b style={{ color: '#059669' }}>{promoUntilTh || '31 สิงหาคม 2569'}</b> · หลังจากนั้นจะเริ่มระบบแพ็กเกจตามปกติ
+            🎉 <b>ช่วงเปิดตัว</b> — เปิดให้ใช้งาน<b>ทุกเมนูฟรี</b>ถึงวันที่ <b style={{ color: '#059669' }}>{promoUntilTh || '30 กันยายน 2569'}</b> · หลังจากนั้นจะเริ่มระบบแพ็กเกจตามปกติ
           </span>
         </div>
       )}
@@ -182,7 +182,7 @@ export default function PricingPage() {
       <div style={{ ...card_, display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 3 }}>Enterprise — สำหรับทีม/องค์กร</div>
-          <div style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>รวม AI · 5–10 คน 690 · 11–20 คน 590 · มากกว่า 20 คน 490 ฿/คน/เดือน · ช่วยตั้งค่า/อบรมให้ทีม</div>
+          <div style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>ได้ทุกฟีเจอร์ในแพ็กเกจ AI (รวม AI Copilot) สำหรับทั้งทีม · จัดการผู้ใช้หลายคน · ช่วยตั้งค่าและอบรมให้ทีม · ราคาพิเศษสำหรับองค์กร ติดต่อสอบถาม</div>
         </div>
         <button onClick={() => { window.location.href = 'mailto:info@wealthpro.cloud?subject=' + encodeURIComponent('สอบถามแพ็กเกจ Enterprise WealthPro') }}
           style={{ padding: '10px 20px', borderRadius: 10, border: '1px solid var(--cyan)', background: 'transparent', color: AC, fontSize: 13, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}>
