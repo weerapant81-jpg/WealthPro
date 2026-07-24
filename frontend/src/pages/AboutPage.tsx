@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import {
   Award, LineChart, CheckCircle2, ArrowRight, Quote,
-  UserRound, Code2, Briefcase, Scale, ShieldCheck, Bot, PiggyBank,
+  ShieldCheck, Bot, PiggyBank,
 } from 'lucide-react'
 import { useIsCompact } from '../hooks/useViewport'
 
@@ -21,12 +21,6 @@ export default function AboutPage() {
     { n: '15+', c: AC, t: 'ปีบนเส้นทางวิชาชีพ', d: 'เติบโตไปพร้อมกับอุตสาหกรรมการเงินไทย ด้วยความซื่อสัตย์และมั่นคง' },
     { n: '1,000+', c: 'var(--text-primary)', t: 'ครอบครัวที่ดูแล', d: 'ดูแลเป้าหมายชีวิตและแผนการเงินให้กับครอบครัวและองค์กรทั่วประเทศ' },
     { n: '100%', c: '#a78bfa', t: 'ยึดจรรยาบรรณวิชาชีพ', d: 'ทุกขั้นตอนการให้คำปรึกษาเป็นไปตามจรรยาบรรณวิชาชีพนักวางแผนการเงิน' },
-  ]
-  const team = [
-    { icon: UserRound, role: 'ทีมที่ปรึกษาการเงิน', sub: 'Professional Consultant', c: AC },
-    { icon: Code2, role: 'ทีมพัฒนาเทคโนโลยี', sub: 'Software Engineering', c: '#a78bfa' },
-    { icon: Briefcase, role: 'ทีมบริหาร', sub: 'Operations', c: '#f59e0b' },
-    { icon: Scale, role: 'กำกับดูแล & จรรยาบรรณ', sub: 'Compliance & Ethics', c: '#22c55e' },
   ]
 
   return (
@@ -165,25 +159,6 @@ export default function AboutPage() {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Team */}
-      <section style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'var(--navy-950)' }}>
-        <div style={{ ...wrap, padding: compact ? '56px 20px' : '80px 40px' }}>
-          <div style={{ textAlign: 'center', marginBottom: 44 }}>
-            <h2 style={{ fontSize: compact ? 28 : 34, fontWeight: 800, margin: '0 0 12px', letterSpacing: '-0.02em' }}>ทีมงานมืออาชีพ</h2>
-            <p style={{ fontSize: 15.5, color: 'var(--text-secondary)', maxWidth: 620, margin: '0 auto' }}>ขับเคลื่อนด้วยวัฒนธรรมแห่งการเรียนรู้ และความมุ่งมั่นพัฒนาวงการที่ปรึกษาการเงินไทย</p>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${compact ? 150 : 220}px, 1fr))`, gap: 20 }}>
-            {team.map(m => (
-              <div key={m.role} className="lp-card" style={{ ...glass, padding: 28, textAlign: 'center' }}>
-                <div style={{ width: 72, height: 72, borderRadius: '50%', margin: '0 auto 18px', background: `${m.c}1a`, border: `1px solid ${m.c}55`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><m.icon size={30} color={m.c} /></div>
-                <h5 style={{ fontSize: 16.5, fontWeight: 800, margin: '0 0 4px' }}>{m.role}</h5>
-                <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase' }}>{m.sub}</p>
-              </div>
-            ))}
           </div>
         </div>
       </section>
