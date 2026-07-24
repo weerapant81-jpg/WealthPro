@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import {
-  Award, LineChart, CheckCircle2, ArrowRight, Quote,
+  Award, LineChart, CheckCircle2, ArrowRight,
   ShieldCheck, Bot, PiggyBank,
 } from 'lucide-react'
 import { useIsCompact } from '../hooks/useViewport'
@@ -76,11 +76,15 @@ export default function AboutPage() {
         <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : '2fr 1fr', gap: 20 }}>
           {/* founder card */}
           <div className="lp-card" style={{ ...glass, overflow: 'hidden', display: 'flex', flexDirection: compact ? 'column' : 'row' }}>
-            <div style={{ flex: compact ? 'none' : '0 0 42%', minHeight: compact ? 180 : 'auto', background: 'linear-gradient(150deg, #0f172a 0%, #134e4a 60%, #00cfc1 150%)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', padding: 24 }}>
-              <Quote size={compact ? 60 : 96} color="rgba(255,255,255,0.14)" />
+            <div style={{ flex: compact ? 'none' : '0 0 42%', minHeight: compact ? 320 : 460, background: 'var(--navy-950)', position: 'relative' }}>
+              <img src="/founder.jpg" alt="วีระพันธ์ เต็มดวง ผู้ก่อตั้ง WealthPro"
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 22%' }} />
+              {/* ไล่สีทึบด้านล่าง — ให้ชื่อบนภาพอ่านออกไม่ว่าพื้นหลังรูปจะสว่างแค่ไหน */}
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(10,12,16,0.92) 0%, rgba(10,12,16,0.35) 34%, transparent 60%)' }} />
               <div style={{ position: 'absolute', bottom: 18, left: 22, right: 22 }}>
                 <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.6)' }}>FINANCIAL PLANNING PROFESSIONAL</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', marginTop: 4 }}>ผู้สร้าง WealthPro</div>
+                <div style={{ fontSize: 21, fontWeight: 800, color: '#fff', marginTop: 4 }}>วีระพันธ์ เต็มดวง</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: AC, marginTop: 2 }}>ผู้สร้าง WealthPro</div>
               </div>
             </div>
             <div style={{ flex: 1, padding: compact ? 26 : 40, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
